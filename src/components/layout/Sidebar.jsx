@@ -2,19 +2,24 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import Icon from '../Icon.jsx'
 import { NAV, PANELS } from '../../config/nav.js'
+import { useSettings } from '../../config/settings.jsx'
 
 export default function Sidebar({ panel, onNavigate }) {
   const groups = NAV[panel]
   const { pathname } = useLocation()
   const p = PANELS[panel]
+  const { settings } = useSettings()
 
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
         <img src="/favicon.svg" alt="" />
-        <b>Stone Livepro</b>
+        <b>{settings.appName}</b>
       </div>
-      <div className="sidebar__panel-tag">{p.label} Panel</div>
+      <div className="sidebar__panel-tag" title={p.scope}>
+        <Icon name={p.icon} size={13} />
+        {p.label}
+      </div>
       <nav className="sidebar__scroll">
         {groups.map((g) => (
           <div className="nav-group" key={g.section}>

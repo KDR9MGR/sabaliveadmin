@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { PageHeader, Card, Button, useToast } from '../../components/ui.jsx'
+import { useSettings, BRAND_PRESETS, DEFAULT_SETTINGS } from '../../config/settings.jsx'
+import Icon from '../../components/Icon.jsx'
 
 /* ---- field primitives ---- */
 function Text({ label, hint, value, ...rest }) {
@@ -8,6 +10,101 @@ function Text({ label, hint, value, ...rest }) {
       <label>{label}</label>
       <input className="input" defaultValue={value} {...rest} />
       {hint && <span className="hint">{hint}</span>}
+    </div>
+  )
+}
+
+/* live-bound dashboard name — edits update the sidebar / title everywhere at once */
+function BrandNameField() {
+  const { settings, update } = useSettings()
+  return (
+    <div className="field">
+      <label>Dashboard name</label>
+      <input className="input" value={settings.appName} onChange={(e) => update({ appName: e.target.value })} />
+      <span className="hint">Shown in the sidebar, the browser tab and the sign-in screen — updates live.</span>
+    </div>
+  )
+}
+
+function BrandingSection() {
+  const { settings, update, reset } = useSettings()
+  return (
+    <div className="form-grid">
+      <BrandNameField />
+      <div className="field">
+        <label>Tagline</label>
+        <input className="input" value={settings.tagline} onChange={(e) => update({ tagline: e.target.value })} />
+        <span className="hint">Small text under the name on the sign-in screen.</span>
+      </div>
+
+      <div className="field full">
+        <label>Brand colour</label>
+        <div className="hstack wrap" style={{ gap: 10 }}>
+          <input
+            type="color" className="color-input"
+            value={settings.brandColor}
+            onChange={(e) => update({ brandColor: e.target.value })}
+          />
+          <input
+            className="input" style={{ width: 130 }}
+            value={settings.brandColor}
+            onChange={(e) => update({ brandColor: e.target.value })}
+          />
+          <div className="hstack wrap" style={{ gap: 6 }}>
+            {BRAND_PRESETS.map((p) => (
+              <button
+                key={p.value} title={p.name}
+                onClick={() => update({ brandColor: p.value })}
+                className="swatch"
+                style={{ background: p.value, outline: settings.brandColor.toLowerCase() === p.value ? '2px solid var(--text)' : 'none' }}
+              />
+            ))}
+          </div>
+        </div>
+        <span className="hint">Recolours buttons, links, charts and highlights across every panel — instantly.</span>
+      </div>
+
+      <div className="field full">
+        <label>Sidebar style</label>
+        <div className="pill-tabs">
+          {['light', 'dark'].map((s) => (
+            <button key={s} className={settings.sidebarStyle === s ? 'active' : ''} onClick={() => update({ sidebarStyle: s })}>
+              {s[0].toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+        <span className="hint">The Super Admin panel always uses a dark sidebar so it’s never mistaken for the others.</span>
+      </div>
+
+      <div className="full">
+        <div className="toggle-row">
+          <div><div className="t-title">Compact tables</div><div className="t-desc">Tighter row spacing in every data table</div></div>
+          <label className="toggle">
+            <input type="checkbox" checked={settings.denseTables} onChange={(e) => update({ denseTables: e.target.checked })} />
+            <span className="track" /><span className="thumb" />
+          </label>
+        </div>
+      </div>
+
+      <div className="full">
+        <div className="card" style={{ padding: 16, background: 'var(--surface-2)' }}>
+          <div className="hstack spread">
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>Live preview</div>
+              <div className="muted" style={{ fontSize: 12 }}>Reflects the current values</div>
+            </div>
+            <div className="hstack" style={{ gap: 8 }}>
+              <span className="badge badge--violet">{settings.appName}</span>
+              <button className="btn btn--primary btn--sm">Primary button</button>
+              <span className="tag tag--role">Tag</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="full">
+        <Button icon="refresh" onClick={reset}>Reset branding to defaults ({DEFAULT_SETTINGS.appName})</Button>
+      </div>
     </div>
   )
 }
@@ -30,11 +127,12 @@ function Toggle({ title, desc, on }) {
 
 /* ---- section renderers ---- */
 const SECTIONS = {
+  Branding: BrandingSection,
   General: () => (
     <div className="form-grid">
-      <Text label="App name" value="Stone Livepro" />
+      <BrandNameField />
       <Text label="App version" value="3.1.0" />
-      <Text label="Support email" value="support@stonelivepro.com" />
+      <Text label="Support email" value="support@sabalive.app" />
       <Text label="Contact number" value="+91 98765 43210" />
       <Select label="Default timezone" value="(UTC +05:30) Asia/Kolkata" options={['(UTC +05:30) Asia/Kolkata', '(UTC +00:00) UTC', '(UTC -05:00) America/New_York', '(UTC +04:00) Asia/Dubai']} />
       <Select label="Default currency" value="INR (₹)" options={['INR (₹)', 'USD ($)', 'EUR (€)', 'AED (د.إ)']} />
@@ -143,29 +241,33 @@ const SECTIONS = {
 
 const KEYS = Object.keys(SECTIONS)
 
-export default function ApplicationConfig({ crumbRoot = 'Application Configuration', panel = 'admin' }) {
-  const [sec, setSec] = useState('General')
+export default function ApplicationConfig({ crumbRoot = 'Application Configuration' }) {
+  const [sec, setSec] = useState('Branding')
   const toast = useToast()
+  const { reset } = useSettings()
   const Body = SECTIONS[sec]
+  const isBranding = sec === 'Branding'
   return (
     <>
       <PageHeader
         title="Application Configuration"
         crumbs={['Home', crumbRoot, sec + ' Settings']}
         actions={<>
-          <Button icon="refresh" onClick={() => toast('Reverted to saved values')}>Reset</Button>
-          <Button variant="primary" icon="check" onClick={() => toast(`${sec} settings saved`)}>Save Changes</Button>
+          <Button icon="refresh" onClick={() => { if (isBranding) { reset(); toast('Branding reset to defaults') } else toast('Reverted to saved values') }}>Reset</Button>
+          <Button variant="primary" icon="check" onClick={() => toast(isBranding ? 'Branding saved' : `${sec} settings saved`)}>Save Changes</Button>
         </>}
       />
       <div className="settings-layout">
         <Card flush>
           <div className="settings-nav" style={{ padding: 10 }}>
             {KEYS.map((k) => (
-              <button key={k} className={sec === k ? 'active' : ''} onClick={() => setSec(k)}>{k} Settings</button>
+              <button key={k} className={sec === k ? 'active' : ''} onClick={() => setSec(k)}>
+                {k === 'Branding' ? 'Site / Branding' : `${k} Settings`}
+              </button>
             ))}
           </div>
         </Card>
-        <Card title={`${sec} Settings`} sub="Changes apply on save and take effect within 60 seconds">
+        <Card title={isBranding ? 'Site / Branding' : `${sec} Settings`} sub={isBranding ? 'Rename the dashboard and set the live brand colour — applies to all panels' : 'Changes apply on save and take effect within 60 seconds'}>
           <Body />
         </Card>
       </div>

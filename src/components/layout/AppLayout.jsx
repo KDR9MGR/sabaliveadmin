@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar.jsx'
 import Topbar from './Topbar.jsx'
+import { PANELS } from '../../config/nav.js'
 
 export default function AppLayout({ panel }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -16,8 +17,15 @@ export default function AppLayout({ panel }) {
     else setCollapsed((c) => !c)
   }
 
+  // Master's identity tracks the live brand colour; Agency & Super keep fixed hues
+  const identity = panel === 'master' ? 'var(--primary)' : (PANELS[panel]?.color || 'var(--primary)')
+
   return (
-    <div className={`app-shell${collapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}>
+    <div
+      className={`app-shell${collapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}
+      data-panel={panel}
+      style={{ '--panel': identity }}
+    >
       <div className="sidebar-backdrop" onClick={() => setMobileOpen(false)} />
       <Sidebar panel={panel} onNavigate={() => setMobileOpen(false)} />
       <div className="main-col">

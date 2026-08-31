@@ -1,6 +1,7 @@
 import { PageHeader, Card, Button, Badge } from '../../components/ui.jsx'
 import Icon from '../../components/Icon.jsx'
 import { StatGrid } from '../_templates.jsx'
+import PanelChip from '../../components/PanelChip.jsx'
 import { AreaChart, BarChart, DonutChart } from '../../components/charts.jsx'
 import { dashboard, num } from '../../data/index.js'
 import { boldMd } from '../../data/util.js'
@@ -12,7 +13,7 @@ export default function MasterDashboard() {
   return (
     <>
       <PageHeader
-        title="Dashboard"
+        title={<>Dashboard <PanelChip panel="master" /></>}
         crumbs={['Home', 'Dashboard']}
         actions={<>
           <Button icon="download">Export</Button>

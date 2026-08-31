@@ -194,3 +194,75 @@
   .topbar { padding: 0 14px; gap: 10px; }
   .topbar__search { display: none; }
 }
+
+/* ============================================================
+   Per-panel visual identity (--panel is set on .app-shell)
+   ============================================================ */
+.app-shell { --panel: var(--primary); }
+
+/* top accent strip tells you which panel you're in */
+.topbar { border-top: 3px solid var(--panel); }
+
+/* panel badge under the brand */
+.sidebar__panel-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 14px 18px 6px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px; font-weight: 800;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--panel);
+  background: color-mix(in srgb, var(--panel) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--panel) 28%, transparent);
+}
+
+/* active nav item uses the panel colour, not the brand colour */
+.nav-link.active {
+  background: var(--panel);
+  color: #fff;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--panel) 34%, transparent);
+}
+.nav-sub .nav-link.active {
+  background: color-mix(in srgb, var(--panel) 12%, transparent);
+  color: var(--panel);
+  box-shadow: none;
+}
+.nav-link:hover { background: color-mix(in srgb, var(--panel) 10%, transparent); color: var(--panel); }
+
+/* panel switcher dot */
+.panel-switch__dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* page-title panel chip */
+.panel-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: var(--radius-pill);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  color: #fff; background: var(--panel);
+  vertical-align: middle;
+}
+
+/* ---- dark sidebar: always for Super Admin, opt-in globally ---- */
+.app-shell[data-panel="super"] .sidebar,
+:root[data-sidebar="dark"] .app-shell:not([data-panel="super"]) .sidebar {
+  background: #0f1120;
+  border-right-color: #20233a;
+}
+.app-shell[data-panel="super"] .sidebar__brand,
+:root[data-sidebar="dark"] .sidebar__brand { border-bottom-color: #20233a; }
+.app-shell[data-panel="super"] .sidebar__brand b,
+:root[data-sidebar="dark"] .sidebar__brand b { color: #fff; }
+.app-shell[data-panel="super"] .nav-group__label,
+:root[data-sidebar="dark"] .nav-group__label { color: #5b6079; }
+.app-shell[data-panel="super"] .nav-link,
+:root[data-sidebar="dark"] .nav-link { color: #a7adc6; }
+.app-shell[data-panel="super"] .nav-link:hover,
+:root[data-sidebar="dark"] .nav-link:hover {
+  background: color-mix(in srgb, var(--panel) 22%, transparent);
+  color: #fff;
+}
+.app-shell[data-panel="super"] .nav-sub,
+:root[data-sidebar="dark"] .nav-sub { border-left-color: #20233a; }
+.app-shell[data-panel="super"] .nav-sub .nav-link.active,
+:root[data-sidebar="dark"] .nav-sub .nav-link.active {
+  background: color-mix(in srgb, var(--panel) 26%, transparent); color: #fff;
+}

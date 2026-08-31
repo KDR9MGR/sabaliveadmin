@@ -412,7 +412,7 @@ export const dashboard = {
       const r = rng(13000 + i)
       return {
         icon: pick(r, ['shield', 'server', 'key', 'refresh', 'globe']),
-        text: pick(r, ['Admin **Rahul Kumar** signed in', 'Config **payment.gateway** updated', 'SSL cert renewed for **stonelivepro.com**', 'Nightly backup completed', 'New API key issued to **Analytics**']),
+        text: pick(r, ['Admin **Rahul Kumar** signed in', 'Config **payment.gateway** updated', 'SSL cert renewed for **sabalive.app**', 'Nightly backup completed', 'New API key issued to **Analytics**']),
         time: timeAgo(r),
       }
     }),
@@ -422,9 +422,9 @@ export const dashboard = {
 /* infrastructure inventory (super admin) */
 export const infrastructure = [
   { id: 'INF1', category: 'Cloud / Server', name: 'AWS ap-south-1 — EKS cluster', provider: 'Amazon Web Services', plan: 'm5.xlarge ×6', renews: '01 Jan 2027', status: 'Active', owner: 'DevOps' },
-  { id: 'INF2', category: 'Domain', name: 'stonelivepro.com', provider: 'GoDaddy', plan: 'Annual', renews: '12 Sep 2026', status: 'Renew Soon', owner: 'Client' },
+  { id: 'INF2', category: 'Domain', name: 'sabalive.app', provider: 'GoDaddy', plan: 'Annual', renews: '12 Sep 2026', status: 'Renew Soon', owner: 'Client' },
   { id: 'INF3', category: 'Hosting Account', name: 'CDN + Object Storage', provider: 'Cloudflare + AWS S3', plan: 'Business', renews: '01 Feb 2027', status: 'Active', owner: 'DevOps' },
-  { id: 'INF4', category: 'Email / Gmail', name: 'admin@stonelivepro.com', provider: 'Google Workspace', plan: '5 seats', renews: '01 Nov 2026', status: 'Active', owner: 'Client' },
+  { id: 'INF4', category: 'Email / Gmail', name: 'admin@sabalive.app', provider: 'Google Workspace', plan: '5 seats', renews: '01 Nov 2026', status: 'Active', owner: 'Client' },
   { id: 'INF5', category: 'Third-party Service', name: 'Agora — Live Video SDK', provider: 'Agora.io', plan: 'Pay-as-you-go', renews: 'Monthly', status: 'Active', owner: 'Client' },
   { id: 'INF6', category: 'Third-party Service', name: 'Razorpay — Payments', provider: 'Razorpay', plan: 'Standard', renews: 'Monthly', status: 'Active', owner: 'Client' },
   { id: 'INF7', category: 'API Account', name: 'Firebase — Push / Auth', provider: 'Google Firebase', plan: 'Blaze', renews: 'Monthly', status: 'Active', owner: 'DevOps' },

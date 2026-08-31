@@ -6,6 +6,7 @@ import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
 import { AreaChart, BarChart } from '../components/charts.jsx'
 import Icon from '../components/Icon.jsx'
+import PanelChip from '../components/PanelChip.jsx'
 import { dashboard, hosts, hostApplications, assignments, subAdmins, salary, num } from '../data/index.js'
 import { boldMd } from '../data/util.js'
 
@@ -19,7 +20,7 @@ export function AgencyDashboard() {
   return (
     <>
       <PageHeader
-        title="Dashboard"
+        title={<>Dashboard <PanelChip panel="agency" /></>}
         crumbs={[...CR, 'Dashboard']}
         actions={<Button variant="primary" icon="plus" iconRight="chevronDown">Quick Actions</Button>}
       />

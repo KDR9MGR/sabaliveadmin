@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ToastProvider } from './components/ui.jsx'
+import { SettingsProvider } from './config/settings.jsx'
 import AppLayout from './components/layout/AppLayout.jsx'
 
 import MasterDashboard from './pages/master/Dashboard.jsx'
@@ -27,9 +28,10 @@ import { Profile, Login, NotFound } from './pages/shared.jsx'
 export default function App() {
   return (
     <BrowserRouter>
+      <SettingsProvider>
       <ToastProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/admin" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
 
           {/* ---------------- Master / Admin ---------------- */}
@@ -116,6 +118,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </ToastProvider>
+      </SettingsProvider>
     </BrowserRouter>
   )
 }

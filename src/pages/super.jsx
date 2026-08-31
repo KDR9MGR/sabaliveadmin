@@ -6,6 +6,7 @@ import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
 import { AreaChart } from '../components/charts.jsx'
 import Icon from '../components/Icon.jsx'
+import PanelChip from '../components/PanelChip.jsx'
 import { dashboard, admins, auditLogs, infrastructure, integrations, backups, num } from '../data/index.js'
 import { boldMd } from '../data/util.js'
 
@@ -16,7 +17,7 @@ export function SuperDashboard() {
   const d = dashboard.super
   return (
     <>
-      <PageHeader title="Dashboard" crumbs={[...CR, 'Dashboard']} actions={<Button icon="download">System report</Button>} />
+      <PageHeader title={<>Dashboard <PanelChip panel="super" /></>} crumbs={[...CR, 'Dashboard']} actions={<Button icon="download">System report</Button>} />
       <StatGrid stats={d.stats} />
       <div className="grid dash mt-16">
         <Card title="API requests" sub="Last 24 hours (thousands / 5-min)">
@@ -230,7 +231,7 @@ export function SuperSecurity() {
         <Card title="Authentication">
           <div className="toggle-row"><div><div className="t-title">Enforce 2FA for all admins</div><div className="t-desc">Authenticator or hardware key</div></div>
             <label className="toggle"><input type="checkbox" defaultChecked /><span className="track" /><span className="thumb" /></label></div>
-          <div className="toggle-row"><div><div className="t-title">SSO (Google Workspace)</div><div className="t-desc">Restrict to stonelivepro.com</div></div>
+          <div className="toggle-row"><div><div className="t-title">SSO (Google Workspace)</div><div className="t-desc">Restrict to sabalive.app</div></div>
             <label className="toggle"><input type="checkbox" defaultChecked /><span className="track" /><span className="thumb" /></label></div>
           <div className="toggle-row"><div><div className="t-title">IP allowlist for admin panel</div><div className="t-desc">Office + VPN ranges only</div></div>
             <label className="toggle"><input type="checkbox" /><span className="track" /><span className="thumb" /></label></div>

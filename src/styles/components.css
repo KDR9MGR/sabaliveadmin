@@ -345,3 +345,46 @@ table.data td.col-actions { text-align: right; white-space: nowrap; }
   transform: translateY(8px); animation: slidein 0.18s forwards;
 }
 .toast svg { width: 16px; height: 16px; color: #4ade80; }
+
+/* ---------- Login ---------- */
+.login { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
+.login__aside {
+  background: var(--primary-grad); color: #fff;
+  padding: 56px 52px; display: flex; flex-direction: column; justify-content: center;
+}
+.login__aside h2 { color: #fff; }
+.login__panel {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; text-align: left; cursor: pointer;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22);
+  color: #fff; padding: 14px 16px; border-radius: 12px;
+  transition: background 0.14s, transform 0.14s;
+}
+.login__panel:hover { background: rgba(255,255,255,0.2); transform: translateX(2px); }
+.login__panel b { font-size: 13.5px; }
+.login__panel-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 4px rgba(255,255,255,0.25); }
+.login__form { display: grid; place-items: center; padding: 32px; background: var(--bg); }
+@media (max-width: 860px) {
+  .login { grid-template-columns: 1fr; }
+  .login__aside { padding: 40px 28px; }
+}
+
+/* ---------- colour picker (branding) ---------- */
+.color-input {
+  width: 46px; height: 40px; padding: 0; border: 1px solid var(--border-strong);
+  border-radius: 10px; background: var(--surface); cursor: pointer;
+}
+.color-input::-webkit-color-swatch-wrapper { padding: 4px; }
+.color-input::-webkit-color-swatch { border: 0; border-radius: 6px; }
+.swatch {
+  width: 26px; height: 26px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.08);
+  cursor: pointer; outline-offset: 2px; padding: 0;
+}
+
+/* ---------- dense tables (branding toggle) ---------- */
+:root.dense table.data tbody td { padding: 8px 18px; }
+:root.dense table.data thead th { padding: 9px 18px; }
+:root.dense .toolbar { padding: 12px 18px; }
+
+/* ---------- page-title panel chip wrapper ---------- */
+.page-head h1 .panel-chip { margin-left: 10px; font-size: 11px; }

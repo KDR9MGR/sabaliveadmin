@@ -48,22 +48,22 @@ function PanelMenu({ panel }) {
   const cur = PANELS[panel]
   return (
     <div className="pos-rel hide-sm" ref={ref}>
-      <button className="panel-switch" onClick={() => setOpen((o) => !o)}>
-        <Icon name="layers" size={15} />
+      <button className="panel-switch" onClick={() => setOpen((o) => !o)} style={{ borderColor: cur.color, color: cur.color }}>
+        <span className="panel-switch__dot" style={{ background: cur.color }} />
         {cur.label}
         <Icon name="chevronDown" size={14} />
       </button>
       {open && (
-        <div className="menu-pop">
+        <div className="menu-pop" style={{ minWidth: 264 }}>
           <div className="menu-label">Switch panel</div>
           {Object.values(PANELS).map((p) => (
             <button key={p.key} onClick={() => { setOpen(false); nav(p.base) }}>
-              <Icon name={p.key === 'super' ? 'shield' : p.key === 'master' ? 'shieldUser' : 'building'} size={15} />
+              <span className="panel-switch__dot" style={{ background: p.color }} />
               <span>
                 {p.label}
-                <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>{p.tagline}</span>
+                <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>{p.scope}</span>
               </span>
-              {p.key === panel && <Icon name="check" size={15} style={{ marginLeft: 'auto', color: 'var(--primary)' }} />}
+              {p.key === panel && <Icon name="check" size={15} style={{ marginLeft: 'auto', color: p.color, flexShrink: 0 }} />}
             </button>
           ))}
         </div>

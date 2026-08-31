@@ -1,9 +1,22 @@
 /* Sidebar structure for each panel. `to` is an absolute route path. */
 
 export const PANELS = {
-  super: { key: 'super', label: 'Super Admin', base: '/super', tagline: 'System administration', color: '#7c3aed' },
-  master: { key: 'master', label: 'Master / Admin', base: '/admin', tagline: 'Application management', color: '#7c3aed' },
-  agency: { key: 'agency', label: 'Agency / Manager', base: '/agency', tagline: 'Agency operations', color: '#22a06b' },
+  super: {
+    key: 'super', label: 'Super Admin', short: 'Super Admin', base: '/super',
+    tagline: 'System administration', color: '#4f46e5', icon: 'shield',
+    scope: 'Full system control — admin accounts, infrastructure, security, global config.',
+  },
+  master: {
+    // identity colour follows the live brand colour (see AppLayout); this is the fallback / login dot
+    key: 'master', label: 'Master / Admin', short: 'Master', base: '/admin',
+    tagline: 'Application management', color: '#7c3aed', icon: 'shieldUser',
+    scope: 'Runs the app day to day — users, agencies, hosts, coins, content, app settings.',
+  },
+  agency: {
+    key: 'agency', label: 'Agency / Manager', short: 'Agency', base: '/agency',
+    tagline: 'Agency operations', color: '#16a34a', icon: 'building',
+    scope: 'Manages one agency — its hosts, assignments, sub-admins, earnings and payouts.',
+  },
 }
 
 export const NAV = {
