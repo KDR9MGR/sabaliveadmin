@@ -41,32 +41,55 @@ function useOutside(ref, cb) {
   }, [ref, cb])
 }
 
+const PANELS_FOR = {
+  super_admin: ['super', 'master', 'agency'],
+  admin: ['master'],
+  sub_admin: ['agency'],
+  agency_manager: ['agency'],
+}
+
 function PanelMenu({ panel }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const nav = useNavigate()
+  const { staffRole } = useAuth()
   useOutside(ref, () => setOpen(false))
   const cur = PANELS[panel]
+  const allowed = PANELS_FOR[staffRole?.role] || [panel]
+  const canSwitch = allowed.length > 1
+
+  if (!canSwitch) {
+    return (
+      <span className="panel-switch" style={{ borderColor: cur.color, color: cur.color, cursor: 'default' }} title={cur.scope}>
+        <span className="panel-switch__dot" style={{ background: cur.color }} />
+        <span className="hide-sm">{cur.label}</span>
+      </span>
+    )
+  }
+
   return (
-    <div className="pos-rel hide-sm" ref={ref}>
+    <div className="pos-rel" ref={ref}>
       <button className="panel-switch" onClick={() => setOpen((o) => !o)} style={{ borderColor: cur.color, color: cur.color }}>
         <span className="panel-switch__dot" style={{ background: cur.color }} />
-        {cur.label}
+        <span className="hide-sm">{cur.label}</span>
         <Icon name="chevronDown" size={14} />
       </button>
       {open && (
         <div className="menu-pop" style={{ minWidth: 264 }}>
           <div className="menu-label">Switch panel</div>
-          {Object.values(PANELS).map((p) => (
-            <button key={p.key} onClick={() => { setOpen(false); nav(p.base) }}>
-              <span className="panel-switch__dot" style={{ background: p.color }} />
-              <span>
-                {p.label}
-                <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>{p.scope}</span>
-              </span>
-              {p.key === panel && <Icon name="check" size={15} style={{ marginLeft: 'auto', color: p.color, flexShrink: 0 }} />}
-            </button>
-          ))}
+          {allowed.map((k) => {
+            const p = PANELS[k]
+            return (
+              <button key={k} onClick={() => { setOpen(false); nav(p.base) }}>
+                <span className="panel-switch__dot" style={{ background: p.color }} />
+                <span>
+                  {p.label}
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>{p.scope}</span>
+                </span>
+                {k === panel && <Icon name="check" size={15} style={{ marginLeft: 'auto', color: p.color, flexShrink: 0 }} />}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

@@ -1,62 +1,93 @@
 import { useState } from 'react'
-import { ListPage, StatGrid, AsyncView } from './_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, ConfirmDialog } from '../components/ui.jsx'
+import { StatGrid, AsyncView } from './_templates.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, EmptyState, useToast, ConfirmDialog } from '../components/ui.jsx'
 import { personCol, statusCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
-import { AreaChart } from '../components/charts.jsx'
 import Icon from '../components/Icon.jsx'
 import PanelChip from '../components/PanelChip.jsx'
+import { useNavigate } from 'react-router-dom'
 import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
 import {
   listStaffAccounts, grantableProfiles, agencyOptions, grantRole, changeRole, revokeRole, superAdminCount,
   PLATFORM_ROLES, AGENCY_ROLES,
 } from '../lib/accounts.js'
-import { dashboard, auditLogs, infrastructure, integrations, backups, num } from '../data/index.js'
-import { boldMd } from '../data/util.js'
+import { superDashboard, listAuditLogs, securityOverview, systemPulse } from '../lib/superAdmin.js'
+import { infrastructure, integrations, backups, num } from '../data/index.js'
 
 const CR = ['Home', 'Super Admin']
 
-/* ------------------------------------------------------------------ Dashboard */
+/* ------------------------------------------------------------------ Dashboard (real) */
+function auditTone(sev) {
+  const s = String(sev).toLowerCase()
+  if (s === 'critical') return 'danger'
+  if (s === 'warning') return 'warning'
+  return 'info'
+}
+
 export function SuperDashboard() {
-  const d = dashboard.super
+  const nav = useNavigate()
+  const { data: d, loading, error, reload } = useAsyncData(superDashboard)
   return (
     <>
-      <PageHeader title={<>Dashboard <PanelChip panel="super" /></>} crumbs={[...CR, 'Dashboard']} actions={<Button icon="download">System report</Button>} />
-      <StatGrid stats={d.stats} />
-      <div className="grid dash mt-16">
-        <Card title="API requests" sub="Last 24 hours (thousands / 5-min)">
-          <AreaChart series={d.reqSeries} color="#3b82f6" height={240} label="req (K)" />
-        </Card>
-        <Card title="Admin activity">
-          <div className="feed">
-            {d.activities.map((a, i) => (
-              <div className="feed__item" key={i}>
-                <span className="feed__dot"><Icon name={a.icon} size={14} /></span>
-                <div><div className="feed__text" dangerouslySetInnerHTML={{ __html: boldMd(a.text) }} /><div className="feed__time">{a.time}</div></div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-      <Card title="Service health" className="mt-16" flush>
-        <div className="table-wrap">
-          <table className="data">
-            <thead><tr><th>Service</th><th>Status</th><th>Latency (p95)</th><th>Uptime (30d)</th></tr></thead>
-            <tbody>
-              {d.services.map((s) => (
-                <tr key={s.name}>
-                  <td style={{ fontWeight: 600 }}>{s.name}</td>
-                  <td><StatusBadge value={s.status} /></td>
-                  <td className="mono">{s.latency}</td>
-                  <td className="mono">{s.uptime}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <PageHeader title={<>Dashboard <PanelChip panel="super" /></>} crumbs={[...CR, 'Dashboard']} />
+      <AsyncView loading={loading} error={error} reload={reload}>
+        {d && (
+          <>
+            <StatGrid stats={d.stats} />
+            <div className="grid cols-3 mt-16">
+              <Card title="Coins in circulation">
+                <div className="stat__value" style={{ fontSize: 26 }}>{num(d.circulation.coins)}</div>
+                <div className="muted" style={{ fontSize: 12 }}>across all wallets</div>
+              </Card>
+              <Card title="Diamonds in circulation">
+                <div className="stat__value" style={{ fontSize: 26 }}>{num(d.circulation.diamonds)}</div>
+                <div className="muted" style={{ fontSize: 12 }}>host earnings not yet withdrawn</div>
+              </Card>
+              <Card title="Review queues">
+                <div className="vstack" style={{ gap: 8 }}>
+                  {d.queues.map((q) => (
+                    <button key={q.label} className="kpi hstack spread" style={{ cursor: 'pointer', border: '1px solid var(--border)' }} onClick={() => nav(q.to)}>
+                      <span className="hstack" style={{ gap: 8 }}><Icon name={q.icon} size={14} className="muted" />{q.label}</span>
+                      <Badge tone={q.value ? 'warning' : 'muted'}>{q.value}</Badge>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            </div>
+            <div className="grid dash mt-16">
+              <Card title="Recent admin activity" sub="From the audit log">
+                {d.audit.length ? (
+                  <div className="feed">
+                    {d.audit.map((a, i) => (
+                      <div className="feed__item" key={i}>
+                        <span className="feed__dot"><Icon name="fileText" size={14} /></span>
+                        <div>
+                          <div className="feed__text">{a.text}</div>
+                          <div className="feed__time hstack" style={{ gap: 8 }}><span>{a.time}</span><Badge tone={auditTone(a.severity)}>{a.severity}</Badge></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <EmptyState icon="fileText" title="No audit entries yet" text="Admin write actions aren't logged server-side yet — this fills in once that's added." />}
+              </Card>
+              <Card title="Newest signups">
+                {d.signups.length ? (
+                  <div className="feed">
+                    {d.signups.map((s, i) => (
+                      <div className="feed__item" key={i}>
+                        <span className="feed__dot"><Icon name="userPlus" size={14} /></span>
+                        <div><div className="feed__text"><b>{s.name}</b> <span className="muted">@{s.username}</span></div><div className="feed__time">{s.when}</div></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <EmptyState icon="users" title="No users yet" />}
+              </Card>
+            </div>
+          </>
+        )}
+      </AsyncView>
     </>
   )
 }
@@ -257,124 +288,105 @@ export function AccessControl() {
   )
 }
 
-/* ------------------------------------------------------------------ Audit Logs */
+/* ------------------------------------------------------------------ Audit Logs (real) */
 export function AuditLogs() {
-  return (
-    <ListPage
-      title="Audit Logs"
-      crumbs={[...CR, 'Audit Logs']}
-      actions={<Button icon="download">Export</Button>}
-      rows={auditLogs}
-      pageSize={12}
-      searchKeys={['actor', 'action', 'target', 'ip', 'id']}
-      tabs={[
-        { label: 'All', value: 'all', filter: () => true },
-        { label: 'Warnings', value: 'w', filter: (r) => r.severity === 'Warning' },
-        { label: 'Critical', value: 'c', filter: (r) => r.severity === 'Critical' },
-      ]}
-      filters={[{ label: 'Actor', options: [...new Set(auditLogs.map((l) => l.actor))], get: (r) => r.actor }]}
-      columns={[
-        { key: 'id', header: 'Log ID', render: (r) => <span className="mono muted">{r.id}</span> },
-        { key: 'actor', header: 'Actor', sortable: true },
-        { key: 'action', header: 'Action' },
-        { key: 'target', header: 'Target', render: (r) => <span className="mono">{r.target}</span> },
-        { key: 'ip', header: 'IP', render: (r) => <span className="mono muted">{r.ip}</span> },
-        { key: 'when', header: 'When' },
-        { key: 'severity', header: 'Severity', render: (r) => <Badge tone={r.severity === 'Critical' ? 'danger' : r.severity === 'Warning' ? 'warning' : 'info'}>{r.severity}</Badge> },
-      ]}
-    />
-  )
-}
-
-/* ------------------------------------------------------------------ Security */
-export function SuperSecurity() {
-  const toast = useToast()
+  const { data: rows, loading, error, reload } = useAsyncData(listAuditLogs)
   return (
     <>
-      <PageHeader title="Security" crumbs={[...CR, 'Security']}
-        actions={<Button variant="primary" icon="check" onClick={() => toast('Security settings saved')}>Save</Button>} />
-      <div className="grid cols-2">
-        <Card title="Authentication">
-          <div className="toggle-row"><div><div className="t-title">Enforce 2FA for all admins</div><div className="t-desc">Authenticator or hardware key</div></div>
-            <label className="toggle"><input type="checkbox" defaultChecked /><span className="track" /><span className="thumb" /></label></div>
-          <div className="toggle-row"><div><div className="t-title">SSO (Google Workspace)</div><div className="t-desc">Restrict to sabalive.app</div></div>
-            <label className="toggle"><input type="checkbox" defaultChecked /><span className="track" /><span className="thumb" /></label></div>
-          <div className="toggle-row"><div><div className="t-title">IP allowlist for admin panel</div><div className="t-desc">Office + VPN ranges only</div></div>
-            <label className="toggle"><input type="checkbox" /><span className="track" /><span className="thumb" /></label></div>
-          <div className="toggle-row"><div><div className="t-title">Auto-revoke idle admins</div><div className="t-desc">Disable after 60 days inactivity</div></div>
-            <label className="toggle"><input type="checkbox" defaultChecked /><span className="track" /><span className="thumb" /></label></div>
-        </Card>
-        <Card title="Active admin sessions">
-          <div className="feed">
-            {[
-              ['Mehardeep', 'Chrome · macOS · Mumbai', 'now'],
-              ['Rahul Kumar', 'Edge · Windows · Delhi', '12 min ago'],
-              ['Anjali Singh', 'Safari · iPad · Pune', '1 h ago'],
-              ['Vikram Joshi', 'Chrome · Windows · Bengaluru', '3 h ago'],
-            ].map(([n, d, t]) => (
-              <div className="feed__item" key={n}>
-                <span className="feed__dot"><Icon name="user" size={14} /></span>
-                <div className="grow"><div className="feed__text"><b>{n}</b> — {d}</div><div className="feed__time">{t}</div></div>
-                <button className="btn btn--sm btn--ghost" onClick={() => toast(`${n} signed out`)}>Revoke</button>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-      <Card title="API keys" className="mt-16" flush>
-        <div className="table-wrap">
-          <table className="data">
-            <thead><tr><th>Name</th><th>Key</th><th>Scope</th><th>Created</th><th>Last used</th><th /></tr></thead>
-            <tbody>
-              {[
-                ['Analytics pipeline', 'sk_live_••••2f9c', 'read:reports', '10 Jan 2026', '2 min ago'],
-                ['Mobile app (prod)', 'sk_live_••••8a1d', 'full', '02 Nov 2025', 'now'],
-                ['Partner webhook', 'sk_live_••••61be', 'write:events', '19 Mar 2026', '5 h ago'],
-              ].map(([n, k, s, c, u]) => (
-                <tr key={n}>
-                  <td style={{ fontWeight: 600 }}>{n}</td>
-                  <td className="mono">{k}</td>
-                  <td><Tag>{s}</Tag></td>
-                  <td>{c}</td><td>{u}</td>
-                  <td className="col-actions"><button className="btn btn--sm btn--ghost" onClick={() => toast(`${n} key rotated`)}>Rotate</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <PageHeader title="Audit Logs" crumbs={[...CR, 'Audit Logs']} actions={<Button icon="download">Export</Button>} />
+      <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+        Reads the real <code>audit_logs</code> table. It's currently empty because admin write actions aren't logged server-side yet —
+        the <code>decide_*</code> RPCs stamp <code>decided_by</code>/<code>reviewed_by</code> on their own rows, but there's no audit trigger.
+      </div></Card>
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <DataTable
+          rows={rows || []}
+          pageSize={15}
+          searchKeys={['actor', 'action', 'target', 'ip', 'idShort']}
+          tabs={[
+            { label: 'All', value: 'all', filter: () => true },
+            { label: 'Warnings', value: 'w', filter: (r) => r.severity === 'Warning' },
+            { label: 'Critical', value: 'c', filter: (r) => r.severity === 'Critical' },
+          ]}
+          columns={[
+            { key: 'actor', header: 'Actor', sortable: true, render: (r) => <Person name={r.actor} meta={r.username ? '@' + r.username : undefined} size="sm" /> },
+            { key: 'action', header: 'Action' },
+            { key: 'target', header: 'Target', render: (r) => <span className="mono muted">{r.target}</span> },
+            { key: 'ip', header: 'IP', render: (r) => <span className="mono muted">{r.ip}</span> },
+            { key: 'ago', header: 'When', sortable: true },
+            { key: 'severity', header: 'Severity', render: (r) => <Badge tone={auditTone(r.severity)}>{r.severity}</Badge> },
+          ]}
+          emptyText="No audit entries recorded yet."
+        />
+      </AsyncView>
     </>
   )
 }
 
-/* ------------------------------------------------------------------ System Overview */
+/* ------------------------------------------------------------------ Security (real staff + audit; infra bits labelled) */
+export function SuperSecurity() {
+  const { data: d, loading, error, reload } = useAsyncData(securityOverview)
+  return (
+    <>
+      <PageHeader title="Security" crumbs={[...CR, 'Security']} />
+      <AsyncView loading={loading} error={error} reload={reload}>
+        {d && (
+          <>
+            <div className="grid cols-2">
+              <Card title={`Who has admin access (${d.staff.length})`} sub="Every staff_roles row — manage from Admin Accounts / Agency Staff">
+                <div className="feed">
+                  {d.staff.map((s) => (
+                    <div className="feed__item" key={s.id}>
+                      <span className="feed__dot"><Icon name="shieldUser" size={14} /></span>
+                      <div className="grow">
+                        <div className="feed__text"><b>{s.name}</b> <span className="muted">@{s.username}</span> · <Tag role>{s.role}</Tag>{s.agency !== '—' ? ` · ${s.agency}` : ''}</div>
+                        <div className="feed__time">granted {s.granted} · account {s.accountStatus}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              <Card title="Flagged audit events" sub={`${d.weekAuditCount} audit entries in the last 7 days`}>
+                {d.flagged.length ? (
+                  <div className="feed">
+                    {d.flagged.map((a, i) => (
+                      <div className="feed__item" key={i}>
+                        <span className="feed__dot" style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}><Icon name="flag" size={14} /></span>
+                        <div><div className="feed__text">{a.text}</div><div className="feed__time hstack" style={{ gap: 8 }}><span>{a.time}</span><Badge tone={auditTone(a.severity)}>{a.severity}</Badge></div></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <EmptyState icon="checkCircle" title="Nothing flagged" text="No warning or critical audit events." />}
+              </Card>
+            </div>
+            <Card className="mt-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+              <b>Managed in Supabase, not here:</b> auth providers &amp; email settings, session lifetime, 2FA/MFA enforcement, JWT keys, API keys, and rate limits all live in the Supabase project's Auth &amp; API settings. RLS policies are the source of truth for what each role can do (see <b>Access Control</b>).
+            </div></Card>
+          </>
+        )}
+      </AsyncView>
+    </>
+  )
+}
+
+/* ------------------------------------------------------------------ System Overview (real 24h pulse) */
 export function SystemOverview() {
-  const d = dashboard.super
-  const toast = useToast()
+  const { data: d, loading, error, reload } = useAsyncData(systemPulse)
   return (
     <>
       <PageHeader title="System Overview" crumbs={[...CR, 'System Overview']}
-        actions={<Button icon="refresh" onClick={() => toast('Health re-checked')}>Re-check</Button>} />
-      <StatGrid stats={[
-        { key: 'Uptime (30d)', value: '99.98%', icon: 'activity', tile: 'tile-green' },
-        { key: 'Avg latency (p95)', value: '128 ms', icon: 'cpu', tile: 'tile-blue' },
-        { key: 'Error rate (24h)', value: '0.09%', icon: 'flag', tile: 'tile-orange' },
-        { key: 'Open incidents', value: '2', icon: 'xCircle', tile: 'tile-red' },
-      ]} />
-      <div className="grid cols-2 mt-16">
-        {d.services.map((s) => (
-          <Card key={s.name}>
-            <div className="hstack spread">
-              <div>
-                <div style={{ fontWeight: 600 }}>{s.name}</div>
-                <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>p95 {s.latency} · uptime {s.uptime}</div>
-              </div>
-              <StatusBadge value={s.status} />
-            </div>
-            <div className="progress mt-16"><span style={{ width: s.uptime, background: s.status === 'Operational' ? 'linear-gradient(90deg,#34d399,#22a06b)' : 'linear-gradient(90deg,#fbbf24,#f59e0b)' }} /></div>
-          </Card>
-        ))}
-      </div>
+        actions={<Button icon="refresh" onClick={reload}>Refresh</Button>} />
+      <AsyncView loading={loading} error={error} reload={reload}>
+        {d && (
+          <>
+            <StatGrid stats={d.metrics} />
+            <Card className="mt-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+              These are live counts from the last 24 hours. Infrastructure health (uptime, latency, error rate, incidents) isn't in the
+              product database — see your hosting/monitoring dashboards, and the <b>Infrastructure</b> screen for the resource inventory.
+            </div></Card>
+          </>
+        )}
+      </AsyncView>
     </>
   )
 }
