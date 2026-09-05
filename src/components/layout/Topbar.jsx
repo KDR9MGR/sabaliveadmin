@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../Icon.jsx'
 import { PANELS } from '../../config/nav.js'
+import { useAuth } from '../../lib/auth.jsx'
 
-const CURRENT_USER = { name: 'Mehardeep', role: 'Super Admin' }
+const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
 
 export default function Topbar({ panel, onToggleSidebar }) {
   const nav = useNavigate()
@@ -76,13 +77,23 @@ function UserMenu({ panel, onNav }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useOutside(ref, () => setOpen(false))
+  const { profile, staffRole, user, signOut } = useAuth()
+  const name = profile?.name || user?.email || 'Account'
+  const roleLabel = staffRole ? ROLE_LABEL[staffRole.role] || staffRole.role : ''
+
+  const logout = async () => {
+    setOpen(false)
+    await signOut()
+    onNav('/login')
+  }
+
   return (
     <div className="pos-rel" ref={ref}>
       <button className="userchip" onClick={() => setOpen((o) => !o)}>
-        <span className="avatar avatar--sm">M</span>
+        <span className="avatar avatar--sm">{name[0]?.toUpperCase()}</span>
         <span className="hide-sm">
-          <span className="userchip__name" style={{ display: 'block' }}>{CURRENT_USER.name}</span>
-          <span className="userchip__role">{CURRENT_USER.role}</span>
+          <span className="userchip__name" style={{ display: 'block' }}>{name}</span>
+          <span className="userchip__role">{roleLabel}</span>
         </span>
         <Icon name="chevronDown" size={14} />
       </button>
@@ -95,7 +106,7 @@ function UserMenu({ panel, onNav }) {
             <Icon name="settings" size={15} /> Settings
           </button>
           <div className="menu-sep" />
-          <button onClick={() => { setOpen(false); onNav('/login') }}>
+          <button onClick={logout}>
             <Icon name="logout" size={15} /> Log out
           </button>
         </div>

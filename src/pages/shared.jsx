@@ -1,8 +1,10 @@
-import { useNavigate, useRouteError } from 'react-router-dom'
+import { useState } from 'react'
+import { Navigate, useNavigate, useRouteError } from 'react-router-dom'
 import { PageHeader, Card, Button, KV, EmptyState, useToast } from '../components/ui.jsx'
 import Icon from '../components/Icon.jsx'
 import { PANELS } from '../config/nav.js'
 import { useSettings } from '../config/settings.jsx'
+import { useAuth } from '../lib/auth.jsx'
 
 /* ------------------------------------------------------------------ My Profile */
 export function Profile({ panel = 'Master / Admin' }) {
@@ -60,8 +62,26 @@ export function Profile({ panel = 'Master / Admin' }) {
 
 /* ------------------------------------------------------------------ Login */
 export function Login() {
-  const nav = useNavigate()
   const { settings } = useSettings()
+  const { signIn, isStaff, loading: authLoading, panel } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  // already signed in with a staff role -> skip straight to their panel
+  if (!authLoading && isStaff) return <Navigate to={PANELS[panel]?.base ?? '/admin'} replace />
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setBusy(true)
+    const { error: err } = await signIn(email, password)
+    setBusy(false)
+    if (err) setError(err.message || 'Sign in failed.')
+    // on success, useAuth's state updates and the redirect above fires
+  }
+
   return (
     <div className="login">
       <div className="login__aside">
@@ -76,36 +96,47 @@ export function Login() {
           One console, three levels of control.
         </h2>
         <p style={{ fontSize: 13, opacity: 0.75, marginTop: 10, maxWidth: 380 }}>
-          Pick the panel that matches your role — the colour and label in the sidebar always tell you where you are.
+          Your role in <code style={{ background: 'rgba(255,255,255,0.15)', padding: '1px 5px', borderRadius: 4 }}>staff_roles</code> decides which panel you land in after signing in.
         </p>
         <div className="vstack" style={{ gap: 10, marginTop: 24 }}>
           {Object.values(PANELS).map((p) => (
-            <button key={p.key} className="login__panel" onClick={() => nav(p.base)}>
+            <div key={p.key} className="login__panel" style={{ cursor: 'default' }}>
               <span className="login__panel-dot" style={{ background: p.color }} />
               <span className="grow">
                 <b>{p.label}</b>
                 <span style={{ display: 'block', fontSize: 11.5, opacity: 0.7 }}>{p.scope}</span>
               </span>
-              <Icon name="chevronRight" size={16} />
-            </button>
+            </div>
           ))}
         </div>
       </div>
 
       <div className="login__form">
-        <div className="card" style={{ width: 'min(380px, 100%)', padding: 32 }}>
+        <form className="card" style={{ width: 'min(380px, 100%)', padding: 32 }} onSubmit={submit}>
           <h1 style={{ fontSize: 20, marginBottom: 4 }}>Admin sign in</h1>
           <p className="muted" style={{ fontSize: 13, marginBottom: 22 }}>Authorized personnel only.</p>
           <div className="vstack" style={{ gap: 14 }}>
-            <div className="field"><label>Email</label><input className="input" defaultValue="mehardeep@sabalive.app" /></div>
-            <div className="field"><label>Password</label><input className="input" type="password" defaultValue="password" /></div>
-            <label className="checkbox"><input type="checkbox" /> Remember this device</label>
-            <Button variant="primary" icon="logout" onClick={() => nav('/admin')}>Sign in</Button>
+            <div className="field">
+              <label>Email</label>
+              <input className="input" type="email" autoComplete="username" required
+                value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Password</label>
+              <input className="input" type="password" autoComplete="current-password" required
+                value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            {error && (
+              <div className="badge badge--danger" style={{ width: '100%', justifyContent: 'flex-start' }}>{error}</div>
+            )}
+            <Button type="submit" variant="primary" icon={busy ? 'refresh' : 'logout'} disabled={busy}>
+              {busy ? 'Signing in…' : 'Sign in'}
+            </Button>
             <div className="center muted" style={{ fontSize: 12 }}>
-              Protected by 2FA · <a href="#" style={{ color: 'var(--primary)' }}>Forgot password?</a>
+              No account yet? Ask a Super Admin to grant you a role in <code>staff_roles</code>.
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   )

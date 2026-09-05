@@ -1,6 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from './components/ui.jsx'
 import { SettingsProvider } from './config/settings.jsx'
+import { AuthProvider } from './lib/auth.jsx'
+import { RequireAuth, RequirePanel, RootRedirect } from './components/guards.jsx'
 import AppLayout from './components/layout/AppLayout.jsx'
 
 import MasterDashboard from './pages/master/Dashboard.jsx'
@@ -29,13 +31,16 @@ export default function App() {
   return (
     <BrowserRouter>
       <SettingsProvider>
+      <AuthProvider>
       <ToastProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
 
           {/* ---------------- Master / Admin ---------------- */}
-          <Route path="/admin" element={<AppLayout panel="master" />}>
+          <Route path="/admin" element={
+            <RequireAuth><RequirePanel panel="master"><AppLayout panel="master" /></RequirePanel></RequireAuth>
+          }>
             <Route index element={<MasterDashboard />} />
             <Route path="users" element={<UsersList />} />
             <Route path="users/hosts" element={<HostsList />} />
@@ -84,7 +89,9 @@ export default function App() {
           </Route>
 
           {/* ---------------- Agency / Manager ---------------- */}
-          <Route path="/agency" element={<AppLayout panel="agency" />}>
+          <Route path="/agency" element={
+            <RequireAuth><RequirePanel panel="agency"><AppLayout panel="agency" /></RequirePanel></RequireAuth>
+          }>
             <Route index element={<AgencyDashboard />} />
             <Route path="profile-agency" element={<MyAgency />} />
             <Route path="hosts" element={<AgencyHosts />} />
@@ -100,7 +107,9 @@ export default function App() {
           </Route>
 
           {/* ---------------- Super Admin ---------------- */}
-          <Route path="/super" element={<AppLayout panel="super" />}>
+          <Route path="/super" element={
+            <RequireAuth><RequirePanel panel="super"><AppLayout panel="super" /></RequirePanel></RequireAuth>
+          }>
             <Route index element={<SuperDashboard />} />
             <Route path="admins" element={<SuperAdmins />} />
             <Route path="masters" element={<MasterAccounts />} />
@@ -118,6 +127,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </ToastProvider>
+      </AuthProvider>
       </SettingsProvider>
     </BrowserRouter>
   )

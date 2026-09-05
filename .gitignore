@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Supabase CLI local link/session state (machine-specific, no secrets committed)
+supabase/.temp
+supabase/.branches
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
