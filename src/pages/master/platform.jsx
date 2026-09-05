@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ListPage, StatGrid } from '../_templates.jsx'
+import { ListPage, StatGrid, AsyncView } from '../_templates.jsx'
 import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, PillTabs, useToast } from '../../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
@@ -7,9 +7,14 @@ import EntityForm from '../../components/EntityForm.jsx'
 import { AreaChart, BarChart, DonutChart } from '../../components/charts.jsx'
 import Icon from '../../components/Icon.jsx'
 import {
-  liveRequests, liveRooms, badges, frames, leaderboardFrames, salary, reports, num,
+  liveRequests, liveRooms, badges, frames, leaderboardFrames, reports, num,
 } from '../../data/index.js'
 import { AGENCIES } from '../../data/util.js'
+import { useAsyncData } from '../../lib/useAsync.js'
+import {
+  listSalary, createSalaryPayment, updateSalaryPayment, setSalaryStatus,
+  payeeOptions, agencyOptions, SALARY_ROLES, SALARY_STATUSES,
+} from '../../lib/salary.js'
 
 /* ------------------------------------------------------------------ Live Requests */
 export function LiveRequests() {
@@ -228,59 +233,103 @@ export function ProfileFrame() {
   )
 }
 
-/* ------------------------------------------------------------------ Salary */
+/* ------------------------------------------------------------------ Salary (real: salary_payments) */
+const SALARY_ROLE_OPTS = SALARY_ROLES.map((r) => ({ value: r, label: r.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') }))
+
 export function Salary() {
   const toast = useToast()
-  const totalNet = salary.reduce((s, r) => s + r.net, 0)
+  const { data: rows, loading, error, reload } = useAsyncData(listSalary)
+  const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const list = rows || []
+
+  const setStatus = async (r, status) => {
+    try { await setSalaryStatus(r.id, status); toast(`${r.payee} → ${status.replace('_', ' ')}`); reload() }
+    catch (e) { toast(e.message || 'Could not update') }
+  }
+
+  const salaryFields = (opts) => [
+    { name: 'payee_id', label: 'Payee', type: 'select', required: true, options: opts?.payees || [] },
+    { name: 'role', label: 'Role', type: 'select', required: true, options: SALARY_ROLE_OPTS },
+    { name: 'agency_id', label: 'Agency', type: 'select', options: opts?.agencies || [] },
+    { name: 'period', label: 'Period', required: true, placeholder: 'e.g. Sep 2026' },
+    { name: 'base_amount', label: 'Base (₹)', type: 'number', required: true },
+    { name: 'bonus_amount', label: 'Bonus (₹)', type: 'number' },
+    { name: 'deductions', label: 'Deductions (₹)', type: 'number' },
+  ]
+
   return (
     <>
       <PageHeader
         title="Salary"
         crumbs={['Home', 'Monetisation', 'Salary']}
         actions={<>
-          <Button icon="download">Export</Button>
-          <Button variant="primary" icon="wallet" onClick={() => toast('Payroll run started for Aug 2026')}>Run Payroll</Button>
+          <Button icon="download" onClick={() => toast('Export coming soon')}>Export</Button>
+          <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>New Payslip</Button>
         </>}
       />
-      <StatGrid stats={[
-        { key: 'Payees (Aug)', value: String(salary.length), icon: 'users', tile: 'tile-purple' },
-        { key: 'Gross payout', value: '₹' + num(salary.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
-        { key: 'Net payout', value: '₹' + num(totalNet), icon: 'wallet', tile: 'tile-blue' },
-        { key: 'On hold', value: String(salary.filter((r) => r.status === 'On Hold').length), icon: 'lock', tile: 'tile-red' },
-      ]} />
-      <div className="mt-16">
-        <DataTable
-          rows={salary}
-          searchKeys={['payee', 'agency', 'id']}
-          tabs={[
-            { label: 'All', value: 'all', filter: () => true },
-            { label: 'Paid', value: 'p', filter: (r) => r.status === 'Paid' },
-            { label: 'Processing', value: 'pr', filter: (r) => r.status === 'Processing' },
-            { label: 'On Hold', value: 'h', filter: (r) => r.status === 'On Hold' },
-          ]}
-          filters={[
-            { label: 'Role', options: ['Host', 'Sub Admin', 'Agency Manager'], get: (r) => r.role },
-            { label: 'Agency', options: AGENCIES, get: (r) => r.agency },
-          ]}
-          columns={[
-            personCol('payee', 'role'),
-            { key: 'agency', header: 'Agency', sortable: true },
-            { key: 'period', header: 'Period' },
-            numCol('base', 'Base', { prefix: '₹' }),
-            numCol('bonus', 'Bonus', { prefix: '₹' }),
-            numCol('deductions', 'Deductions', { prefix: '₹' }),
-            numCol('net', 'Net pay', { prefix: '₹' }),
-            statusCol(),
-          ]}
-          rowActions={(r) => [
-            { label: 'View payslip', icon: 'fileText', onClick: () => toast(`Payslip ${r.id}`) },
-            { label: 'Mark paid', icon: 'check', onClick: () => toast(`${r.payee} marked paid`) },
-            { label: 'Put on hold', icon: 'lock', onClick: () => toast('On hold') },
-          ]}
-        />
-      </div>
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <StatGrid stats={[
+          { key: 'Payslips', value: String(list.length), icon: 'users', tile: 'tile-purple' },
+          { key: 'Gross', value: '₹' + num(list.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
+          { key: 'Net payable', value: '₹' + num(list.reduce((s, r) => s + r.net, 0)), icon: 'wallet', tile: 'tile-blue' },
+          { key: 'On hold', value: String(list.filter((r) => r.status === 'On Hold').length), icon: 'lock', tile: 'tile-red' },
+        ]} />
+        <div className="mt-16">
+          <DataTable
+            rows={list}
+            searchKeys={['payee', 'username', 'agency', 'period', 'idShort']}
+            tabs={[
+              { label: 'All', value: 'all', filter: () => true },
+              { label: 'Processing', value: 'pr', filter: (r) => r.status === 'Processing' },
+              { label: 'Paid', value: 'p', filter: (r) => r.status === 'Paid' },
+              { label: 'On Hold', value: 'h', filter: (r) => r.status === 'On Hold' },
+            ]}
+            filters={[
+              { label: 'Role', options: ['Host', 'Sub Admin', 'Agency Manager'], get: (r) => r.role },
+              { label: 'Period', options: [...new Set(list.map((r) => r.period))], get: (r) => r.period },
+            ]}
+            columns={[
+              personCol('payee', 'username'),
+              { key: 'role', header: 'Role', render: (r) => <Tag>{r.role}</Tag> },
+              { key: 'agency', header: 'Agency', sortable: true },
+              { key: 'period', header: 'Period', sortable: true },
+              numCol('base', 'Base', { prefix: '₹' }),
+              numCol('bonus', 'Bonus', { prefix: '₹' }),
+              numCol('deductions', 'Deductions', { prefix: '₹' }),
+              numCol('net', 'Net pay', { prefix: '₹' }),
+              { key: 'paidAt', header: 'Paid on' },
+              statusCol(),
+            ]}
+            rowActions={(r) => [
+              { label: 'Edit amounts', icon: 'edit', onClick: () => setEditing(r) },
+              { sep: true },
+              ...(r.status !== 'Paid' ? [{ label: 'Mark paid', icon: 'check', onClick: () => setStatus(r, 'paid') }] : []),
+              ...(r.status !== 'On Hold' ? [{ label: 'Put on hold', icon: 'lock', onClick: () => setStatus(r, 'on_hold') }] : []),
+              ...(r.status !== 'Processing' ? [{ label: 'Back to processing', icon: 'refresh', onClick: () => setStatus(r, 'processing') }] : []),
+            ]}
+            emptyText="No payslips yet. Create one with “New Payslip”."
+          />
+        </div>
+      </AsyncView>
+
+      {adding && <SalaryDrawer title="New Payslip" fieldsFor={salaryFields} onClose={() => setAdding(false)}
+        onSubmit={async (v) => { await createSalaryPayment(v); reload() }} savedMessage="Payslip created" />}
+      {editing && <SalaryDrawer title={`Edit — ${editing.payee}`} fieldsFor={salaryFields} onClose={() => setEditing(null)}
+        onSubmit={async (v) => { await updateSalaryPayment(editing.id, v); reload() }} savedMessage="Payslip updated"
+        initial={{
+          period: editing.period, role: editing.role.toLowerCase().replace(' ', '_'),
+          base_amount: editing.base, bonus_amount: editing.bonus, deductions: editing.deductions,
+        }} lockPickers />}
     </>
   )
+}
+
+function SalaryDrawer({ title, fieldsFor, onClose, onSubmit, savedMessage, initial, lockPickers }) {
+  const { data: opts } = useAsyncData(async () => ({ payees: await payeeOptions(), agencies: await agencyOptions() }))
+  let fields = fieldsFor(opts)
+  if (lockPickers) fields = fields.filter((f) => f.name !== 'payee_id' && f.name !== 'agency_id')
+  return <EntityForm title={title} onClose={onClose} onSubmit={onSubmit} savedMessage={savedMessage} initial={initial} fields={fields} />
 }
 
 /* ------------------------------------------------------------------ Reports & Analytics */
