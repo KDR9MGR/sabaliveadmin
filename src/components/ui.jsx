@@ -181,6 +181,24 @@ export function Modal({ title, onClose, children, footer }) {
   )
 }
 
+/* -------------------------------------------------- Confirm dialog */
+export function ConfirmDialog({ title = 'Are you sure?', message, confirmLabel = 'Confirm', danger, busy, onConfirm, onClose }) {
+  return (
+    <Modal
+      title={title}
+      onClose={busy ? () => {} : onClose}
+      footer={<>
+        <Button onClick={onClose} disabled={busy}>Cancel</Button>
+        <Button variant={danger ? 'danger' : 'primary'} icon={busy ? 'refresh' : (danger ? 'trash' : 'check')} disabled={busy} onClick={onConfirm}>
+          {busy ? 'Working…' : confirmLabel}
+        </Button>
+      </>}
+    >
+      <p style={{ fontSize: 13, color: 'var(--text-soft)' }}>{message}</p>
+    </Modal>
+  )
+}
+
 /* -------------------------------------------------- Row action menu */
 export function RowMenu({ items = [] }) {
   const [open, setOpen] = useState(false)

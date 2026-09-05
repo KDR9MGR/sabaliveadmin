@@ -1,13 +1,19 @@
 import { useState } from 'react'
-import { ListPage, StatGrid } from './_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast } from '../components/ui.jsx'
-import { personCol, statusCol, roleCol, numCol } from '../components/cells.jsx'
+import { ListPage, StatGrid, AsyncView } from './_templates.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, ConfirmDialog } from '../components/ui.jsx'
+import { personCol, statusCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
 import { AreaChart } from '../components/charts.jsx'
 import Icon from '../components/Icon.jsx'
 import PanelChip from '../components/PanelChip.jsx'
-import { dashboard, admins, auditLogs, infrastructure, integrations, backups, num } from '../data/index.js'
+import { useAsyncData } from '../lib/useAsync.js'
+import { useAuth } from '../lib/auth.jsx'
+import {
+  listStaffAccounts, grantableProfiles, agencyOptions, grantRole, changeRole, revokeRole, superAdminCount,
+  PLATFORM_ROLES, AGENCY_ROLES,
+} from '../lib/accounts.js'
+import { dashboard, auditLogs, infrastructure, integrations, backups, num } from '../data/index.js'
 import { boldMd } from '../data/util.js'
 
 const CR = ['Home', 'Super Admin']
@@ -56,78 +62,135 @@ export function SuperDashboard() {
 }
 
 /* ------------------------------------------------------------------ Admins */
-export function SuperAdmins() {
+/* Shared staff-account management — grant / change / revoke staff_roles rows. */
+function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro }) {
   const toast = useToast()
-  const [adding, setAdding] = useState(false)
+  const { user } = useAuth()
+  const { data: rows, loading, error, reload } = useAsyncData(() => listStaffAccounts(roles), [roles.join()])
+  const { data: pickerData } = useAsyncData(async () => ({
+    profiles: await grantableProfiles(),
+    agencies: await agencyOptions(),
+  }))
+  const [granting, setGranting] = useState(false)
+  const [changing, setChanging] = useState(null)
+  const [revoking, setRevoking] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  const roleField = { name: 'role', label: 'Role', type: 'select', required: true, options: grantRoleOpts }
+  const agencyField = {
+    name: 'agency_id', label: 'Agency', type: 'select',
+    options: pickerData?.agencies || [],
+    hint: 'Required for Agency Manager and Sub Admin',
+  }
+
+  const doGrant = async (v) => { await grantRole(v); reload() }
+  const doChange = async (v) => { await changeRole(changing.id, v); reload() }
+  const doRevoke = async () => {
+    setBusy(true)
+    try {
+      if (revoking.roleRaw === 'super_admin' && (await superAdminCount()) <= 1) {
+        throw new Error('Cannot revoke the last Super Admin')
+      }
+      await revokeRole(revoking.id)
+      toast(`${revoking.name}'s role revoked`)
+      setRevoking(null)
+      reload()
+    } catch (e) {
+      toast(e.message || 'Could not revoke')
+    } finally { setBusy(false) }
+  }
+
   return (
     <>
-      <PageHeader title="Admin Management" crumbs={[...CR, 'Admins']}
-        actions={<Button variant="primary" icon="userPlus" onClick={() => setAdding(true)}>Create Admin</Button>} />
-      <DataTable
-        rows={admins}
-        searchKeys={['name', 'email', 'id']}
-        filters={[{ label: 'Role', options: ['Super Admin', 'Admin', 'Master'], get: (r) => r.role }]}
-        columns={[
-          personCol('name', 'email'),
-          roleCol(),
-          numCol('modules', 'Modules'),
-          { key: 'twoFa', header: '2FA', render: (r) => <Badge tone={r.twoFa === 'Enabled' ? 'success' : 'danger'}>{r.twoFa}</Badge> },
-          { key: 'lastLogin', header: 'Last login' },
-          statusCol(),
-        ]}
-        rowActions={(r) => [
-          { label: 'Edit', icon: 'edit', onClick: () => toast(`Edit ${r.name}`) },
-          { label: 'Impersonate', icon: 'eye', onClick: () => toast('Impersonation session started') },
-          { label: 'Reset 2FA', icon: 'key', onClick: () => toast('2FA reset') },
-          { sep: true },
-          { label: r.role === 'Super Admin' ? 'Locked' : (r.status === 'Active' ? 'Disable' : 'Enable'), icon: 'lock', onClick: () => toast(`${r.name} toggled`) },
-        ]}
+      <PageHeader
+        title={title}
+        crumbs={[...CR, crumbLabel]}
+        actions={<Button variant="primary" icon="userPlus" onClick={() => setGranting(true)}>Grant Role</Button>}
       />
-      {adding && (
-        <EntityForm title="Create Admin" onClose={() => setAdding(false)} savedMessage="Admin created"
-          fields={[
-            { name: 'name', label: 'Full name', required: true },
-            { name: 'email', label: 'Email', type: 'email', required: true },
-            { name: 'role', label: 'Role', type: 'select', options: ['Admin', 'Master'], required: true },
-            { name: 'temp', label: 'Temp password', required: true },
-            { name: 'twofa', label: 'Require 2FA immediately', type: 'toggle', full: true },
+      {intro && <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{intro}</div></Card>}
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <DataTable
+          rows={rows || []}
+          searchKeys={['name', 'username', 'agency', 'idShort']}
+          filters={[{ label: 'Role', options: [...new Set((rows || []).map((r) => r.role))], get: (r) => r.role }]}
+          columns={[
+            personCol('name', 'username'),
+            { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+            { key: 'role', header: 'Role', render: (r) => <Tag role>{r.role}</Tag> },
+            { key: 'agency', header: 'Agency', sortable: true, render: (r) => r.agency === '—' ? <span className="muted">—</span> : r.agency },
+            { key: 'accountStatus', header: 'Account', render: (r) => <StatusBadge value={r.accountStatus} /> },
+            { key: 'granted', header: 'Granted', sortable: true },
           ]}
+          rowActions={(r) => [
+            { label: 'Change role', icon: 'shieldUser', onClick: () => setChanging(r) },
+            { sep: true },
+            r.id === user?.id
+              ? { label: "Can't revoke yourself", icon: 'lock', onClick: () => {} }
+              : { label: 'Revoke role', icon: 'trash', onClick: () => setRevoking(r) },
+          ]}
+          emptyText="No accounts with these roles yet. Use “Grant Role” to add one."
+        />
+      </AsyncView>
+
+      {granting && (
+        <EntityForm
+          title="Grant Staff Role"
+          onClose={() => setGranting(false)}
+          onSubmit={doGrant}
+          savedMessage="Role granted"
+          fields={[
+            { name: 'user_id', label: 'User', type: 'select', required: true, options: pickerData?.profiles || [],
+              hint: (pickerData && !pickerData.profiles.length) ? 'Everyone already has a role — a user must sign up first' : 'Only users without an existing staff role are listed' },
+            roleField,
+            agencyField,
+          ]}
+        />
+      )}
+      {changing && (
+        <EntityForm
+          title={`Change role — ${changing.name}`}
+          onClose={() => setChanging(null)}
+          onSubmit={doChange}
+          savedMessage="Role updated"
+          initial={{ role: changing.roleRaw, agency_id: changing.agencyId || '' }}
+          fields={[roleField, agencyField]}
+        />
+      )}
+      {revoking && (
+        <ConfirmDialog
+          title="Revoke staff role?"
+          danger
+          busy={busy}
+          confirmLabel="Revoke"
+          message={`${revoking.name} (@${revoking.username}) will lose the "${revoking.role}" role and all admin access. Their Saba Live account is not deleted.`}
+          onConfirm={doRevoke}
+          onClose={() => setRevoking(null)}
         />
       )}
     </>
   )
 }
 
-/* ------------------------------------------------------------------ Master Accounts */
-export function MasterAccounts() {
-  const toast = useToast()
-  const rows = [
-    { id: 'MST01', name: 'Mehardeep', scope: 'Global', modules: 'All 14', mfa: 'Enabled', created: '01 Jan 2025', status: 'Active' },
-    { id: 'MST02', name: 'Ops Master — Rahul K.', scope: 'India region', modules: '12 of 14', mfa: 'Enabled', created: '14 Feb 2025', status: 'Active' },
-    { id: 'MST03', name: 'Finance Master — Anjali S.', scope: 'Coins, Salary, Reports', modules: '5 of 14', mfa: 'Enabled', created: '20 Mar 2025', status: 'Active' },
-    { id: 'MST04', name: 'Content Master — Vikram J.', scope: 'Content, Badges, Frames', modules: '4 of 14', mfa: 'Disabled', created: '02 Jun 2025', status: 'Inactive' },
-  ]
+export function SuperAdmins() {
   return (
-    <ListPage
-      title="Master Accounts"
-      crumbs={[...CR, 'Master Accounts']}
-      actions={<Button variant="primary" icon="plus" onClick={() => toast('New master account')}>New Master</Button>}
-      rows={rows}
-      searchKeys={['name', 'scope', 'id']}
-      columns={[
-        personCol('name', 'id'),
-        { key: 'scope', header: 'Scope' },
-        { key: 'modules', header: 'Modules', render: (r) => <Tag>{r.modules}</Tag> },
-        { key: 'mfa', header: 'MFA', render: (r) => <Badge tone={r.mfa === 'Enabled' ? 'success' : 'danger'}>{r.mfa}</Badge> },
-        { key: 'created', header: 'Created', sortable: true },
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Edit scope', icon: 'sliders', onClick: () => toast(`Scope for ${r.name}`) },
-        { label: 'Rotate credentials', icon: 'key', onClick: () => toast('Credentials rotated') },
-        { sep: true },
-        { label: 'Revoke', icon: 'lock', onClick: () => toast('Revoked') },
-      ]}
+    <StaffAccountsPage
+      roles={PLATFORM_ROLES}
+      grantRoleOpts={[{ value: 'admin', label: 'Admin' }, { value: 'super_admin', label: 'Super Admin' }]}
+      title="Admin Accounts"
+      crumbLabel="Admins"
+      intro="Platform-wide roles. Admin and Super Admin see everything (is_admin_or_above); only a Super Admin can grant, change or revoke roles. New accounts must sign up through the app first — this screen grants a role to an existing user."
+    />
+  )
+}
+
+export function MasterAccounts() {
+  return (
+    <StaffAccountsPage
+      roles={AGENCY_ROLES}
+      grantRoleOpts={[{ value: 'agency_manager', label: 'Agency Manager' }, { value: 'sub_admin', label: 'Sub Admin' }]}
+      title="Agency Staff"
+      crumbLabel="Agency Staff"
+      intro="Agency-scoped roles. An Agency Manager or Sub Admin can only act within the agency they're assigned to (manages_agency)."
     />
   )
 }
@@ -161,9 +224,12 @@ export function AccessControl() {
       <PageHeader
         title="Access Control"
         crumbs={[...CR, 'Access Control']}
-        actions={<Button variant="primary" icon="check" onClick={() => toast('Access policy saved')}>Save Policy</Button>}
       />
-      <Card flush title="Capability matrix" sub="Toggle a capability for a role. Super Admin is fixed." action={<span />}>
+      <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+        This matrix mirrors the Postgres RLS policies (<code>is_admin_or_above</code>, <code>manages_agency</code>, <code>is_super_admin</code>) and is <b>reference only</b> — it isn't editable here.
+        To actually grant, change or revoke a role, use <b>Admin Accounts</b> or <b>Agency Staff</b>.
+      </div></Card>
+      <Card flush title="Capability matrix" sub="Derived from RLS — reference only" action={<span />}>
         <div className="table-wrap">
           <table className="data">
             <thead>
