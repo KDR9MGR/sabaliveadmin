@@ -4,10 +4,16 @@ import { PageHeader, Card, Button, Person, StatusBadge, Tag, KV, useToast, Empty
 import { personCol, statusCol, roleCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import Icon from '../../components/Icon.jsx'
+import { useState } from 'react'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { listUsers, getUserDetail, setUserStatus, listStaff, fmtDate, ROLE_LABEL } from '../../lib/admin.js'
+import {
+  listTransferRequests, decideTransfer, createTransferRequest,
+  agencyOptions, hostOptions, subAdminOptions,
+} from '../../lib/workflows.js'
+import EntityForm from '../../components/EntityForm.jsx'
 import { relativeTime } from '../../lib/format.js'
-import { users as mockUsers, transferRequests as mockTransferRequests } from '../../data/index.js'
+import { users as mockUsers } from '../../data/index.js'
 import { HostsTable } from './hosts.jsx'
 
 const CRUMBS = ['Home', 'User Management']
@@ -188,36 +194,99 @@ export function AccountStatus() {
   )
 }
 
-/* ------------------------------------------------------------------ Transfer Requests (mock — RPC-backed wiring next) */
-export function TransferRequests() {
+/* ------------------------------------------------------------------ Transfer Requests (real — decide_transfer_request RPC) */
+export function TransferRequests({ subjectType, title = 'Transfer Requests', crumbLabel = 'Transfer Requests', crumbs }) {
   const toast = useToast()
+  const { data: rows, loading, error, reload } = useAsyncData(listTransferRequests)
+  const [creating, setCreating] = useState(false)
+
+  const filtered = (rows || []).filter((r) => !subjectType || r.type.toLowerCase().replace(' ', '_') === subjectType)
+
+  const decide = async (r, approve) => {
+    try { await decideTransfer(r.id, approve); toast(`${r.subject} — ${approve ? 'approved' : 'rejected'}`); reload() }
+    catch (e) { toast(e.message || 'Could not update request') }
+  }
+
   return (
-    <ListPage
-      title="Transfer Requests"
-      crumbs={[...CRUMBS, 'Transfer Requests']}
-      rows={mockTransferRequests}
-      searchKeys={['subject', 'from', 'to', 'requestedBy', 'id']}
-      tabs={[
-        { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
-        { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
-        { label: 'Rejected', value: 'r', filter: (r) => r.status === 'Rejected' },
-        { label: 'All', value: 'all', filter: () => true },
+    <>
+      <PageHeader
+        title={title}
+        crumbs={crumbs || [...CRUMBS, crumbLabel]}
+        actions={<Button variant="primary" icon="arrowLeftRight" onClick={() => setCreating(true)}>New Transfer</Button>}
+      />
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <DataTable
+          rows={filtered}
+          searchKeys={['subject', 'from', 'to', 'requestedBy', 'idShort']}
+          tabs={[
+            { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
+            { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
+            { label: 'Rejected', value: 'r', filter: (r) => r.status === 'Rejected' },
+            { label: 'All', value: 'all', filter: () => true },
+          ]}
+          columns={[
+            { key: 'idShort', header: 'Request', render: (r) => <span className="mono muted">{r.idShort}</span> },
+            { key: 'type', header: 'Type', render: (r) => <Tag>{r.type}</Tag> },
+            personCol('subject', 'requestedBy'),
+            { key: 'from', header: 'From' },
+            { key: 'to', header: 'To', render: (r) => <span className="hstack" style={{ gap: 6 }}><Icon name="chevronsRight" size={13} className="muted" />{r.to}</span> },
+            { key: 'reason', header: 'Reason' },
+            { key: 'date', header: 'Requested', sortable: true },
+            statusCol(),
+          ]}
+          rowActions={(r) => r.status === 'Pending' ? [
+            { label: 'Approve', icon: 'check', onClick: () => decide(r, true) },
+            { label: 'Reject', icon: 'x', onClick: () => decide(r, false) },
+          ] : [
+            { label: 'Already decided', icon: 'clock', onClick: () => {} },
+          ]}
+          emptyText="No transfer requests. Use “New Transfer” to move a host or sub-admin between agencies."
+        />
+      </AsyncView>
+      {creating && <NewTransferDrawer onClose={() => setCreating(false)} onDone={reload} defaultType={subjectType} />}
+    </>
+  )
+}
+
+function NewTransferDrawer({ onClose, onDone, defaultType }) {
+  const toast = useToast()
+  const { data: opts } = useAsyncData(async () => ({
+    agencies: await agencyOptions(),
+    hosts: await hostOptions(),
+    subs: await subAdminOptions(),
+  }))
+  const [subjectType, setSubjectType] = useState(defaultType || 'host')
+  const subjects = subjectType === 'host' ? (opts?.hosts || []) : (opts?.subs || [])
+
+  const submit = async (v) => {
+    const subj = subjects.find((s) => s.value === v.subject_id)
+    await createTransferRequest({
+      subject_type: subjectType,
+      subject_id: v.subject_id,
+      from_agency_id: subj?.agency_id || null,
+      to_agency_id: v.to_agency_id,
+      reason: v.reason,
+    })
+    onDone()
+  }
+
+  return (
+    <EntityForm
+      title="New Transfer Request"
+      onClose={onClose}
+      onSubmit={submit}
+      savedMessage="Transfer request created"
+      fields={[
+        {
+          name: '_type', label: 'Move a', type: 'select', required: true,
+          options: [{ value: 'host', label: 'Host' }, { value: 'sub_admin', label: 'Sub Admin' }],
+        },
+        { name: 'subject_id', label: subjectType === 'host' ? 'Host' : 'Sub Admin', type: 'select', required: true, options: subjects },
+        { name: 'to_agency_id', label: 'To agency', type: 'select', required: true, options: opts?.agencies || [] },
+        { name: 'reason', label: 'Reason', type: 'textarea', full: true },
       ]}
-      filters={[{ label: 'Type', options: ['Host', 'Agency', 'Sub Admin'], get: (r) => r.type }]}
-      columns={[
-        { key: 'id', header: 'Request', render: (r) => <span className="mono muted">{r.id}</span> },
-        { key: 'type', header: 'Type', render: (r) => <Tag>{r.type}</Tag> },
-        personCol('subject', 'requestedBy'),
-        { key: 'from', header: 'From' },
-        { key: 'to', header: 'To', render: (r) => <span className="hstack" style={{ gap: 6 }}><Icon name="chevronsRight" size={13} className="muted" />{r.to}</span> },
-        { key: 'reason', header: 'Reason' },
-        { key: 'date', header: 'Date', sortable: true },
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Approve', icon: 'check', onClick: () => toast(`${r.id} approved`) },
-        { label: 'Reject', icon: 'x', onClick: () => toast(`${r.id} rejected`) },
-      ]}
+      initial={{ _type: subjectType }}
+      onChange={(name, val) => { if (name === '_type') setSubjectType(val) }}
     />
   )
 }

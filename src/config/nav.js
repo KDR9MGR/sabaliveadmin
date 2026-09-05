@@ -59,7 +59,8 @@ export const NAV = {
         { label: 'Transfer Coins', to: '/admin/coins/transfer' },
         { label: 'Transfer History', to: '/admin/coins/transfer-history' },
       ]},
-      { label: 'Salary', icon: 'wallet', to: '/admin/salary' },
+      { label: 'Withdrawals', icon: 'wallet', to: '/admin/withdrawals' },
+      { label: 'Salary', icon: 'fileText', to: '/admin/salary' },
       { label: 'Reports & Analytics', icon: 'chart', to: '/admin/reports' },
     ]},
     { section: 'Platform', items: [

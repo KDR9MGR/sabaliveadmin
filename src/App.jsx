@@ -14,6 +14,7 @@ import { GiftSettings, CoinPackages, Transactions, GiftHistory, TransferCoins, T
 import { Banners, LegalPages, Announcements } from './pages/master/content.jsx'
 import ApplicationConfig from './pages/master/config.jsx'
 import { LiveRequests, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary, Reports, SystemManagement } from './pages/master/platform.jsx'
+import { Withdrawals } from './pages/master/withdrawals.jsx'
 
 import {
   AgencyDashboard, MyAgency, AgencyHosts, AgencyHostProfiles, AgencyApplications,
@@ -73,6 +74,7 @@ export default function App() {
             <Route path="coins/transfer-history" element={<TransferHistory />} />
 
             <Route path="salary" element={<Salary />} />
+            <Route path="withdrawals" element={<Withdrawals />} />
             <Route path="reports" element={<Reports />} />
             <Route path="live" element={<LiveRequests />} />
             <Route path="badges" element={<BadgeManagement />} />

@@ -8,8 +8,11 @@ import EntityForm from '../../components/EntityForm.jsx'
 import Icon from '../../components/Icon.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { listHosts, getHostDetail, updateHost, fmtDate } from '../../lib/admin.js'
-import { hosts as mockHosts, hostApplications } from '../../data/index.js'
-import { AGENCIES } from '../../data/util.js'
+import {
+  listHostApplications, decideHostApplication,
+  listAssignments, createAssignment, updateAssignment,
+  hostOptions, subAdminOptions,
+} from '../../lib/workflows.js'
 
 const CRUMBS = ['Home', 'Host Management']
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
@@ -187,68 +190,142 @@ function HostDetailBody({ data }) {
   )
 }
 
-/* --------------------------------------------------- Still on mock data (later phase) */
+/* --------------------------------------------------- Host Assignment (real: assignments table) */
+const SHIFT_OPTS = ['morning', 'evening', 'night', 'flexible'].map(opt)
+const ASSIGN_STATUS_OPTS = ['on_track', 'behind', 'exceeded'].map(opt)
+
 export function HostAssignment() {
   const toast = useToast()
-  const rows = mockHosts.map((h) => ({
-    ...h,
-    subAdmin: ['Neha Verma', 'Rohit Bose', 'Kavya Iyer', 'Manish Das', 'Unassigned'][h.followers % 5],
+  const { data: rows, loading, error, reload } = useAsyncData(listAssignments)
+  const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState(null)
+
+  const create = async (v) => { await createAssignment(v); reload() }
+  const edit = async (v) => {
+    await updateAssignment(editing.id, { shift: v.shift, status: v.status, target_hours: v.target_hours, done_hours: v.done_hours })
+    reload()
+  }
+
+  return (
+    <>
+      <PageHeader
+        title="Host Assignment"
+        crumbs={[...CRUMBS, 'Assignment']}
+        actions={<Button variant="primary" icon="userCheck" onClick={() => setCreating(true)}>New Assignment</Button>}
+      />
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <DataTable
+          rows={rows || []}
+          searchKeys={['host', 'subAdmin', 'idShort']}
+          tabs={[
+            { label: 'All', value: 'all', filter: () => true },
+            { label: 'On track', value: 't', filter: (r) => r.status === 'On Track' },
+            { label: 'Behind', value: 'b', filter: (r) => r.status === 'Behind' },
+          ]}
+          columns={[
+            personCol('host', 'idShort'),
+            { key: 'subAdmin', header: 'Sub Admin', render: (r) => <Person name={r.subAdmin} size="sm" /> },
+            { key: 'shift', header: 'Shift', render: (r) => <Tag>{r.shift}</Tag> },
+            { key: 'hours', header: 'Hours', render: (r) => (
+              <div style={{ minWidth: 130 }}>
+                <div className="hstack spread" style={{ fontSize: 11, marginBottom: 4 }}><span>{r.done}h</span><span className="muted">/ {r.target}h</span></div>
+                <div className="progress"><span style={{ width: Math.min(100, r.target ? (r.done / r.target) * 100 : 0) + '%' }} /></div>
+              </div>
+            ) },
+            statusCol(),
+          ]}
+          rowActions={(r) => [
+            { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
+          ]}
+          emptyText="No assignments yet. Assign a host to a sub-admin with “New Assignment”."
+        />
+      </AsyncView>
+
+      {creating && <NewAssignmentDrawer onClose={() => setCreating(false)} onSubmit={create} />}
+      {editing && (
+        <EntityForm
+          title={`Edit assignment — ${editing.host}`}
+          onClose={() => setEditing(null)} onSubmit={edit} savedMessage="Assignment updated"
+          initial={{
+            shift: editing.shift.toLowerCase(),
+            status: editing.status.toLowerCase().replace(' ', '_'),
+            target_hours: editing.target,
+            done_hours: editing.done,
+          }}
+          fields={[
+            { name: 'shift', label: 'Shift', type: 'select', options: SHIFT_OPTS },
+            { name: 'status', label: 'Status', type: 'select', options: ASSIGN_STATUS_OPTS },
+            { name: 'target_hours', label: 'Target hours', type: 'number' },
+            { name: 'done_hours', label: 'Done hours', type: 'number' },
+          ]}
+        />
+      )}
+    </>
+  )
+}
+
+function NewAssignmentDrawer({ onClose, onSubmit }) {
+  const { data: opts } = useAsyncData(async () => ({
+    hosts: await hostOptions(),
+    subs: await subAdminOptions(),
   }))
   return (
-    <ListPage
-      title="Host Assignment"
-      crumbs={[...CRUMBS, 'Assignment']}
-      actions={<Button variant="primary" icon="userCheck" onClick={() => toast('Bulk assign')}>Bulk Assign</Button>}
-      rows={rows}
-      searchKeys={['name', 'agency', 'subAdmin', 'id']}
-      tabs={[
-        { label: 'All', value: 'all', filter: () => true },
-        { label: 'Unassigned', value: 'u', filter: (r) => r.subAdmin === 'Unassigned' },
-      ]}
-      filters={[{ label: 'Agency', options: AGENCIES, get: (r) => r.agency }]}
-      columns={[
-        personCol('name', 'id'),
-        { key: 'agency', header: 'Agency', sortable: true },
-        { key: 'subAdmin', header: 'Sub Admin', render: (r) => r.subAdmin === 'Unassigned' ? <Badge tone="warning">Unassigned</Badge> : <Person name={r.subAdmin} size="sm" /> },
-        numCol('liveHours', 'Live hrs'),
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Assign sub admin', icon: 'shieldUser', onClick: () => toast(`Assign for ${r.name}`) },
-        { label: 'Change agency', icon: 'arrowLeftRight', onClick: () => toast('Change agency') },
+    <EntityForm
+      title="New Assignment"
+      onClose={onClose}
+      onSubmit={onSubmit}
+      savedMessage="Assignment created"
+      initial={{ shift: 'flexible' }}
+      fields={[
+        { name: 'host_id', label: 'Host', type: 'select', required: true, options: opts?.hosts || [], hint: (opts && !opts.hosts.length) ? 'No hosts available' : undefined },
+        { name: 'sub_admin_id', label: 'Sub Admin', type: 'select', required: true, options: opts?.subs || [], hint: (opts && !opts.subs.length) ? 'No sub-admins yet — grant the sub_admin role first' : undefined },
+        { name: 'shift', label: 'Shift', type: 'select', options: SHIFT_OPTS },
+        { name: 'target_hours', label: 'Target hours', type: 'number' },
       ]}
     />
   )
 }
 
+/* --------------------------------------------------- Host Applications (real) */
 export function HostApplications() {
   const toast = useToast()
+  const { data: rows, loading, error, reload } = useAsyncData(listHostApplications)
+
+  const decide = async (r, status) => {
+    try { await decideHostApplication(r.id, status); toast(`${r.applicant} → ${status.replace('_', ' ')}`); reload() }
+    catch (e) { toast(e.message || 'Could not update application') }
+  }
+
   return (
-    <ListPage
-      title="Host Applications"
-      crumbs={[...CRUMBS, 'Applications']}
-      rows={hostApplications}
-      searchKeys={['applicant', 'email', 'agency', 'id']}
-      tabs={[
-        { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
-        { label: 'Under Review', value: 'r', filter: (r) => r.status === 'Under Review' },
-        { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
-        { label: 'Rejected', value: 'x', filter: (r) => r.status === 'Rejected' },
-        { label: 'All', value: 'all', filter: () => true },
-      ]}
-      columns={[
-        personCol('applicant', 'email'),
-        { key: 'agency', header: 'Applying via', sortable: true },
-        { key: 'experience', header: 'Experience', render: (r) => <Tag>{r.experience}</Tag> },
-        numCol('followersOtherApps', 'Ext. followers'),
-        { key: 'submitted', header: 'Submitted' },
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Review', icon: 'eye', onClick: () => toast(`Review ${r.id}`) },
-        { label: 'Approve', icon: 'check', onClick: () => toast(`${r.applicant} approved`) },
-        { label: 'Reject', icon: 'x', onClick: () => toast(`${r.applicant} rejected`) },
-      ]}
-    />
+    <>
+      <PageHeader title="Host Applications" crumbs={[...CRUMBS, 'Applications']} />
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <DataTable
+          rows={rows || []}
+          searchKeys={['applicant', 'username', 'agency', 'idShort']}
+          tabs={[
+            { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
+            { label: 'Under Review', value: 'r', filter: (r) => r.status === 'Under Review' },
+            { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
+            { label: 'Rejected', value: 'x', filter: (r) => r.status === 'Rejected' },
+            { label: 'All', value: 'all', filter: () => true },
+          ]}
+          columns={[
+            personCol('applicant', 'username'),
+            { key: 'agency', header: 'Applying via', sortable: true },
+            { key: 'experience', header: 'Experience', render: (r) => <Tag>{r.experience}</Tag> },
+            numCol('extFollowers', 'Ext. followers'),
+            { key: 'submitted', header: 'Submitted', sortable: true },
+            statusCol(),
+          ]}
+          rowActions={(r) => [
+            { label: 'Mark under review', icon: 'eye', onClick: () => decide(r, 'under_review') },
+            { label: 'Approve', icon: 'check', onClick: () => decide(r, 'approved') },
+            { label: 'Reject', icon: 'x', onClick: () => decide(r, 'rejected') },
+          ]}
+          emptyText="No host applications yet."
+        />
+      </AsyncView>
+    </>
   )
 }

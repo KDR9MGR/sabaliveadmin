@@ -5,7 +5,7 @@ import { Drawer, Button, useToast } from './ui.jsx'
    fields: [{ name, label, type: text|email|number|select|textarea|toggle, options?, required?, hint?, full?, placeholder? }]
    onSubmit(values): optional async persister. If given, its result drives success/error;
    without it the form just toasts (used by screens still on mock data). */
-export default function EntityForm({ title, fields, initial = {}, onClose, onSubmit, submitLabel = 'Save', savedMessage }) {
+export default function EntityForm({ title, fields, initial = {}, onClose, onSubmit, onChange, submitLabel = 'Save', savedMessage }) {
   const [values, setValues] = useState(() => {
     const v = { ...initial }
     fields.forEach((f) => { if (v[f.name] === undefined) v[f.name] = f.type === 'toggle' ? false : '' })
@@ -14,7 +14,7 @@ export default function EntityForm({ title, fields, initial = {}, onClose, onSub
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const toast = useToast()
-  const set = (n, val) => setValues((s) => ({ ...s, [n]: val }))
+  const set = (n, val) => { setValues((s) => ({ ...s, [n]: val })); onChange?.(n, val) }
 
   const submit = async () => {
     setError('')

@@ -9,7 +9,7 @@ import { useAsyncData } from '../../lib/useAsync.js'
 import {
   listAgencies, getAgencyDetail, createAgency, updateAgency, deleteAgency, fmtDate,
 } from '../../lib/admin.js'
-import { transferRequests as mockTransferRequests } from '../../data/index.js'
+import { TransferRequests } from './users.jsx'
 
 const CRUMBS = ['Home', 'Agency Management']
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
@@ -207,29 +207,9 @@ function AgencyDetailBody({ data, onOpenHost }) {
   )
 }
 
-/* --------------------------------------------------- Still on mock data */
+/* --------------------------------------------------- Agency Requests → real sub-admin transfers */
 export function AgencyRequests() {
-  const toast = useToast()
-  const rows = mockTransferRequests.filter((r) => r.type === 'Agency')
-  return (
-    <ListPage
-      title="Agency Requests"
-      crumbs={[...CRUMBS, 'Requests']}
-      rows={rows}
-      searchKeys={['subject', 'requestedBy', 'id']}
-      columns={[
-        { key: 'id', header: 'Request', render: (r) => <span className="mono muted">{r.id}</span> },
-        { key: 'subject', header: 'Agency', sortable: true },
-        { key: 'reason', header: 'Detail' },
-        { key: 'date', header: 'Submitted', sortable: true },
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Approve', icon: 'check', onClick: () => toast(`${r.id} approved`) },
-        { label: 'Reject', icon: 'x', onClick: () => toast(`${r.id} rejected`) },
-      ]}
-    />
-  )
+  return <TransferRequests subjectType="sub_admin" title="Sub-Admin Transfers" crumbs={[...CRUMBS, 'Requests']} />
 }
 
 export function CommissionPlans() {
