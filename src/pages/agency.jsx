@@ -1,402 +1,490 @@
 import { useState } from 'react'
-import { ListPage, StatGrid } from './_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast } from '../components/ui.jsx'
+import { StatGrid, TableSkeleton, LoadError } from './_templates.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, EmptyState } from '../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
 import { AreaChart, BarChart } from '../components/charts.jsx'
 import Icon from '../components/Icon.jsx'
 import PanelChip from '../components/PanelChip.jsx'
-import { dashboard, hosts, hostApplications, assignments, subAdmins, salary, num } from '../data/index.js'
 import { boldMd } from '../data/util.js'
+import { useAsyncData } from '../lib/useAsync.js'
+import { useAgencyScope, AgencyScopeBar } from '../lib/agencyScope.jsx'
+import {
+  getAgency, agencyDashboard, listAgencyHosts, listAgencyApplications,
+  listAgencyAssignments, listAgencySubAdmins, listAgencySalary, agencyEarnings,
+} from '../lib/agency.js'
+import { updateHost } from '../lib/admin.js'
+import { decideHostApplication, createAssignment, updateAssignment } from '../lib/workflows.js'
+import { createSalaryPayment, setSalaryStatus, updateSalaryPayment, SALARY_ROLES } from '../lib/salary.js'
+import { num } from '../data/index.js'
 
-const AGY = 'StarConnect'
-const myHosts = hosts.filter((_, i) => i % 2 === 0).map((h) => ({ ...h, agency: AGY }))
 const CR = ['Home', 'Agency']
+const opt = (v) => ({ value: v, label: v.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') })
+const TIER_OPTS = ['bronze', 'silver', 'gold', 'platinum'].map(opt)
+const HOST_STATUS_OPTS = ['active', 'inactive', 'suspended', 'banned'].map(opt)
+const KYC_OPTS = ['not_submitted', 'pending', 'verified', 'rejected'].map(opt)
+const SHIFT_OPTS = ['morning', 'evening', 'night', 'flexible'].map(opt)
+const ASSIGN_STATUS_OPTS = ['on_track', 'behind', 'exceeded'].map(opt)
+const SALARY_ROLE_OPTS = SALARY_ROLES.map(opt)
 
-/* ------------------------------------------------------------------ Dashboard */
-export function AgencyDashboard() {
-  const d = dashboard.agency
+/* Common shell: scope bar + async fork. Renders nothing useful until an agency is in scope. */
+function AgencyPage({ title, actions, load, children }) {
+  const { agencyId } = useAgencyScope()
   return (
     <>
-      <PageHeader
-        title={<>Dashboard <PanelChip panel="agency" /></>}
-        crumbs={[...CR, 'Dashboard']}
-        actions={<Button variant="primary" icon="plus" iconRight="chevronDown">Quick Actions</Button>}
-      />
-      <div className="banner" style={{ marginBottom: 16 }}>
-        <h3>Welcome back, {AGY}</h3>
-        <p>You manage {myHosts.length} hosts · 11 live now · next payout Mon 02 Sep</p>
-      </div>
-      <StatGrid stats={d.stats} />
-      <div className="grid dash mt-16">
-        <Card title="Coins earned" sub="Last 30 days, all hosts">
-          <AreaChart series={d.coinSeries} color="#22a06b" height={240} label="Coins (K)" />
-        </Card>
-        <Card title="Recent activity">
-          <div className="feed">
-            {d.activities.map((a, i) => (
-              <div className="feed__item" key={i}>
-                <span className="feed__dot"><Icon name={a.icon} size={14} /></span>
-                <div><div className="feed__text" dangerouslySetInnerHTML={{ __html: boldMd(a.text) }} /><div className="feed__time">{a.time}</div></div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-      <Card title="Top hosts this month" className="mt-16" flush>
-        <table className="mini-table" style={{ margin: 12 }}>
-          <thead><tr><th>#</th><th>Host</th><th>Live hrs</th><th className="right">Coins</th></tr></thead>
-          <tbody>
-            {d.hostPerf.map((h, i) => (
-              <tr key={h.name}>
-                <td><span className="rank">{i + 1}</span></td>
-                <td><Person name={h.name} size="sm" /></td>
-                <td>{h.hours}</td>
-                <td className="right mono">{num(h.coins)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+      <PageHeader title={title} crumbs={[...CR, title]} actions={agencyId ? actions : null} />
+      <AgencyScopeBar />
+      {agencyId
+        ? <ScopedBody agencyId={agencyId} load={load}>{children}</ScopedBody>
+        : null}
     </>
   )
 }
+function ScopedBody({ agencyId, load, children }) {
+  const { data, loading, error, reload } = useAsyncData(() => load(agencyId), [agencyId])
+  if (error) return <LoadError error={error} onRetry={reload} />
+  if (loading || data == null) return <TableSkeleton />
+  return children(data, reload)
+}
 
-/* ------------------------------------------------------------------ My Agency */
-export function MyAgency() {
-  const toast = useToast()
+/* --------------------------------------------------- Dashboard */
+export function AgencyDashboard() {
+  const { agencyName } = useAgencyScope()
   return (
-    <>
-      <PageHeader title="My Agency" crumbs={[...CR, 'My Agency']}
-        actions={<Button variant="primary" icon="check" onClick={() => toast('Agency profile saved')}>Save</Button>} />
-      <div className="grid dash">
-        <Card title="Agency profile">
-          <div className="form-grid">
-            <div className="field"><label>Agency name</label><input className="input" defaultValue={AGY} /></div>
-            <div className="field"><label>Agency ID</label><input className="input" defaultValue="AGN120" disabled /></div>
-            <div className="field"><label>Manager</label><input className="input" defaultValue="Rohit Mehra" /></div>
-            <div className="field"><label>Manager email</label><input className="input" defaultValue="rohit@starconnect.io" /></div>
-            <div className="field"><label>Support phone</label><input className="input" defaultValue="+91 98111 22334" /></div>
-            <div className="field"><label>Region</label><input className="input" defaultValue="Mumbai" /></div>
-            <div className="field full"><label>About</label><textarea className="textarea" defaultValue="Talent agency focused on music & variety live creators." /></div>
+    <AgencyPage title="Dashboard" load={agencyDashboard}>
+      {(d) => (
+        <>
+          <div className="banner" style={{ marginBottom: 16 }}>
+            <h3>{agencyName || 'Your agency'} <PanelChip panel="agency" /></h3>
+            <p>{d.stats[0].value} hosts · {d.stats[1].value} live now</p>
           </div>
-        </Card>
-        <div className="vstack" style={{ gap: 16 }}>
-          <Card title="Plan & commission">
+          <StatGrid stats={d.stats} />
+          <div className="grid dash mt-16">
+            <Card title="Coins gifted to your hosts" sub="Last 30 days">
+              {d.coinSeries.some((n) => n > 0)
+                ? <AreaChart series={d.coinSeries} categories={d.days} color="#22a06b" height={240} label="Coins" />
+                : <EmptyState icon="coins" title="No gift activity in the last 30 days" />}
+            </Card>
+            <Card title="Recent activity">
+              {d.activities.length ? (
+                <div className="feed">
+                  {d.activities.map((a, i) => (
+                    <div className="feed__item" key={i}>
+                      <span className="feed__dot"><Icon name={a.icon} size={14} /></span>
+                      <div><div className="feed__text" dangerouslySetInnerHTML={{ __html: boldMd(a.text) }} /><div className="feed__time">{a.time}</div></div>
+                    </div>
+                  ))}
+                </div>
+              ) : <EmptyState icon="activity" title="No recent activity" />}
+            </Card>
+          </div>
+          <div className="spread mt-24" style={{ marginBottom: 12 }}><h3 style={{ fontSize: 15 }}>Top hosts by coins</h3></div>
+          {d.topHosts.length ? (
+            <table className="mini-table">
+              <thead><tr><th>#</th><th>Host</th><th>Live hrs</th><th className="right">Coins</th></tr></thead>
+              <tbody>
+                {d.topHosts.map((h, i) => (
+                  <tr key={h.name}><td><span className="rank">{i + 1}</span></td><td><Person name={h.name} size="sm" /></td><td>{h.hours}</td><td className="right mono">{num(h.coins)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <Card><div className="card__body"><EmptyState icon="video" title="No hosts in this agency yet" /></div></Card>}
+        </>
+      )}
+    </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- My Agency (read-only — agencies UPDATE is admin-only) */
+export function MyAgency() {
+  return (
+    <AgencyPage title="My Agency" load={getAgency}>
+      {(a) => (
+        <div className="grid dash">
+          <Card title="Agency profile" sub="Edited by platform admins — read-only here">
             <KV rows={[
-              ['Commission plan', <Tag role>Growth</Tag>],
-              ['Base rate', '18%'],
-              ['Bonus tier', '+2% over ₹1L'],
-              ['Contract ends', '31 Mar 2027'],
+              ['Name', a.name],
+              ['Agency ID', <span className="mono">{a.id}</span>],
+              ['Manager', a.manager?.name || 'Unassigned'],
+              ['Region', a.country],
+              ['Commission', `${a.commission_percent}%`],
+              ['Onboarded', new Date(a.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })],
+              ['Status', <StatusBadge value={a.status} />],
             ]} />
           </Card>
-          <Card title="This month">
-            <div className="kpi-row">
-              <div className="kpi"><div className="k">Revenue</div><div className="v">₹4.82L</div></div>
-              <div className="kpi"><div className="k">Your share</div><div className="v">₹86.7K</div></div>
-            </div>
+          <Card title="Need a change?">
+            <p className="muted" style={{ fontSize: 12.5 }}>
+              Name, commission and status are managed by the platform team. Ask a Master admin, or raise a transfer request for host moves.
+            </p>
           </Card>
         </div>
-      </div>
-    </>
+      )}
+    </AgencyPage>
   )
 }
 
-/* ------------------------------------------------------------------ Hosts */
-export function AgencyHosts() {
+/* --------------------------------------------------- Hosts */
+function HostsBody({ rows, reload }) {
   const toast = useToast()
-  const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const save = async (v) => { await updateHost(editing.id, { tier: v.tier, status: v.status, kyc_status: v.kyc_status }); reload() }
   return (
     <>
-      <PageHeader title="Host Management" crumbs={[...CR, 'Hosts']}
-        actions={<Button variant="primary" icon="userPlus" onClick={() => setAdding(true)}>Invite Host</Button>} />
       <DataTable
-        rows={myHosts}
-        searchKeys={['name', 'email', 'id']}
+        rows={rows}
+        searchKeys={['name', 'username', 'idShort']}
         tabs={[
           { label: 'All', value: 'all', filter: () => true },
-          { label: 'Live', value: 'l', filter: (r) => r.status === 'Live' },
-          { label: 'Inactive', value: 'i', filter: (r) => r.status === 'Inactive' },
+          { label: 'Active', value: 'a', filter: (r) => r.status === 'Active' },
+          { label: 'Banned', value: 'b', filter: (r) => r.status === 'Banned' },
         ]}
         filters={[{ label: 'Tier', options: ['Bronze', 'Silver', 'Gold', 'Platinum'], get: (r) => r.tier }]}
         columns={[
-          personCol('name', 'email'),
+          personCol('name', 'username'),
           { key: 'tier', header: 'Tier', render: (r) => <Tag>{r.tier}</Tag> },
           numCol('followers', 'Followers'),
           numCol('coins', 'Coins'),
+          numCol('diamonds', 'Diamonds'),
           numCol('liveHours', 'Live hrs'),
+          { key: 'kyc', header: 'KYC', render: (r) => <StatusBadge value={r.kyc} /> },
           statusCol(),
         ]}
         rowActions={(r) => [
-          { label: 'Open profile', icon: 'eye', onClick: () => toast(`Open ${r.id}`) },
-          { label: 'Message', icon: 'mail', onClick: () => toast('Message host') },
-          { label: 'Set target', icon: 'flag', onClick: () => toast('Target set') },
+          { label: 'Edit tier / status', icon: 'edit', onClick: () => setEditing(r) },
           { sep: true },
-          { label: 'Request transfer out', icon: 'arrowLeftRight', onClick: () => toast('Transfer requested') },
+          r.status === 'Banned'
+            ? { label: 'Unban', icon: 'lock', onClick: async () => { await updateHost(r.id, { status: 'active' }); toast(`${r.name} unbanned`); reload() } }
+            : { label: 'Ban', icon: 'lock', onClick: async () => { await updateHost(r.id, { status: 'banned' }); toast(`${r.name} banned`); reload() } },
         ]}
+        emptyText="No hosts assigned to this agency yet."
       />
-      {adding && (
-        <EntityForm title="Invite Host" onClose={() => setAdding(false)} savedMessage="Invite sent"
+      {editing && (
+        <EntityForm title={`Edit host — ${editing.name}`} onClose={() => setEditing(null)} onSubmit={save} savedMessage="Host updated"
+          initial={{ tier: editing.tier.toLowerCase(), status: editing.status.toLowerCase(), kyc_status: editing.kyc.toLowerCase().replace(' ', '_') }}
           fields={[
-            { name: 'name', label: 'Host name', required: true },
-            { name: 'email', label: 'Email / phone', required: true },
-            { name: 'tier', label: 'Starting tier', type: 'select', options: ['Bronze', 'Silver'] },
-            { name: 'note', label: 'Personal note', type: 'textarea', full: true },
-          ]}
-        />
+            { name: 'tier', label: 'Tier', type: 'select', options: TIER_OPTS, required: true },
+            { name: 'status', label: 'Status', type: 'select', options: HOST_STATUS_OPTS, required: true },
+            { name: 'kyc_status', label: 'KYC status', type: 'select', options: KYC_OPTS },
+          ]} />
       )}
     </>
   )
 }
-
-/* ------------------------------------------------------------------ Host Profiles */
+export function AgencyHosts() {
+  return <AgencyPage title="Host Management" load={listAgencyHosts}>{(rows, reload) => <HostsBody rows={rows} reload={reload} />}</AgencyPage>
+}
 export function AgencyHostProfiles() {
-  const toast = useToast()
   return (
-    <ListPage
-      title="Host Profiles"
-      crumbs={[...CR, 'Host Profiles']}
-      rows={myHosts}
-      searchKeys={['name', 'id']}
-      columns={[
-        personCol('name', 'id'),
-        { key: 'bio', header: 'Bio', render: () => <span className="muted">Music • Variety • Nightly 8–11pm</span> },
-        { key: 'verified', header: 'Verified', render: (r) => <Badge tone={r.tier !== 'Bronze' ? 'success' : 'muted'}>{r.tier !== 'Bronze' ? 'Verified' : 'No'}</Badge> },
-        { key: 'rating', header: 'Rating', align: 'right' },
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Edit profile', icon: 'edit', onClick: () => toast(`Edit ${r.name}`) },
-        { label: 'Manage frames & badges', icon: 'frame', onClick: () => toast('Cosmetics') },
-        { label: 'Update schedule', icon: 'calendar', onClick: () => toast('Schedule') },
-      ]}
-    />
-  )
-}
-
-/* ------------------------------------------------------------------ Applications */
-export function AgencyApplications() {
-  const toast = useToast()
-  const rows = hostApplications.slice(0, 10)
-  return (
-    <ListPage
-      title="Host Applications"
-      crumbs={[...CR, 'Applications']}
-      rows={rows}
-      searchKeys={['applicant', 'email', 'id']}
-      tabs={[
-        { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' || r.status === 'Under Review' },
-        { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
-        { label: 'All', value: 'all', filter: () => true },
-      ]}
-      columns={[
-        personCol('applicant', 'email'),
-        { key: 'experience', header: 'Experience', render: (r) => <Tag>{r.experience}</Tag> },
-        numCol('followersOtherApps', 'Ext. followers'),
-        { key: 'submitted', header: 'Submitted' },
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Review', icon: 'eye', onClick: () => toast(`Review ${r.id}`) },
-        { label: 'Approve', icon: 'check', onClick: () => toast(`${r.applicant} approved`) },
-        { label: 'Reject', icon: 'x', onClick: () => toast('Rejected') },
-      ]}
-    />
-  )
-}
-
-/* ------------------------------------------------------------------ Assignments */
-export function AgencyAssignments() {
-  const toast = useToast()
-  return (
-    <ListPage
-      title="Assignments"
-      crumbs={[...CR, 'Assignments']}
-      actions={<Button variant="primary" icon="userCheck" onClick={() => toast('New assignment')}>New Assignment</Button>}
-      rows={assignments}
-      searchKeys={['host', 'subAdmin', 'id']}
-      filters={[
-        { label: 'Shift', options: ['Morning', 'Evening', 'Night', 'Flexible'], get: (r) => r.shift },
-        { label: 'Status', options: ['On Track', 'Behind', 'Exceeded'], get: (r) => r.status },
-      ]}
-      columns={[
-        personCol('host', 'id'),
-        { key: 'subAdmin', header: 'Sub Admin', render: (r) => <Person name={r.subAdmin} size="sm" /> },
-        { key: 'shift', header: 'Shift', render: (r) => <Tag>{r.shift}</Tag> },
-        { key: 'progress', header: 'Hours', render: (r) => (
-          <div style={{ minWidth: 140 }}>
-            <div className="hstack spread" style={{ fontSize: 11, marginBottom: 4 }}><span>{r.doneHours}h</span><span className="muted">/ {r.targetHours}h</span></div>
-            <div className="progress"><span style={{ width: Math.min(100, (r.doneHours / r.targetHours) * 100) + '%' }} /></div>
-          </div>
-        ) },
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Reassign', icon: 'arrowLeftRight', onClick: () => toast('Reassigned') },
-        { label: 'Adjust target', icon: 'flag', onClick: () => toast('Target updated') },
-        { label: 'End assignment', icon: 'x', onClick: () => toast('Ended') },
-      ]}
-    />
-  )
-}
-
-/* ------------------------------------------------------------------ Sub Admins */
-export function AgencySubAdmins() {
-  const toast = useToast()
-  const rows = subAdmins.slice(0, 6).map((s) => ({ ...s, assignedAgency: AGY }))
-  return (
-    <ListPage
-      title="Sub Admins"
-      crumbs={[...CR, 'Sub Admins']}
-      actions={<Button variant="primary" icon="userPlus" onClick={() => toast('Add sub admin')}>Add Sub Admin</Button>}
-      rows={rows}
-      searchKeys={['name', 'email', 'id']}
-      columns={[
-        personCol('name', 'email'),
-        { key: 'permissions', header: 'Scope', render: (r) => <Tag>{r.permissions}</Tag> },
-        numCol('hostsManaged', 'Hosts'),
-        { key: 'lastLogin', header: 'Last login' },
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Edit scope', icon: 'shieldUser', onClick: () => toast(`Scope for ${r.name}`) },
-        { label: 'Assign hosts', icon: 'video', onClick: () => toast('Assign hosts') },
-        { sep: true },
-        { label: 'Remove', icon: 'trash', onClick: () => toast('Removed') },
-      ]}
-    />
-  )
-}
-
-/* ------------------------------------------------------------------ Statistics */
-export function AgencyStats() {
-  return (
-    <>
-      <PageHeader title="Statistics" crumbs={[...CR, 'Statistics']} actions={<Button icon="download">Export</Button>} />
-      <StatGrid stats={[
-        { key: 'Total live hours (Aug)', value: '3,240', icon: 'radio', tile: 'tile-pink' },
-        { key: 'Avg. coins / host', value: '48,900', icon: 'coins', tile: 'tile-orange' },
-        { key: 'New hosts (Aug)', value: '6', icon: 'userPlus', tile: 'tile-green' },
-        { key: 'Host retention (30d)', value: '82%', icon: 'userCheck', tile: 'tile-blue' },
-      ]} />
-      <div className="grid cols-2 mt-16">
-        <Card title="Coins by host (top 6)">
-          <BarChart series={dashboard.agency.hostPerf.map((h) => Math.round(h.coins / 1000))} categories={dashboard.agency.hostPerf.map((h) => h.name.split(' ')[0])} color="#7c3aed" height={240} label="Coins (K)" horizontal />
-        </Card>
-        <Card title="Live hours trend" sub="Weekly">
-          <AreaChart series={[620, 660, 700, 740, 780, 810, 840, 880]} color="#22a06b" height={240} label="Hours" />
-        </Card>
-      </div>
-    </>
-  )
-}
-
-/* ------------------------------------------------------------------ Earnings */
-export function AgencyEarnings() {
-  const toast = useToast()
-  const rows = myHosts.map((h) => ({
-    id: h.id, host: h.name, coins: h.coins, diamonds: h.diamonds,
-    gross: Math.round(h.diamonds * 0.6), share: Math.round(h.diamonds * 0.6 * 0.18), status: h.status === 'Banned' ? 'On Hold' : 'Cleared',
-  }))
-  return (
-    <>
-      <PageHeader title="Earnings" crumbs={[...CR, 'Earnings']} actions={<Button icon="download">Statement</Button>} />
-      <StatGrid stats={[
-        { key: 'Gross (Aug)', value: '₹' + num(rows.reduce((s, r) => s + r.gross, 0)), icon: 'dollar', tile: 'tile-green' },
-        { key: 'Agency share', value: '₹' + num(rows.reduce((s, r) => s + r.share, 0)), icon: 'wallet', tile: 'tile-purple' },
-        { key: 'Pending clearance', value: '₹' + num(rows.filter((r) => r.status === 'On Hold').reduce((s, r) => s + r.share, 0)), icon: 'clock', tile: 'tile-orange' },
-        { key: 'Next payout', value: 'Mon 02 Sep', icon: 'calendar', tile: 'tile-blue' },
-      ]} />
-      <div className="mt-16">
+    <AgencyPage title="Host Profiles" load={listAgencyHosts}>
+      {(rows) => (
         <DataTable
           rows={rows}
-          searchKeys={['host', 'id']}
-          filters={[{ label: 'Status', options: ['Cleared', 'On Hold'], get: (r) => r.status }]}
+          searchKeys={['name', 'username', 'idShort']}
           columns={[
-            personCol('host', 'id'),
-            numCol('coins', 'Coins'),
-            numCol('diamonds', 'Diamonds'),
-            numCol('gross', 'Gross', { prefix: '₹' }),
-            numCol('share', 'Agency share', { prefix: '₹' }),
+            personCol('name', 'username'),
+            { key: 'tier', header: 'Tier', render: (r) => <Tag>{r.tier}</Tag> },
+            { key: 'verified', header: 'Verified', render: (r) => r.kyc === 'Verified' ? <StatusBadge value="Verified" /> : <span className="muted">No</span> },
+            { key: 'rating', header: 'Rating', align: 'right' },
             statusCol(),
           ]}
-          rowActions={(r) => [
-            { label: 'Payslip', icon: 'fileText', onClick: () => toast(`Payslip ${r.id}`) },
-            { label: 'Raise dispute', icon: 'flag', onClick: () => toast('Dispute raised') },
-          ]}
+          emptyText="No host profiles yet."
         />
-      </div>
-    </>
+      )}
+    </AgencyPage>
   )
 }
 
-/* ------------------------------------------------------------------ Salary (agency view) */
-export function AgencySalary() {
+/* --------------------------------------------------- Applications */
+export function AgencyApplications() {
   const toast = useToast()
-  const rows = salary.filter((_, i) => i % 2 === 0).map((r) => ({ ...r, agency: AGY }))
   return (
-    <ListPage
-      title="Salary"
-      crumbs={[...CR, 'Salary']}
-      actions={<Button variant="primary" icon="wallet" onClick={() => toast('Payout requested from platform')}>Request Payout</Button>}
-      rows={rows}
-      searchKeys={['payee', 'id']}
-      tabs={[
-        { label: 'All', value: 'all', filter: () => true },
-        { label: 'Paid', value: 'p', filter: (r) => r.status === 'Paid' },
-        { label: 'On Hold', value: 'h', filter: (r) => r.status === 'On Hold' },
-      ]}
-      columns={[
-        personCol('payee', 'role'),
-        { key: 'period', header: 'Period' },
-        numCol('base', 'Base', { prefix: '₹' }),
-        numCol('bonus', 'Bonus', { prefix: '₹' }),
-        numCol('net', 'Net', { prefix: '₹' }),
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'View payslip', icon: 'fileText', onClick: () => toast(`Payslip ${r.id}`) },
-      ]}
-    />
+    <AgencyPage title="Host Applications" load={listAgencyApplications}>
+      {(rows, reload) => {
+        const decide = async (r, status) => {
+          try { await decideHostApplication(r.id, status); toast(`${r.applicant} → ${status.replace('_', ' ')}`); reload() }
+          catch (e) { toast(e.message || 'Could not update') }
+        }
+        return (
+          <DataTable
+            rows={rows}
+            searchKeys={['applicant', 'username', 'idShort']}
+            tabs={[
+              { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
+              { label: 'Under Review', value: 'r', filter: (r) => r.status === 'Under Review' },
+              { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
+              { label: 'All', value: 'all', filter: () => true },
+            ]}
+            columns={[
+              personCol('applicant', 'username'),
+              { key: 'experience', header: 'Experience', render: (r) => <Tag>{r.experience}</Tag> },
+              numCol('extFollowers', 'Ext. followers'),
+              { key: 'submitted', header: 'Submitted', sortable: true },
+              statusCol(),
+            ]}
+            rowActions={(r) => [
+              { label: 'Mark under review', icon: 'eye', onClick: () => decide(r, 'under_review') },
+              { label: 'Approve', icon: 'check', onClick: () => decide(r, 'approved') },
+              { label: 'Reject', icon: 'x', onClick: () => decide(r, 'rejected') },
+            ]}
+            emptyText="No applications routed to this agency."
+          />
+        )
+      }}
+    </AgencyPage>
   )
 }
 
-/* ------------------------------------------------------------------ Agency Account */
-export function AgencyAccount() {
+/* --------------------------------------------------- Assignments */
+export function AgencyAssignments() {
+  const { agencyId } = useAgencyScope()
   const toast = useToast()
+  const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const { data: pickers } = useAsyncData(async () => {
+    if (!agencyId) return { hosts: [], subs: [] }
+    const [h, s] = await Promise.all([listAgencyHosts(agencyId), listAgencySubAdmins(agencyId)])
+    return { hosts: h.map((x) => ({ value: x.id, label: x.name })), subs: s.map((x) => ({ value: x.id, label: x.name })) }
+  }, [agencyId])
+
+  return (
+    <AgencyPage
+      title="Assignments"
+      load={listAgencyAssignments}
+      actions={<Button variant="primary" icon="userCheck" onClick={() => setAdding(true)}>New Assignment</Button>}
+    >
+      {(rows, reload) => {
+        const create = async (v) => { await createAssignment(v); reload() }
+        const edit = async (v) => { await updateAssignment(editing.id, { shift: v.shift, status: v.status, target_hours: v.target_hours, done_hours: v.done_hours }); reload() }
+        return (
+          <>
+            <DataTable
+              rows={rows}
+              searchKeys={['host', 'subAdmin', 'idShort']}
+              columns={[
+                personCol('host', 'idShort'),
+                { key: 'subAdmin', header: 'Sub Admin', render: (r) => <Person name={r.subAdmin} size="sm" /> },
+                { key: 'shift', header: 'Shift', render: (r) => <Tag>{r.shift}</Tag> },
+                { key: 'hours', header: 'Hours', render: (r) => (
+                  <div style={{ minWidth: 130 }}>
+                    <div className="hstack spread" style={{ fontSize: 11, marginBottom: 4 }}><span>{r.done}h</span><span className="muted">/ {r.target}h</span></div>
+                    <div className="progress"><span style={{ width: Math.min(100, r.target ? (r.done / r.target) * 100 : 0) + '%' }} /></div>
+                  </div>
+                ) },
+                statusCol(),
+              ]}
+              rowActions={(r) => [{ label: 'Edit', icon: 'edit', onClick: () => setEditing(r) }]}
+              emptyText="No assignments yet."
+            />
+            {adding && (
+              <EntityForm title="New Assignment" onClose={() => setAdding(false)} onSubmit={create} savedMessage="Assignment created"
+                initial={{ shift: 'flexible' }}
+                fields={[
+                  { name: 'host_id', label: 'Host', type: 'select', required: true, options: pickers?.hosts || [] },
+                  { name: 'sub_admin_id', label: 'Sub Admin', type: 'select', required: true, options: pickers?.subs || [], hint: (pickers && !pickers.subs.length) ? 'No sub-admins in this agency yet' : undefined },
+                  { name: 'shift', label: 'Shift', type: 'select', options: SHIFT_OPTS },
+                  { name: 'target_hours', label: 'Target hours', type: 'number' },
+                ]} />
+            )}
+            {editing && (
+              <EntityForm title={`Edit — ${editing.host}`} onClose={() => setEditing(null)} onSubmit={edit} savedMessage="Assignment updated"
+                initial={{ shift: editing.shift.toLowerCase(), status: editing.status.toLowerCase().replace(' ', '_'), target_hours: editing.target, done_hours: editing.done }}
+                fields={[
+                  { name: 'shift', label: 'Shift', type: 'select', options: SHIFT_OPTS },
+                  { name: 'status', label: 'Status', type: 'select', options: ASSIGN_STATUS_OPTS },
+                  { name: 'target_hours', label: 'Target hours', type: 'number' },
+                  { name: 'done_hours', label: 'Done hours', type: 'number' },
+                ]} />
+            )}
+          </>
+        )
+      }}
+    </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- Sub Admins (read-only) */
+export function AgencySubAdmins() {
+  return (
+    <AgencyPage title="Sub Admins" load={listAgencySubAdmins}>
+      {(rows) => (
+        <>
+          <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+            Sub-admin roles are granted by a Super Admin. This is a read-only list of the sub-admins scoped to your agency.
+          </div></Card>
+          <DataTable
+            rows={rows}
+            searchKeys={['name', 'username', 'idShort']}
+            columns={[
+              personCol('name', 'username'),
+              { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+              { key: 'accountStatus', header: 'Account', render: (r) => <StatusBadge value={r.accountStatus} /> },
+              { key: 'granted', header: 'Granted', sortable: true },
+            ]}
+            emptyText="No sub-admins assigned to this agency."
+          />
+        </>
+      )}
+    </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- Statistics */
+export function AgencyStats() {
+  return (
+    <AgencyPage title="Statistics" load={agencyDashboard}>
+      {(d) => (
+        <>
+          <StatGrid stats={d.stats} />
+          <div className="grid cols-2 mt-16">
+            <Card title="Coins by top host">
+              {d.topHosts.length
+                ? <BarChart series={d.topHosts.map((h) => Math.round(h.coins / 1000))} categories={d.topHosts.map((h) => h.name.split(' ')[0])} color="#7c3aed" height={240} label="Coins (K)" horizontal />
+                : <EmptyState icon="chart" title="No host data yet" />}
+            </Card>
+            <Card title="Coins gifted trend" sub="Last 30 days">
+              {d.coinSeries.some((n) => n > 0)
+                ? <AreaChart series={d.coinSeries} categories={d.days} color="#22a06b" height={240} label="Coins" />
+                : <EmptyState icon="coins" title="No gift activity" />}
+            </Card>
+          </div>
+        </>
+      )}
+    </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- Earnings */
+export function AgencyEarnings() {
+  return (
+    <AgencyPage title="Earnings" load={agencyEarnings}>
+      {(rows) => (
+        <>
+          <StatGrid stats={[
+            { key: 'Hosts', value: String(rows.length), icon: 'video', tile: 'tile-green' },
+            { key: 'Gross (est.)', value: '₹' + num(rows.reduce((s, r) => s + r.gross, 0)), icon: 'dollar', tile: 'tile-blue' },
+            { key: 'Diamonds (roster)', value: num(rows.reduce((s, r) => s + r.diamonds, 0)), icon: 'star', tile: 'tile-orange' },
+            { key: 'On hold', value: String(rows.filter((r) => r.status === 'On Hold').length), icon: 'lock', tile: 'tile-red' },
+          ]} />
+          <div className="mt-16">
+            <DataTable
+              rows={rows}
+              searchKeys={['host', 'username', 'idShort']}
+              columns={[
+                personCol('host', 'username'),
+                numCol('coins', 'Coins'),
+                numCol('diamonds', 'Diamonds'),
+                numCol('gross', 'Gross (est.)', { prefix: '₹' }),
+                statusCol(),
+              ]}
+              emptyText="No hosts to compute earnings for."
+            />
+          </div>
+        </>
+      )}
+    </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- Salary (scoped CRUD) */
+export function AgencySalary() {
+  const { agencyId } = useAgencyScope()
+  const toast = useToast()
+  const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const { data: payees } = useAsyncData(async () => {
+    if (!agencyId) return []
+    const [h, s] = await Promise.all([listAgencyHosts(agencyId), listAgencySubAdmins(agencyId)])
+    return [...h.map((x) => ({ value: x.id, label: `${x.name} (host)` })), ...s.map((x) => ({ value: x.id, label: `${x.name} (sub admin)` }))]
+  }, [agencyId])
+
+  const fields = [
+    { name: 'payee_id', label: 'Payee', type: 'select', required: true, options: payees || [] },
+    { name: 'role', label: 'Role', type: 'select', required: true, options: SALARY_ROLE_OPTS },
+    { name: 'period', label: 'Period', required: true, placeholder: 'e.g. Sep 2026' },
+    { name: 'base_amount', label: 'Base (₹)', type: 'number', required: true },
+    { name: 'bonus_amount', label: 'Bonus (₹)', type: 'number' },
+    { name: 'deductions', label: 'Deductions (₹)', type: 'number' },
+  ]
+
+  return (
+    <AgencyPage
+      title="Salary"
+      load={listAgencySalary}
+      actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>New Payslip</Button>}
+    >
+      {(rows, reload) => {
+        const setStatus = async (r, status) => {
+          try { await setSalaryStatus(r.id, status); toast(`${r.payee} → ${status.replace('_', ' ')}`); reload() }
+          catch (e) { toast(e.message || 'Could not update') }
+        }
+        return (
+          <>
+            <StatGrid stats={[
+              { key: 'Payslips', value: String(rows.length), icon: 'users', tile: 'tile-purple' },
+              { key: 'Gross', value: '₹' + num(rows.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
+              { key: 'Net payable', value: '₹' + num(rows.reduce((s, r) => s + r.net, 0)), icon: 'wallet', tile: 'tile-blue' },
+              { key: 'On hold', value: String(rows.filter((r) => r.status === 'On Hold').length), icon: 'lock', tile: 'tile-red' },
+            ]} />
+            <div className="mt-16">
+              <DataTable
+                rows={rows}
+                searchKeys={['payee', 'username', 'period', 'idShort']}
+                tabs={[
+                  { label: 'All', value: 'all', filter: () => true },
+                  { label: 'Processing', value: 'pr', filter: (r) => r.status === 'Processing' },
+                  { label: 'Paid', value: 'p', filter: (r) => r.status === 'Paid' },
+                  { label: 'On Hold', value: 'h', filter: (r) => r.status === 'On Hold' },
+                ]}
+                columns={[
+                  personCol('payee', 'username'),
+                  { key: 'role', header: 'Role', render: (r) => <Tag>{r.role}</Tag> },
+                  { key: 'period', header: 'Period', sortable: true },
+                  numCol('base', 'Base', { prefix: '₹' }),
+                  numCol('bonus', 'Bonus', { prefix: '₹' }),
+                  numCol('deductions', 'Deductions', { prefix: '₹' }),
+                  numCol('net', 'Net', { prefix: '₹' }),
+                  { key: 'paidAt', header: 'Paid on' },
+                  statusCol(),
+                ]}
+                rowActions={(r) => [
+                  { label: 'Edit amounts', icon: 'edit', onClick: () => setEditing(r) },
+                  { sep: true },
+                  ...(r.status !== 'Paid' ? [{ label: 'Mark paid', icon: 'check', onClick: () => setStatus(r, 'paid') }] : []),
+                  ...(r.status !== 'On Hold' ? [{ label: 'Put on hold', icon: 'lock', onClick: () => setStatus(r, 'on_hold') }] : []),
+                  ...(r.status !== 'Processing' ? [{ label: 'Back to processing', icon: 'refresh', onClick: () => setStatus(r, 'processing') }] : []),
+                ]}
+                emptyText="No payslips for this agency yet."
+              />
+            </div>
+            {adding && (
+              <EntityForm title="New Payslip" onClose={() => setAdding(false)} savedMessage="Payslip created"
+                onSubmit={async (v) => { await createSalaryPayment({ ...v, agency_id: agencyId }); reload() }}
+                fields={fields} />
+            )}
+            {editing && (
+              <EntityForm title={`Edit — ${editing.payee}`} onClose={() => setEditing(null)} savedMessage="Payslip updated"
+                onSubmit={async (v) => { await updateSalaryPayment(editing.id, v); reload() }}
+                initial={{ period: editing.period, role: editing.role.toLowerCase().replace(' ', '_'), base_amount: editing.base, bonus_amount: editing.bonus, deductions: editing.deductions }}
+                fields={fields.filter((f) => f.name !== 'payee_id')} />
+            )}
+          </>
+        )
+      }}
+    </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- Agency Account (not modelled) */
+export function AgencyAccount() {
   return (
     <>
       <PageHeader title="Agency Account" crumbs={[...CR, 'Account']} />
-      <div className="grid dash">
-        <Card title="Payout account">
-          <div className="form-grid">
-            <div className="field"><label>Account holder</label><input className="input" defaultValue="StarConnect Media LLP" /></div>
-            <div className="field"><label>Account type</label><input className="input" defaultValue="Current" /></div>
-            <div className="field"><label>Bank</label><input className="input" defaultValue="HDFC Bank" /></div>
-            <div className="field"><label>Account number</label><input className="input" defaultValue="•••• •••• 4821" /></div>
-            <div className="field"><label>IFSC</label><input className="input" defaultValue="HDFC0001234" /></div>
-            <div className="field"><label>PAN</label><input className="input" defaultValue="AABCS1234C" /></div>
-          </div>
-          <div className="hstack mt-16" style={{ justifyContent: 'flex-end' }}>
-            <Button variant="primary" icon="check" onClick={() => toast('Bank details submitted for verification')}>Save & verify</Button>
-          </div>
-        </Card>
-        <div className="vstack" style={{ gap: 16 }}>
-          <Card title="Verification">
-            <KV rows={[
-              ['KYC status', <StatusBadge value="Verified" />],
-              ['GST', <StatusBadge value="Verified" />],
-              ['Agreement', <StatusBadge value="Verified" />],
-              ['Bank', <StatusBadge value="Pending" />],
-            ]} />
-          </Card>
-          <Card title="Danger zone">
-            <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>Closing the agency releases all hosts back to the platform pool.</p>
-            <Button variant="danger" icon="trash" onClick={() => toast('Request sent to platform admin')}>Request account closure</Button>
-          </Card>
-        </div>
-      </div>
+      <AgencyScopeBar />
+      <Card><div className="card__body">
+        <EmptyState icon="idCard" title="Payout account isn't modelled yet"
+          text="Bank / payout details for agencies aren't in the backend schema. Payslip status lives under Salary; host transfers under the Master panel." />
+      </div></Card>
     </>
   )
 }

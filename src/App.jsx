@@ -3,6 +3,7 @@ import { ToastProvider } from './components/ui.jsx'
 import { SettingsProvider } from './config/settings.jsx'
 import { AuthProvider } from './lib/auth.jsx'
 import { RequireAuth, RequirePanel, RootRedirect } from './components/guards.jsx'
+import { AgencyScopeProvider } from './lib/agencyScope.jsx'
 import AppLayout from './components/layout/AppLayout.jsx'
 
 import MasterDashboard from './pages/master/Dashboard.jsx'
@@ -92,7 +93,7 @@ export default function App() {
 
           {/* ---------------- Agency / Manager ---------------- */}
           <Route path="/agency" element={
-            <RequireAuth><RequirePanel panel="agency"><AppLayout panel="agency" /></RequirePanel></RequireAuth>
+            <RequireAuth><RequirePanel panel="agency"><AgencyScopeProvider><AppLayout panel="agency" /></AgencyScopeProvider></RequirePanel></RequireAuth>
           }>
             <Route index element={<AgencyDashboard />} />
             <Route path="profile-agency" element={<MyAgency />} />
