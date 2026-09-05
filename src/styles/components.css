@@ -388,3 +388,12 @@ table.data td.col-actions { text-align: right; white-space: nowrap; }
 
 /* ---------- page-title panel chip wrapper ---------- */
 .page-head h1 .panel-chip { margin-left: 10px; font-size: 11px; }
+
+/* ---------- loading skeleton ---------- */
+.skeleton-row {
+  height: 18px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--bg) 25%, #eef0f3 37%, var(--bg) 63%);
+  background-size: 400% 100%;
+  animation: skeleton 1.3s ease infinite;
+}
+@keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
