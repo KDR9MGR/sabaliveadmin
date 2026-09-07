@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ListPage, StatGrid, AsyncView } from '../_templates.jsx'
+import { StatGrid, AsyncView } from '../_templates.jsx'
 import { PageHeader, Card, Button, Person, StatusBadge, Tag, KV, useToast, EmptyState } from '../../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
@@ -9,6 +9,9 @@ import { useAsyncData } from '../../lib/useAsync.js'
 import {
   listAgencies, getAgencyDetail, createAgency, updateAgency, deleteAgency, fmtDate,
 } from '../../lib/admin.js'
+import {
+  listCommissionPlans, createCommissionPlan, updateCommissionPlan, setCommissionPlanStatus, PLAN_STATUSES,
+} from '../../lib/commissionPlans.js'
 import { TransferRequests } from './users.jsx'
 
 const CRUMBS = ['Home', 'Agency Management']
@@ -214,25 +217,67 @@ export function AgencyRequests() {
 
 export function CommissionPlans() {
   const toast = useToast()
-  const plans = [
-    { id: 'CP1', name: 'Standard', rate: '15%', bonus: 'None', minHosts: 5, status: 'Active' },
-    { id: 'CP2', name: 'Growth', rate: '18%', bonus: '+2% over ₹1L', minHosts: 15, status: 'Active' },
-    { id: 'CP3', name: 'Premium', rate: '22%', bonus: '+3% over ₹3L', minHosts: 40, status: 'Active' },
+  const { data: rows, loading, error, reload } = useAsyncData(listCommissionPlans)
+  const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(null)
+
+  const fields = [
+    { name: 'name', label: 'Plan name', required: true },
+    { name: 'agency_commission_percent', label: 'Agency commission %', type: 'number' },
+    { name: 'host_payout_percent', label: 'Host payout %', type: 'number' },
+    { name: 'min_monthly_diamonds', label: 'Min monthly diamonds', type: 'number' },
+    { name: 'status', label: 'Status', type: 'select', options: PLAN_STATUSES.map((s) => ({ value: s, label: cap(s) })) },
+    { name: 'notes', label: 'Notes', type: 'textarea', full: true },
   ]
+
   return (
-    <ListPage
-      title="Commission Plans"
-      crumbs={[...CRUMBS, 'Commission Plans']}
-      actions={<Button variant="primary" icon="plus" onClick={() => toast('Commission plans are not modelled in the backend yet')}>New Plan</Button>}
-      rows={plans}
-      searchKeys={['name', 'id']}
-      columns={[
-        { key: 'name', header: 'Plan', sortable: true, render: (r) => <b>{r.name}</b> },
-        { key: 'rate', header: 'Base rate', align: 'right' },
-        { key: 'bonus', header: 'Bonus tier' },
-        numCol('minHosts', 'Min hosts'),
-        statusCol(),
-      ]}
-    />
+    <>
+      <PageHeader title="Commission Plans" crumbs={[...CRUMBS, 'Commission Plans']}
+        actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>New Plan</Button>} />
+      <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+        Reusable commission tiers kept on file. Each agency's effective rate still lives on the agency record (<code>commission_percent</code>).
+      </div></Card>
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <DataTable
+          rows={rows || []}
+          searchKeys={['name', 'notes', 'idShort']}
+          filters={[{ label: 'Status', options: ['Active', 'Archived'], get: (r) => r.status }]}
+          columns={[
+            { key: 'name', header: 'Plan', sortable: true, render: (r) => <b>{r.name}</b> },
+            { key: 'agencyPct', header: 'Agency %', align: 'right', sortable: true, render: (r) => `${r.agencyPct}%` },
+            { key: 'hostPct', header: 'Host payout %', align: 'right', render: (r) => `${r.hostPct}%` },
+            numCol('minDiamonds', 'Min diamonds / mo'),
+            { key: 'notes', header: 'Notes', render: (r) => <span className="muted" style={{ fontSize: 12 }}>{r.notes}</span> },
+            statusCol(),
+          ]}
+          rowActions={(r) => [
+            { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
+            r.status === 'Active'
+              ? { label: 'Archive', icon: 'lock', onClick: async () => { await setCommissionPlanStatus(r.id, 'archived'); toast(`${r.name} archived`); reload() } }
+              : { label: 'Restore', icon: 'check', onClick: async () => { await setCommissionPlanStatus(r.id, 'active'); toast(`${r.name} active`); reload() } },
+          ]}
+          emptyText="No commission plans yet."
+        />
+      </AsyncView>
+      {adding && (
+        <EntityForm title="New Commission Plan" onClose={() => setAdding(false)} savedMessage="Plan created"
+          onSubmit={async (v) => { await createCommissionPlan(v); reload() }}
+          initial={{ agency_commission_percent: 10, host_payout_percent: 60, min_monthly_diamonds: 0, status: 'active' }}
+          fields={fields} />
+      )}
+      {editing && (
+        <EntityForm title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} savedMessage="Plan updated"
+          onSubmit={async (v) => { await updateCommissionPlan(editing.id, v); reload() }}
+          initial={{
+            name: editing.name,
+            agency_commission_percent: editing.agencyPct,
+            host_payout_percent: editing.hostPct,
+            min_monthly_diamonds: editing.minDiamonds,
+            status: editing.status.toLowerCase(),
+            notes: editing.notes === '—' ? '' : editing.notes,
+          }}
+          fields={fields} />
+      )}
+    </>
   )
 }
