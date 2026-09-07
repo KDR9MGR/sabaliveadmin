@@ -73,11 +73,17 @@ export async function listHostApplications() {
   }))
 }
 
-export async function decideHostApplication(id, status) {
+export async function markHostApplicationUnderReview(id) {
   const reviewed_by = await myId()
   return unwrap(await supabase.from('host_applications')
-    .update({ status, reviewed_by, reviewed_at: new Date().toISOString() })
+    .update({ status: 'under_review', reviewed_by, reviewed_at: new Date().toISOString() })
     .eq('id', id).select().single())
+}
+
+// Approve/reject goes through the RPC: approving also creates the
+// host_profiles row and flips profiles.is_host.
+export async function decideHostApplication(id, approve) {
+  return unwrap(await supabase.rpc('decide_host_application', { p_application_id: id, p_approve: approve }))
 }
 
 /* ------------------------------------------------------------ assignments */

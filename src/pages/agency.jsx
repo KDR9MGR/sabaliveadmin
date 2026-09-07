@@ -15,7 +15,7 @@ import {
   listAgencyAssignments, listAgencySubAdmins, listAgencySalary, agencyEarnings,
 } from '../lib/agency.js'
 import { updateHost } from '../lib/admin.js'
-import { decideHostApplication, createAssignment, updateAssignment } from '../lib/workflows.js'
+import { decideHostApplication, markHostApplicationUnderReview, createAssignment, updateAssignment } from '../lib/workflows.js'
 import { createSalaryPayment, setSalaryStatus, updateSalaryPayment, SALARY_ROLES } from '../lib/salary.js'
 import { num } from '../data/index.js'
 
@@ -201,8 +201,12 @@ export function AgencyApplications() {
   return (
     <AgencyPage title="Host Applications" load={listAgencyApplications}>
       {(rows, reload) => {
-        const decide = async (r, status) => {
-          try { await decideHostApplication(r.id, status); toast(`${r.applicant} → ${status.replace('_', ' ')}`); reload() }
+        const decide = async (r, approve) => {
+          try { await decideHostApplication(r.id, approve); toast(`${r.applicant} → ${approve ? 'approved' : 'rejected'}`); reload() }
+          catch (e) { toast(e.message || 'Could not update') }
+        }
+        const review = async (r) => {
+          try { await markHostApplicationUnderReview(r.id); toast(`${r.applicant} → under review`); reload() }
           catch (e) { toast(e.message || 'Could not update') }
         }
         return (
@@ -222,11 +226,16 @@ export function AgencyApplications() {
               { key: 'submitted', header: 'Submitted', sortable: true },
               statusCol(),
             ]}
-            rowActions={(r) => [
-              { label: 'Mark under review', icon: 'eye', onClick: () => decide(r, 'under_review') },
-              { label: 'Approve', icon: 'check', onClick: () => decide(r, 'approved') },
-              { label: 'Reject', icon: 'x', onClick: () => decide(r, 'rejected') },
-            ]}
+            rowActions={(r) => {
+              const open = r.status === 'Pending' || r.status === 'Under Review'
+              return [
+                ...(r.status === 'Pending' ? [{ label: 'Mark under review', icon: 'eye', onClick: () => review(r) }] : []),
+                ...(open ? [
+                  { label: 'Approve', icon: 'check', onClick: () => decide(r, true) },
+                  { label: 'Reject', icon: 'x', onClick: () => decide(r, false) },
+                ] : [{ label: 'Decided', icon: 'eye', onClick: () => {} }]),
+              ]
+            }}
             emptyText="No applications routed to this agency."
           />
         )

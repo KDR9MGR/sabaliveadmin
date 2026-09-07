@@ -9,7 +9,7 @@ import Icon from '../../components/Icon.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { listHosts, getHostDetail, updateHost, fmtDate } from '../../lib/admin.js'
 import {
-  listHostApplications, decideHostApplication,
+  listHostApplications, decideHostApplication, markHostApplicationUnderReview,
   listAssignments, createAssignment, updateAssignment,
   listKycReviews, decideKyc,
   hostOptions, subAdminOptions,
@@ -292,8 +292,12 @@ export function HostApplications() {
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listHostApplications)
 
-  const decide = async (r, status) => {
-    try { await decideHostApplication(r.id, status); toast(`${r.applicant} → ${status.replace('_', ' ')}`); reload() }
+  const decide = async (r, approve) => {
+    try { await decideHostApplication(r.id, approve); toast(`${r.applicant} → ${approve ? 'approved' : 'rejected'}`); reload() }
+    catch (e) { toast(e.message || 'Could not update application') }
+  }
+  const review = async (r) => {
+    try { await markHostApplicationUnderReview(r.id); toast(`${r.applicant} → under review`); reload() }
     catch (e) { toast(e.message || 'Could not update application') }
   }
 
@@ -319,11 +323,16 @@ export function HostApplications() {
             { key: 'submitted', header: 'Submitted', sortable: true },
             statusCol(),
           ]}
-          rowActions={(r) => [
-            { label: 'Mark under review', icon: 'eye', onClick: () => decide(r, 'under_review') },
-            { label: 'Approve', icon: 'check', onClick: () => decide(r, 'approved') },
-            { label: 'Reject', icon: 'x', onClick: () => decide(r, 'rejected') },
-          ]}
+          rowActions={(r) => {
+            const open = r.status === 'Pending' || r.status === 'Under Review'
+            return [
+              ...(r.status === 'Pending' ? [{ label: 'Mark under review', icon: 'eye', onClick: () => review(r) }] : []),
+              ...(open ? [
+                { label: 'Approve', icon: 'check', onClick: () => decide(r, true) },
+                { label: 'Reject', icon: 'x', onClick: () => decide(r, false) },
+              ] : [{ label: 'Decided', icon: 'eye', onClick: () => {} }]),
+            ]
+          }}
           emptyText="No host applications yet."
         />
       </AsyncView>
