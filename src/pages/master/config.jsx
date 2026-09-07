@@ -1,7 +1,93 @@
 import { useState } from 'react'
 import { PageHeader, Card, Button, useToast } from '../../components/ui.jsx'
 import { useSettings, BRAND_PRESETS, DEFAULT_SETTINGS } from '../../config/settings.jsx'
+import { AsyncView } from '../_templates.jsx'
+import { useAsyncData } from '../../lib/useAsync.js'
+import { getAppConfig, updateAppConfig } from '../../lib/appConfig.js'
 import Icon from '../../components/Icon.jsx'
+
+/* ---- Platform section: real, persisted to public.app_config ---- */
+const PLATFORM_FIELDS = [
+  { key: 'coin_to_inr_rate', label: 'Coin conversion (₹ per coin)', step: '0.01' },
+  { key: 'diamond_to_inr_rate', label: 'Diamond → ₹ rate', step: '0.01' },
+  { key: 'min_recharge_inr', label: 'Min recharge (₹)', step: '1' },
+  { key: 'min_withdrawal_inr', label: 'Min withdrawal (₹)', step: '1' },
+  { key: 'min_withdrawal_diamonds', label: 'Min withdrawal (diamonds)', step: '1' },
+  { key: 'platform_fee_percent', label: 'Platform fee on recharge (%)', step: '0.1' },
+  { key: 'gst_percent', label: 'GST / tax (%)', step: '0.1' },
+]
+
+function PlatformSection() {
+  const toast = useToast()
+  const { data, loading, error, reload } = useAsyncData(getAppConfig)
+  const [form, setForm] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const v = form || data || {}
+  const set = (k, val) => setForm({ ...(form || data), [k]: val })
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      const patch = {}
+      for (const f of PLATFORM_FIELDS) patch[f.key] = v[f.key]
+      patch.maintenance_mode = !!v.maintenance_mode
+      patch.allow_registrations = !!v.allow_registrations
+      patch.brand_color = v.brand_color || '#7c3aed'
+      await updateAppConfig(patch)
+      toast('Platform settings saved')
+      setForm(null)
+      reload()
+    } catch (e) {
+      toast(e.message || 'Could not save')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <AsyncView loading={loading} error={error} reload={reload}>
+      <div className="form-grid">
+        {PLATFORM_FIELDS.map((f) => (
+          <div className="field" key={f.key}>
+            <label>{f.label}</label>
+            <input className="input" type="number" step={f.step}
+              value={v[f.key] ?? ''} onChange={(e) => set(f.key, e.target.value)} />
+          </div>
+        ))}
+        <div className="field">
+          <label>Brand colour (shared / consumer app)</label>
+          <div className="hstack" style={{ gap: 10 }}>
+            <input type="color" className="color-input" value={v.brand_color || '#7c3aed'} onChange={(e) => set('brand_color', e.target.value)} />
+            <input className="input" style={{ width: 130 }} value={v.brand_color || ''} onChange={(e) => set('brand_color', e.target.value)} />
+          </div>
+        </div>
+        <div className="full" style={{ marginTop: 4 }}>
+          <div className="toggle-row">
+            <div><div className="t-title">Maintenance mode</div><div className="t-desc">Consumer app shows a maintenance screen (admins exempt)</div></div>
+            <label className="toggle">
+              <input type="checkbox" checked={!!v.maintenance_mode} onChange={(e) => set('maintenance_mode', e.target.checked)} />
+              <span className="track" /><span className="thumb" />
+            </label>
+          </div>
+          <div className="toggle-row">
+            <div><div className="t-title">Allow new registrations</div><div className="t-desc">Users can create accounts from the app</div></div>
+            <label className="toggle">
+              <input type="checkbox" checked={!!v.allow_registrations} onChange={(e) => set('allow_registrations', e.target.checked)} />
+              <span className="track" /><span className="thumb" />
+            </label>
+          </div>
+        </div>
+        <div className="full hstack" style={{ justifyContent: 'flex-end', gap: 10 }}>
+          {form && <Button onClick={() => setForm(null)}>Discard</Button>}
+          <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy || !form} onClick={save}>
+            {busy ? 'Saving…' : 'Save platform settings'}
+          </Button>
+        </div>
+        {v.updated_at && <div className="full muted" style={{ fontSize: 11 }}>Last updated {new Date(v.updated_at).toLocaleString()}</div>}
+      </div>
+    </AsyncView>
+  )
+}
 
 /* ---- field primitives ---- */
 function Text({ label, hint, value, ...rest }) {
@@ -128,6 +214,7 @@ function Toggle({ title, desc, on }) {
 /* ---- section renderers ---- */
 const SECTIONS = {
   Branding: BrandingSection,
+  Platform: PlatformSection,
   General: () => (
     <div className="form-grid">
       <BrandNameField />
@@ -244,17 +331,18 @@ const KEYS = Object.keys(SECTIONS)
 export default function ApplicationConfig({ crumbRoot = 'Application Configuration' }) {
   const [sec, setSec] = useState('Branding')
   const toast = useToast()
-  const { reset } = useSettings()
   const Body = SECTIONS[sec]
   const isBranding = sec === 'Branding'
+  const isPlatform = sec === 'Platform'
+  const selfManaged = isBranding || isPlatform
   return (
     <>
       <PageHeader
         title="Application Configuration"
         crumbs={['Home', crumbRoot, sec + ' Settings']}
-        actions={<>
-          <Button icon="refresh" onClick={() => { if (isBranding) { reset(); toast('Branding reset to defaults') } else toast('Reverted to saved values') }}>Reset</Button>
-          <Button variant="primary" icon="check" onClick={() => toast(isBranding ? 'Branding saved' : `${sec} settings saved`)}>Save Changes</Button>
+        actions={selfManaged ? null : <>
+          <Button icon="refresh" onClick={() => toast('Reverted to saved values')}>Reset</Button>
+          <Button variant="primary" icon="check" onClick={() => toast(`${sec} settings saved`)}>Save Changes</Button>
         </>}
       />
       <div className="settings-layout">
@@ -267,7 +355,14 @@ export default function ApplicationConfig({ crumbRoot = 'Application Configurati
             ))}
           </div>
         </Card>
-        <Card title={isBranding ? 'Site / Branding' : `${sec} Settings`} sub={isBranding ? 'Rename the dashboard and set the live brand colour — applies to all panels' : 'Changes apply on save and take effect within 60 seconds'}>
+        <Card
+          title={isBranding ? 'Site / Branding' : `${sec} Settings`}
+          sub={isBranding
+            ? 'Rename the dashboard and set the live brand colour — applies to all panels'
+            : isPlatform
+              ? 'Persisted to the shared app_config record — the consumer app reads these too'
+              : 'Not wired to the backend yet — reference values only'}
+        >
           <Body />
         </Card>
       </div>
