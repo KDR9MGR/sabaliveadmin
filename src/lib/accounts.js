@@ -70,6 +70,24 @@ export async function revokeRole(user_id) {
   if (error) throw error
 }
 
+// Creates a brand-new login + staff_roles row via the invite-staff Edge
+// Function (service_role; only a super_admin may call it). Returns
+// { user_id, email, role, temp_password } — temp_password is set only when
+// the server generated one.
+export async function inviteStaff({ email, role, agency_id, full_name }) {
+  const { role: r, agency_id: aid, needsAgency } = normalize(role, agency_id)
+  if (needsAgency && !aid) throw new Error('Agency-scoped roles need an agency selected')
+  const { data, error } = await supabase.functions.invoke('invite-staff', {
+    body: { email: String(email || '').trim(), role: r, agency_id: aid, full_name: full_name || null },
+  })
+  if (error) {
+    let msg = error.message
+    try { msg = (await error.context?.json())?.error || msg } catch { /* keep msg */ }
+    throw new Error(msg)
+  }
+  return data
+}
+
 export async function superAdminCount() {
   const { count, error } = await supabase.from('staff_roles').select('*', { count: 'exact', head: true }).eq('role', 'super_admin')
   if (error) throw error

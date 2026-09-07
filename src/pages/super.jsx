@@ -11,7 +11,7 @@ import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
 import {
   listStaffAccounts, grantableProfiles, agencyOptions, grantRole, changeRole, revokeRole, superAdminCount,
-  PLATFORM_ROLES, AGENCY_ROLES,
+  inviteStaff, PLATFORM_ROLES, AGENCY_ROLES,
 } from '../lib/accounts.js'
 import { superDashboard, listAuditLogs, securityOverview, systemPulse } from '../lib/superAdmin.js'
 import { infrastructure, integrations, backups, num } from '../data/index.js'
@@ -103,6 +103,8 @@ function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro }) {
     agencies: await agencyOptions(),
   }))
   const [granting, setGranting] = useState(false)
+  const [inviting, setInviting] = useState(false)
+  const [invited, setInvited] = useState(null)
   const [changing, setChanging] = useState(null)
   const [revoking, setRevoking] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -115,6 +117,11 @@ function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro }) {
   }
 
   const doGrant = async (v) => { await grantRole(v); reload() }
+  const doInvite = async (v) => {
+    const res = await inviteStaff(v)
+    setInvited(res)
+    reload()
+  }
   const doChange = async (v) => { await changeRole(changing.id, v); reload() }
   const doRevoke = async () => {
     setBusy(true)
@@ -136,7 +143,10 @@ function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro }) {
       <PageHeader
         title={title}
         crumbs={[...CR, crumbLabel]}
-        actions={<Button variant="primary" icon="userPlus" onClick={() => setGranting(true)}>Grant Role</Button>}
+        actions={<>
+          <Button icon="mail" onClick={() => setInviting(true)}>Invite by email</Button>
+          <Button variant="primary" icon="userPlus" onClick={() => setGranting(true)}>Grant Role</Button>
+        </>}
       />
       {intro && <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{intro}</div></Card>}
       <AsyncView loading={loading} error={error} reload={reload}>
@@ -175,6 +185,37 @@ function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro }) {
             roleField,
             agencyField,
           ]}
+        />
+      )}
+      {inviting && (
+        <EntityForm
+          title="Invite staff by email"
+          onClose={() => setInviting(false)}
+          onSubmit={doInvite}
+          savedMessage="Invite sent"
+          fields={[
+            { name: 'email', label: 'Email', required: true, hint: 'A new login is created — the person does not need to sign up first' },
+            { name: 'full_name', label: 'Full name' },
+            roleField,
+            agencyField,
+          ]}
+        />
+      )}
+      {invited && (
+        <ConfirmDialog
+          title="Staff account created"
+          confirmLabel="Done"
+          message={
+            <span>
+              <b>{invited.email}</b> can now sign in as {invited.role}.
+              {invited.temp_password ? (
+                <><br /><br />Temporary password: <code>{invited.temp_password}</code><br />
+                  Share it over a secure channel — they should change it on first sign-in.</>
+              ) : <><br /><br />They sign in with the password you set.</>}
+            </span>
+          }
+          onConfirm={() => setInvited(null)}
+          onClose={() => setInvited(null)}
         />
       )}
       {changing && (
