@@ -7,18 +7,18 @@ import EntityForm from '../../components/EntityForm.jsx'
 import { AreaChart, BarChart, DonutChart } from '../../components/charts.jsx'
 import Icon from '../../components/Icon.jsx'
 import {
-  liveRequests, liveRooms, badges, frames, leaderboardFrames, reports, num,
+  badges, frames, leaderboardFrames, reports,
 } from '../../data/index.js'
-import { AGENCIES } from '../../data/util.js'
+import { AGENCIES, num } from '../../data/util.js'
 import { useAsyncData } from '../../lib/useAsync.js'
 import {
   listSalary, createSalaryPayment, updateSalaryPayment, setSalaryStatus,
   payeeOptions, agencyOptions, SALARY_ROLES, SALARY_STATUSES,
 } from '../../lib/salary.js'
+import { listLiveRequests, decideLiveRequest, listActiveStreams } from '../../lib/workflows.js'
 
 /* ------------------------------------------------------------------ Live Requests */
 export function LiveRequests() {
-  const toast = useToast()
   const [view, setView] = useState('Requests')
   return (
     <>
@@ -27,37 +27,75 @@ export function LiveRequests() {
         crumbs={['Home', 'Platform', 'Live Requests']}
         actions={<PillTabs tabs={['Requests', 'Active Rooms']} value={view} onChange={setView} />}
       />
-      {view === 'Requests' ? (
-        <DataTable
-          rows={liveRequests}
-          searchKeys={['host', 'agency', 'type', 'id']}
-          tabs={[
-            { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
-            { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
-            { label: 'Rejected', value: 'r', filter: (r) => r.status === 'Rejected' },
-            { label: 'All', value: 'all', filter: () => true },
-          ]}
-          filters={[
-            { label: 'Type', options: [...new Set(liveRequests.map((r) => r.type))], get: (r) => r.type },
-            { label: 'Priority', options: ['High', 'Medium', 'Low'], get: (r) => r.priority },
-          ]}
-          columns={[
-            { key: 'id', header: 'Request', render: (r) => <span className="mono muted">{r.id}</span> },
-            personCol('host', 'agency'),
-            { key: 'type', header: 'Type', render: (r) => <Tag>{r.type}</Tag> },
-            { key: 'priority', header: 'Priority', render: (r) => <Badge tone={r.priority === 'High' ? 'danger' : r.priority === 'Medium' ? 'warning' : 'muted'}>{r.priority}</Badge> },
-            { key: 'submitted', header: 'Submitted' },
-            statusCol(),
-          ]}
-          rowActions={(r) => [
-            { label: 'Approve', icon: 'check', onClick: () => toast(`${r.id} approved`) },
-            { label: 'Reject', icon: 'x', onClick: () => toast(`${r.id} rejected`) },
-            { label: 'View host', icon: 'eye', onClick: () => toast('Open host') },
-          ]}
-        />
+      {view === 'Requests' ? <RequestsTable /> : <ActiveRooms />}
+    </>
+  )
+}
+
+function RequestsTable() {
+  const toast = useToast()
+  const { data: rows, loading, error, reload } = useAsyncData(listLiveRequests)
+  const [busy, setBusy] = useState(null)
+
+  const decide = async (r, approve) => {
+    setBusy(r.id)
+    try {
+      await decideLiveRequest(r.id, approve)
+      toast(`${r.idShort} ${approve ? 'approved' : 'rejected'}`)
+      reload()
+    } catch (e) {
+      toast(e.message || 'Could not update request')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <AsyncView loading={loading} error={error} reload={reload}>
+      <DataTable
+        rows={rows || []}
+        searchKeys={['host', 'username', 'type', 'idShort']}
+        tabs={[
+          { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
+          { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
+          { label: 'Rejected', value: 'r', filter: (r) => r.status === 'Rejected' },
+          { label: 'All', value: 'all', filter: () => true },
+        ]}
+        filters={[
+          { label: 'Type', options: [...new Set((rows || []).map((r) => r.type))], get: (r) => r.type },
+          { label: 'Priority', options: ['High', 'Medium', 'Low'], get: (r) => r.priority },
+        ]}
+        columns={[
+          { key: 'idShort', header: 'Request', render: (r) => <span className="mono muted">{r.idShort}</span> },
+          { key: 'host', header: 'Host', render: (r) => <Person name={r.host} size="sm" meta={r.username ? `@${r.username}` : undefined} /> },
+          { key: 'type', header: 'Type', render: (r) => <Tag>{r.type}</Tag> },
+          { key: 'priority', header: 'Priority', render: (r) => <Badge tone={r.priority === 'High' ? 'danger' : r.priority === 'Medium' ? 'warning' : 'muted'}>{r.priority}</Badge> },
+          { key: 'notes', header: 'Notes', render: (r) => <span className="muted" style={{ fontSize: 12 }}>{r.notes}</span> },
+          { key: 'submitted', header: 'Submitted', sortable: true },
+          statusCol(),
+        ]}
+        rowActions={(r) => (r.status === 'Pending' ? [
+          { label: busy === r.id ? 'Working…' : 'Approve', icon: 'check', onClick: () => decide(r, true) },
+          { label: 'Reject', icon: 'x', onClick: () => decide(r, false) },
+        ] : [
+          { label: `Reviewed by ${r.reviewedBy}`, icon: 'eye', onClick: () => toast(`${r.idShort} — ${r.status} on ${r.reviewed}`) },
+        ])}
+        emptyText="No live requests."
+      />
+    </AsyncView>
+  )
+}
+
+function ActiveRooms() {
+  const toast = useToast()
+  const { data: rooms, loading, error, reload } = useAsyncData(listActiveStreams)
+  return (
+    <AsyncView loading={loading} error={error} reload={reload}>
+      {(rooms || []).length === 0 ? (
+        <Card><div className="card__body"><Icon name="radio" size={20} /> <span className="muted">No streams are live right now.</span></div></Card>
       ) : (
         <div className="live-grid">
-          {liveRooms.map((room) => (
+          {rooms.map((room) => (
             <div className="live-card" key={room.id}>
               <div className="live-card__thumb">
                 <Icon name="radio" size={28} />
@@ -66,20 +104,20 @@ export function LiveRequests() {
               </div>
               <div className="live-card__body">
                 <div className="hstack spread">
-                  <Person name={room.host} size="sm" meta={room.agency} />
-                  {room.status === 'Flagged' && <Badge tone="danger">Flagged</Badge>}
+                  <Person name={room.host} size="sm" meta={room.username ? `@${room.username}` : room.category} />
+                  {room.isPk && <Badge tone="warning">PK</Badge>}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, margin: '10px 0 4px' }}>{room.title}</div>
                 <div className="hstack spread muted" style={{ fontSize: 12 }}>
-                  <span>{room.duration} · 🪙 {num(room.coins)}</span>
-                  <button className="btn btn--sm btn--ghost" onClick={() => toast(`Joined ${room.id} as observer`)}>Watch</button>
+                  <span>{room.duration} · 🪙 {num(room.coins)} · ♥ {num(room.likes)}</span>
+                  <button className="btn btn--sm btn--ghost" onClick={() => toast(`${room.idShort} — ${room.host}`)}>Details</button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
-    </>
+    </AsyncView>
   )
 }
 

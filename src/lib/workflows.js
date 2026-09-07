@@ -138,3 +138,64 @@ export async function listWithdrawals() {
 export async function decideWithdrawal(id, approve) {
   return unwrap(await supabase.rpc('decide_withdrawal', { p_withdrawal_id: id, p_approve: approve }))
 }
+
+/* ------------------------------------------------------------ live requests */
+export async function listLiveRequests() {
+  const rows = unwrap(await supabase
+    .from('live_requests')
+    .select('id, type, priority, status, notes, created_at, reviewed_at, host:host_id(name, username), reviewer:reviewed_by(name)')
+    .order('created_at', { ascending: false })
+    .limit(500))
+  return rows.map((r) => ({
+    id: r.id,
+    idShort: shortId(r.id),
+    host: r.host?.name || '—',
+    username: r.host?.username,
+    type: titleCase(r.type),
+    priority: titleCase(r.priority),
+    notes: r.notes || '—',
+    status: titleCase(r.status),
+    reviewedBy: r.reviewer?.name || '—',
+    submitted: fmtDate(r.created_at),
+    reviewed: r.reviewed_at ? fmtDate(r.reviewed_at) : '—',
+  }))
+}
+
+export async function decideLiveRequest(id, approve) {
+  const reviewed_by = await myId()
+  return unwrap(await supabase.from('live_requests')
+    .update({
+      status: approve ? 'approved' : 'rejected',
+      reviewed_by,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('id', id).select().single())
+}
+
+/* ------------------------------------------------------------ active live streams (read-only) */
+export async function listActiveStreams() {
+  const rows = unwrap(await supabase
+    .from('live_streams')
+    .select('id, title, category, status, is_pk, viewer_count, like_count, gift_coin_total, started_at, host:host_id(name, username, avatar_url)')
+    .eq('status', 'live')
+    .order('viewer_count', { ascending: false })
+    .limit(200))
+  return rows.map((s) => {
+    const ms = s.started_at ? Date.now() - new Date(s.started_at).getTime() : 0
+    const mins = Math.max(0, Math.floor(ms / 60000))
+    return {
+      id: s.id,
+      idShort: shortId(s.id),
+      host: s.host?.name || '—',
+      username: s.host?.username,
+      avatarUrl: s.host?.avatar_url,
+      title: s.title || 'Untitled stream',
+      category: s.category || '—',
+      isPk: !!s.is_pk,
+      viewers: s.viewer_count || 0,
+      likes: s.like_count || 0,
+      coins: s.gift_coin_total || 0,
+      duration: mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`,
+    }
+  })
+}
