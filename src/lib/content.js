@@ -117,3 +117,17 @@ export async function markAnnouncementSent(id) {
     .update({ status: 'sent', sent_at: new Date().toISOString() })
     .eq('id', id).select().single())
 }
+
+// Fans an announcement out to a notifications row per targeted user via the
+// broadcast_notification RPC, then marks the announcement sent. Returns the
+// recipient count.
+export async function broadcastAnnouncement(row) {
+  const { data, error } = await supabase.rpc('broadcast_notification', {
+    p_kind: 'announcement',
+    p_body: row.body || '',
+    p_audience: String(row.audience || 'all').toLowerCase().replace(/ /g, '_'),
+  })
+  if (error) throw error
+  await markAnnouncementSent(row.id)
+  return data
+}

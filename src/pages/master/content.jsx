@@ -8,7 +8,7 @@ import { useAsyncData } from '../../lib/useAsync.js'
 import {
   listBanners, createBanner, updateBanner, setBannerStatus,
   listLegalPages, createLegalPage, updateLegalPage, setLegalStatus,
-  listAnnouncements, createAnnouncement, updateAnnouncement, markAnnouncementSent,
+  listAnnouncements, createAnnouncement, updateAnnouncement, markAnnouncementSent, broadcastAnnouncement,
   BANNER_PLACEMENTS, BANNER_STATUSES, LEGAL_STATUSES, ANNOUNCE_AUDIENCES, ANNOUNCE_CHANNELS,
 } from '../../lib/content.js'
 
@@ -165,6 +165,9 @@ export function Announcements() {
     <>
       <PageHeader title="Announcements" crumbs={[...CRUMBS, 'Announcements']}
         actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>New Announcement</Button>} />
+      <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+        “Broadcast to users” fans the message out to an in-app notification for every profile in the chosen audience, then marks it sent.
+      </div></Card>
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
@@ -184,8 +187,17 @@ export function Announcements() {
           ]}
           rowActions={(r) => [
             r.status !== 'Sent' ? { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) } : { label: 'View', icon: 'eye', onClick: () => setEditing(r) },
-            ...(r.status !== 'Sent' ? [{ label: 'Mark as sent', icon: 'upload', onClick: async () => { await markAnnouncementSent(r.id); toast(`${r.title} marked sent`); reload() } }] : []),
+            ...(r.status !== 'Sent' ? [{
+              label: 'Broadcast to users', icon: 'bell', onClick: async () => {
+                try {
+                  const n = await broadcastAnnouncement(r)
+                  toast(`Sent to ${n} ${n === 1 ? 'user' : 'users'}`)
+                  reload()
+                } catch (e) { toast(e.message || 'Broadcast failed') }
+              },
+            }] : []),
             ...(r.status === 'Draft' ? [{ label: 'Schedule', icon: 'calendar', onClick: async () => { await updateAnnouncement(r.id, { status: 'scheduled' }); toast('Scheduled'); reload() } }] : []),
+            ...(r.status !== 'Sent' ? [{ label: 'Mark as sent (no push)', icon: 'check', onClick: async () => { await markAnnouncementSent(r.id); toast(`${r.title} marked sent`); reload() } }] : []),
           ]}
           emptyText="No announcements yet."
         />
