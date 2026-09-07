@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ListPage, StatGrid, AsyncView } from '../_templates.jsx'
+import { AsyncView } from '../_templates.jsx'
 import { PageHeader, Card, Button, Person, StatusBadge, Tag, KV, useToast, EmptyState } from '../../components/ui.jsx'
 import { personCol, statusCol, roleCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
@@ -13,7 +13,6 @@ import {
 } from '../../lib/workflows.js'
 import EntityForm from '../../components/EntityForm.jsx'
 import { relativeTime } from '../../lib/format.js'
-import { users as mockUsers } from '../../data/index.js'
 import { HostsTable } from './hosts.jsx'
 
 const CRUMBS = ['Home', 'User Management']
@@ -117,30 +116,41 @@ export function SubAdminsList() {
   )
 }
 
-/* ------------------------------------------------------------------ User IDs (no schema backing — still mock) */
+/* ------------------------------------------------------------------ User IDs (real profiles; vanity IDs not modelled) */
 export function UserIds() {
   const toast = useToast()
-  const rows = mockUsers.map((u) => ({ ...u, custom: u.level > 40 ? 'VIP' + u.id.slice(3) : '—', changes: u.level % 3 }))
+  const nav = useNavigate()
+  const { data: rows, loading, error, reload } = useAsyncData(listUsers)
   return (
-    <ListPage
-      title="User ID Management"
-      crumbs={[...CRUMBS, 'User IDs']}
-      actions={<Button icon="helpCircle" onClick={() => toast('Vanity IDs are not modelled in the backend yet')}>Policy</Button>}
-      rows={rows}
-      searchKeys={['name', 'id', 'custom']}
-      columns={[
-        personCol('name', 'email'),
-        { key: 'id', header: 'System ID', render: (r) => <span className="mono">{r.id}</span> },
-        { key: 'custom', header: 'Custom / Vanity ID', render: (r) => r.custom === '—' ? <span className="muted">—</span> : <Tag role>{r.custom}</Tag> },
-        { key: 'changes', header: 'ID changes', align: 'right' },
-        { key: 'level', header: 'Level', align: 'right' },
-        statusCol(),
-      ]}
-      rowActions={(r) => [
-        { label: 'Assign vanity ID', icon: 'idCard', onClick: () => toast(`Assign ID to ${r.name}`) },
-        { label: 'Release ID', icon: 'x', onClick: () => toast('ID released') },
-      ]}
-    />
+    <>
+      <PageHeader
+        title="User ID Management"
+        crumbs={[...CRUMBS, 'User IDs']}
+        actions={<Button icon="helpCircle" onClick={() => toast('Custom / vanity IDs are not modelled in the backend yet')}>Policy</Button>}
+      />
+      <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+        System IDs are the <code>profiles.id</code> UUIDs. Custom / vanity IDs aren't in the schema yet — this view is a lookup for the real identifiers.
+      </div></Card>
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <DataTable
+          rows={rows || []}
+          searchKeys={['name', 'username', 'id', 'idShort']}
+          filters={[{ label: 'Status', options: ['Active', 'Inactive', 'Suspended'], get: (r) => r.status }]}
+          columns={[
+            personCol('name', 'username'),
+            { key: 'id', header: 'System ID', render: (r) => <span className="mono">{r.id}</span> },
+            { key: 'level', header: 'Level', align: 'right' },
+            numCol('followers', 'Followers'),
+            statusCol(),
+          ]}
+          rowActions={(r) => [
+            { label: 'Open profile', icon: 'user', onClick: () => nav(`/admin/users/${r.id}`) },
+            { label: 'Copy ID', icon: 'copy', onClick: () => { navigator.clipboard?.writeText(r.id); toast('System ID copied') } },
+          ]}
+          emptyText="No users yet."
+        />
+      </AsyncView>
+    </>
   )
 }
 
