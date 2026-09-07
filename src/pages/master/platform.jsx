@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { ListPage, StatGrid, AsyncView } from '../_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, PillTabs, useToast } from '../../components/ui.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, PillTabs, KV, useToast } from '../../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
 import { AreaChart, BarChart, DonutChart } from '../../components/charts.jsx'
 import Icon from '../../components/Icon.jsx'
-import { reports } from '../../data/index.js'
+import { loadReports } from '../../lib/reports.js'
 import { AGENCIES, num } from '../../data/util.js'
 import { useAsyncData } from '../../lib/useAsync.js'
 import {
@@ -450,50 +450,99 @@ function SalaryDrawer({ title, fieldsFor, onClose, onSubmit, savedMessage, initi
 
 /* ------------------------------------------------------------------ Reports & Analytics */
 export function Reports() {
-  const [range, setRange] = useState('Last 12 months')
+  const { data: reports, loading, error, reload } = useAsyncData(loadReports)
   return (
     <>
       <PageHeader
         title="Reports & Analytics"
         crumbs={['Home', 'Monetisation', 'Reports']}
-        actions={<>
-          <select className="select" style={{ width: 'auto', height: 38 }} value={range} onChange={(e) => setRange(e.target.value)}>
-            <option>Last 7 days</option><option>Last 30 days</option><option>Last 12 months</option><option>Year to date</option>
-          </select>
-          <Button icon="download">Export report</Button>
-        </>}
+        actions={<Button icon="refresh" onClick={reload}>Refresh</Button>}
       />
-      <div className="grid cols-3">
+      <AsyncView loading={loading} error={error} reload={reload}>
+        {reports && <ReportsBody reports={reports} />}
+      </AsyncView>
+    </>
+  )
+}
+
+function ReportsBody({ reports }) {
+  const hasChannels = reports.channelSplit.length > 0
+  return (
+    <>
+      <div className="grid cols-4">
         {reports.kpis.map((k) => (
           <div className="stat" key={k.k}>
             <div className="stat__label">{k.k}</div>
             <div className="stat__value">{k.v}</div>
-            <div className={`stat__delta ${k.dir}`}><Icon name={k.dir === 'up' ? 'arrowUp' : 'arrowDown'} size={13} />{k.d}% <span className="since">vs prev</span></div>
+            <div className={`stat__delta ${k.dir}`}><Icon name={k.dir === 'up' ? 'arrowUp' : 'arrowDown'} size={13} />{k.d}% <span className="since">vs prev 30d</span></div>
           </div>
         ))}
       </div>
       <div className="grid dash mt-16">
-        <Card title="Revenue by month" sub="Gift points converted to ₹ (lakhs)">
-          <BarChart series={reports.revenueByMonth} categories={reports.months} color="#7c3aed" height={280} label="₹ lakh" />
+        <Card title="Revenue by month" sub="Successful coin purchases (₹), last 12 months">
+          <BarChart series={reports.revenueByMonth} categories={reports.months} color="#7c3aed" height={280} label="₹" />
         </Card>
-        <Card title="Recharge channel split">
-          <DonutChart data={reports.channelSplit} centerLabel="Share %" height={200} />
-          <div className="legend mt-16">
-            {reports.channelSplit.map((s) => (
-              <div className="legend__row" key={s.label}>
-                <span className="sw" style={{ background: s.color }} />
-                <span className="lbl">{s.label}</span><span className="val">{s.value}%</span>
+        <Card title="Recharge channel split" sub="Share of ₹ by payment method">
+          {hasChannels ? (
+            <>
+              <DonutChart data={reports.channelSplit} centerLabel="Share %" height={200} />
+              <div className="legend mt-16">
+                {reports.channelSplit.map((s) => (
+                  <div className="legend__row" key={s.label}>
+                    <span className="sw" style={{ background: s.color }} />
+                    <span className="lbl">{s.label}</span><span className="val">{s.value}%</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : <div className="card__body"><span className="muted">No successful purchases yet.</span></div>}
         </Card>
       </div>
       <div className="grid cols-2 mt-16">
-        <Card title="New users vs. churn" sub="Weekly, last 30 days">
-          <AreaChart series={[420, 480, 510, 560, 540, 620, 660, 700]} color="#22a06b" height={220} label="Net new" />
+        <Card title="Coins gifted by month" sub="gift_transactions, last 12 months">
+          <BarChart series={reports.coinsGiftedByMonth} categories={reports.months} color="#ec4899" height={220} label="Coins" />
         </Card>
-        <Card title="Live hours" sub="Platform total, weekly">
-          <AreaChart series={[12400, 12900, 13600, 14200, 15100, 15800, 16400, 17250]} color="#ec4899" height={220} label="Hours" />
+        <Card title="New users" sub="Weekly, last 8 weeks">
+          <AreaChart series={reports.newUsersWeekly} categories={reports.weekLabels} color="#22a06b" height={220} label="New users" />
+        </Card>
+      </div>
+      <div className="grid cols-2 mt-16">
+        <Card title="Live hours" sub="Weekly total, last 8 weeks">
+          <AreaChart series={reports.liveHoursWeekly} categories={reports.weekLabels} color="#3b82f6" height={220} label="Hours" />
+        </Card>
+        <Card title="Top gifters" sub="By coins sent, last 12 months" flush>
+          <DataTable
+            rows={reports.gifterBoard}
+            columns={[
+              { key: 'rank', header: '#', render: (r) => <b>{r.rank}</b> },
+              { key: 'name', header: 'User', render: (r) => <Person name={r.name} size="sm" /> },
+              numCol('coins', 'Coins sent'),
+            ]}
+            emptyText="No gifts recorded yet."
+          />
+        </Card>
+      </div>
+      <div className="grid cols-2 mt-16">
+        <Card title="Top hosts" sub="By coins received, last 12 months" flush>
+          <DataTable
+            rows={reports.hostBoard}
+            columns={[
+              { key: 'rank', header: '#', render: (r) => <b>{r.rank}</b> },
+              { key: 'name', header: 'Host', render: (r) => <Person name={r.name} size="sm" /> },
+              numCol('coins', 'Coins received'),
+            ]}
+            emptyText="No gifts recorded yet."
+          />
+        </Card>
+        <Card title="12-month totals">
+          <div className="card__body">
+            <KV rows={[
+              ['Revenue', `₹${reports.totals.revenue12mo.toLocaleString('en-IN')}`],
+              ['Coins gifted', reports.totals.coinsGifted12mo.toLocaleString('en-US')],
+              ['New users', reports.totals.newUsers12mo.toLocaleString('en-US')],
+              ['Live streams', reports.totals.streams12mo.toLocaleString('en-US')],
+            ]} />
+          </div>
         </Card>
       </div>
     </>
