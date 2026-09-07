@@ -11,6 +11,7 @@ import { listHosts, getHostDetail, updateHost, fmtDate } from '../../lib/admin.j
 import {
   listHostApplications, decideHostApplication,
   listAssignments, createAssignment, updateAssignment,
+  listKycReviews, decideKyc,
   hostOptions, subAdminOptions,
 } from '../../lib/workflows.js'
 
@@ -324,6 +325,57 @@ export function HostApplications() {
             { label: 'Reject', icon: 'x', onClick: () => decide(r, 'rejected') },
           ]}
           emptyText="No host applications yet."
+        />
+      </AsyncView>
+    </>
+  )
+}
+
+/* ------------------------------------------------------------------ KYC Review */
+export function KycReview() {
+  const toast = useToast()
+  const { data: rows, loading, error, reload } = useAsyncData(listKycReviews)
+
+  const decide = async (r, approve) => {
+    try {
+      await decideKyc(r.id, approve)
+      toast(`${r.person} KYC ${approve ? 'verified' : 'rejected'}`)
+      reload()
+    } catch (e) {
+      toast(e.message || 'Could not update KYC')
+    }
+  }
+
+  return (
+    <>
+      <PageHeader title="KYC Review" crumbs={[...CRUMBS, 'KYC Review']} />
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <DataTable
+          rows={rows || []}
+          searchKeys={['person', 'username', 'docType', 'idShort']}
+          tabs={[
+            { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
+            { label: 'Verified', value: 'v', filter: (r) => r.status === 'Verified' },
+            { label: 'Rejected', value: 'x', filter: (r) => r.status === 'Rejected' },
+            { label: 'All', value: 'all', filter: () => true },
+          ]}
+          columns={[
+            personCol('person', 'username'),
+            { key: 'docType', header: 'Document', render: (r) => <Tag>{r.docType}</Tag> },
+            { key: 'docUrl', header: 'File', render: (r) => r.docUrl
+              ? <a href={r.docUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>View</a>
+              : <span className="muted">—</span> },
+            { key: 'submitted', header: 'Submitted', sortable: true },
+            { key: 'reviewedBy', header: 'Reviewed by' },
+            statusCol(),
+          ]}
+          rowActions={(r) => (r.status === 'Pending' ? [
+            { label: 'Approve', icon: 'check', onClick: () => decide(r, true) },
+            { label: 'Reject', icon: 'x', onClick: () => decide(r, false) },
+          ] : [
+            { label: `${r.status} on ${r.reviewed}`, icon: 'eye', onClick: () => {} },
+          ])}
+          emptyText="No KYC submissions yet."
         />
       </AsyncView>
     </>

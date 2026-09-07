@@ -48,6 +48,7 @@ export const NAV = {
         { label: 'Hosts', to: '/admin/hosts' },
         { label: 'Host Assignment', to: '/admin/hosts/assignment' },
         { label: 'Applications', to: '/admin/hosts/applications' },
+        { label: 'KYC Review', to: '/admin/hosts/kyc' },
       ]},
     ]},
     { section: 'Monetisation', items: [

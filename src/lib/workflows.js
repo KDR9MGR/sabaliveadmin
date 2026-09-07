@@ -172,6 +172,31 @@ export async function decideLiveRequest(id, approve) {
     .eq('id', id).select().single())
 }
 
+/* ------------------------------------------------------------ KYC verifications */
+export async function listKycReviews() {
+  const rows = unwrap(await supabase
+    .from('kyc_verifications')
+    .select('id, document_type, document_url, status, created_at, reviewed_at, subject:profile_id(name, username), reviewer:reviewed_by(name)')
+    .order('created_at', { ascending: false })
+    .limit(500))
+  return rows.map((r) => ({
+    id: r.id,
+    idShort: shortId(r.id),
+    person: r.subject?.name || '—',
+    username: r.subject?.username,
+    docType: r.document_type ? titleCase(r.document_type) : '—',
+    docUrl: r.document_url || '',
+    status: titleCase(r.status),
+    reviewedBy: r.reviewer?.name || '—',
+    submitted: fmtDate(r.created_at),
+    reviewed: r.reviewed_at ? fmtDate(r.reviewed_at) : '—',
+  }))
+}
+
+export async function decideKyc(id, approve) {
+  return unwrap(await supabase.rpc('decide_kyc', { p_verification_id: id, p_approve: approve }))
+}
+
 /* ------------------------------------------------------------ active live streams (read-only) */
 export async function listActiveStreams() {
   const rows = unwrap(await supabase
