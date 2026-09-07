@@ -6,9 +6,7 @@ import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
 import { AreaChart, BarChart, DonutChart } from '../../components/charts.jsx'
 import Icon from '../../components/Icon.jsx'
-import {
-  badges, frames, leaderboardFrames, reports,
-} from '../../data/index.js'
+import { reports } from '../../data/index.js'
 import { AGENCIES, num } from '../../data/util.js'
 import { useAsyncData } from '../../lib/useAsync.js'
 import {
@@ -16,6 +14,15 @@ import {
   payeeOptions, agencyOptions, SALARY_ROLES, SALARY_STATUSES,
 } from '../../lib/salary.js'
 import { listLiveRequests, decideLiveRequest, listActiveStreams } from '../../lib/workflows.js'
+import {
+  listBadges, createBadge, updateBadge, setBadgeStatus, grantBadge,
+  listFrames, createFrame, updateFrame, setFrameStatus,
+  listLeaderboardFrames, createLeaderboardFrame, updateLeaderboardFrame, setLeaderboardFrameStatus,
+  profileOptions,
+  BADGE_STATUSES, FRAME_STATUSES, FRAME_UNLOCK_TYPES, LBF_SCOPES, LBF_PERIODS, LBF_STATUSES,
+} from '../../lib/gamification.js'
+
+const gOpt = (v) => ({ value: v, label: v.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') })
 
 /* ------------------------------------------------------------------ Live Requests */
 export function LiveRequests() {
@@ -124,7 +131,20 @@ function ActiveRooms() {
 /* ------------------------------------------------------------------ Badge Management */
 export function BadgeManagement() {
   const toast = useToast()
+  const { data: rows, loading, error, reload } = useAsyncData(listBadges)
+  const { data: people } = useAsyncData(profileOptions)
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [granting, setGranting] = useState(null)
+
+  const fields = [
+    { name: 'name', label: 'Badge name', required: true },
+    { name: 'emoji', label: 'Icon / emoji', placeholder: '🏅' },
+    { name: 'criteria', label: 'Unlock criteria', full: true },
+    { name: 'sort_order', label: 'Sort order', type: 'number' },
+    { name: 'status', label: 'Status', type: 'select', options: BADGE_STATUSES.map(gOpt) },
+  ]
+
   return (
     <>
       <PageHeader
@@ -132,44 +152,56 @@ export function BadgeManagement() {
         crumbs={['Home', 'Platform', 'Badges']}
         actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Add Badge</Button>}
       />
-      <div className="gallery" style={{ marginBottom: 20 }}>
-        {badges.map((b) => (
-          <div className="gallery__item" key={b.id}>
-            <div className="gallery__preview">{b.emoji}</div>
-            <div className="gallery__meta">
-              <div>
-                <div className="n">{b.name}</div>
-                <div className="muted" style={{ fontSize: 11 }}>{num(b.holders)} holders</div>
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <div className="gallery" style={{ marginBottom: 20 }}>
+          {(rows || []).map((b) => (
+            <div className="gallery__item" key={b.id}>
+              <div className="gallery__preview">{b.emoji}</div>
+              <div className="gallery__meta">
+                <div>
+                  <div className="n">{b.name}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{num(b.holders)} holders</div>
+                </div>
+                <StatusBadge value={b.status} />
               </div>
-              <StatusBadge value={b.status} />
             </div>
-          </div>
-        ))}
-      </div>
-      <DataTable
-        rows={badges}
-        searchKeys={['name', 'criteria', 'id']}
-        columns={[
-          { key: 'name', header: 'Badge', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 20 }}>{r.emoji}</span><b>{r.name}</b></span> },
-          { key: 'criteria', header: 'Unlock criteria' },
-          numCol('holders', 'Holders'),
-          statusCol(),
-        ]}
-        rowActions={(r) => [
-          { label: 'Edit', icon: 'edit', onClick: () => toast(`Edit ${r.name}`) },
-          { label: 'Grant manually', icon: 'userPlus', onClick: () => toast('Grant flow') },
-          { label: r.status === 'Active' ? 'Retire' : 'Activate', icon: 'lock', onClick: () => toast('Toggled') },
-        ]}
-      />
+          ))}
+        </div>
+        <DataTable
+          rows={rows || []}
+          searchKeys={['name', 'criteria', 'idShort']}
+          filters={[{ label: 'Status', options: ['Active', 'Inactive'], get: (r) => r.status }]}
+          columns={[
+            { key: 'name', header: 'Badge', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 20 }}>{r.emoji}</span><b>{r.name}</b></span> },
+            { key: 'criteria', header: 'Unlock criteria' },
+            numCol('holders', 'Holders'),
+            statusCol(),
+          ]}
+          rowActions={(r) => [
+            { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
+            { label: 'Grant to user', icon: 'userPlus', onClick: () => setGranting(r) },
+            r.status === 'Active'
+              ? { label: 'Retire', icon: 'lock', onClick: async () => { await setBadgeStatus(r.id, 'inactive'); toast(`${r.name} retired`); reload() } }
+              : { label: 'Activate', icon: 'check', onClick: async () => { await setBadgeStatus(r.id, 'active'); toast(`${r.name} active`); reload() } },
+          ]}
+          emptyText="No badges yet."
+        />
+      </AsyncView>
       {adding && (
         <EntityForm title="Add Badge" onClose={() => setAdding(false)} savedMessage="Badge created"
-          fields={[
-            { name: 'name', label: 'Badge name', required: true },
-            { name: 'emoji', label: 'Icon / emoji', placeholder: '🏅' },
-            { name: 'criteria', label: 'Unlock criteria', full: true, required: true },
-            { name: 'auto', label: 'Auto-grant when criteria met', type: 'toggle', full: true },
-          ]}
-        />
+          onSubmit={async (v) => { await createBadge(v); reload() }}
+          initial={{ status: 'active', sort_order: 0 }} fields={fields} />
+      )}
+      {editing && (
+        <EntityForm title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} savedMessage="Badge updated"
+          onSubmit={async (v) => { await updateBadge(editing.id, v); reload() }}
+          initial={{ name: editing.name, emoji: editing.emoji, criteria: editing.criteria === '—' ? '' : editing.criteria, sort_order: editing.sortOrder, status: editing.status.toLowerCase() }}
+          fields={fields} />
+      )}
+      {granting && (
+        <EntityForm title={`Grant "${granting.name}"`} onClose={() => setGranting(null)} savedMessage="Badge granted"
+          onSubmit={async (v) => { await grantBadge(v.profile_id, granting.id); toast(`${granting.name} granted`); reload() }}
+          fields={[{ name: 'profile_id', label: 'Recipient', type: 'select', options: people || [], required: true }]} />
       )}
     </>
   )
@@ -178,42 +210,70 @@ export function BadgeManagement() {
 /* ------------------------------------------------------------------ Leaderboard Frame */
 export function LeaderboardFrame() {
   const toast = useToast()
+  const { data: rows, loading, error, reload } = useAsyncData(listLeaderboardFrames)
+  const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(null)
+
+  const fields = [
+    { name: 'name', label: 'Frame name', required: true },
+    { name: 'emoji', label: 'Preview emoji', placeholder: '🏆' },
+    { name: 'scope', label: 'Scope', type: 'select', options: LBF_SCOPES.map(gOpt), required: true },
+    { name: 'period', label: 'Period', type: 'select', options: LBF_PERIODS.map(gOpt), required: true },
+    { name: 'status', label: 'Status', type: 'select', options: LBF_STATUSES.map(gOpt) },
+  ]
+
   return (
     <>
       <PageHeader
         title="Leaderboard Frame"
         crumbs={['Home', 'Platform', 'Leaderboard Frame']}
-        actions={<Button variant="primary" icon="plus" onClick={() => toast('New leaderboard frame')}>Add Frame</Button>}
+        actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Add Frame</Button>}
       />
-      <div className="gallery" style={{ marginBottom: 20 }}>
-        {leaderboardFrames.map((f) => (
-          <div className="gallery__item" key={f.id}>
-            <div className="gallery__preview">{f.emoji}</div>
-            <div className="gallery__meta">
-              <div><div className="n">{f.name}</div><div className="muted" style={{ fontSize: 11 }}>{f.scope} · {f.period}</div></div>
-              <StatusBadge value={f.status} />
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <div className="gallery" style={{ marginBottom: 20 }}>
+          {(rows || []).map((f) => (
+            <div className="gallery__item" key={f.id}>
+              <div className="gallery__preview">{f.emoji}</div>
+              <div className="gallery__meta">
+                <div><div className="n">{f.name}</div><div className="muted" style={{ fontSize: 11 }}>{f.scope} · {f.period}</div></div>
+                <StatusBadge value={f.status} />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-      <DataTable
-        rows={leaderboardFrames}
-        searchKeys={['name', 'scope', 'id']}
-        filters={[
-          { label: 'Scope', options: ['Global', 'Agency', 'Regional'], get: (r) => r.scope },
-          { label: 'Period', options: ['Weekly', 'Monthly', 'Season'], get: (r) => r.period },
-        ]}
-        columns={[
-          { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>{r.emoji}</span><b>{r.name}</b></span> },
-          { key: 'scope', header: 'Scope', render: (r) => <Tag>{r.scope}</Tag> },
-          { key: 'period', header: 'Period' },
-          statusCol(),
-        ]}
-        rowActions={(r) => [
-          { label: 'Edit', icon: 'edit', onClick: () => toast(`Edit ${r.name}`) },
-          { label: 'Assign to leaderboard', icon: 'trophy', onClick: () => toast('Assigned') },
-        ]}
-      />
+          ))}
+        </div>
+        <DataTable
+          rows={rows || []}
+          searchKeys={['name', 'scope', 'idShort']}
+          filters={[
+            { label: 'Scope', options: ['Global', 'Agency', 'Regional'], get: (r) => r.scope },
+            { label: 'Period', options: ['Weekly', 'Monthly', 'Season'], get: (r) => r.period },
+          ]}
+          columns={[
+            { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>{r.emoji}</span><b>{r.name}</b></span> },
+            { key: 'scope', header: 'Scope', render: (r) => <Tag>{r.scope}</Tag> },
+            { key: 'period', header: 'Period' },
+            statusCol(),
+          ]}
+          rowActions={(r) => [
+            { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
+            r.status === 'Active'
+              ? { label: 'Move to scheduled', icon: 'calendar', onClick: async () => { await setLeaderboardFrameStatus(r.id, 'scheduled'); toast(`${r.name} scheduled`); reload() } }
+              : { label: 'Activate', icon: 'check', onClick: async () => { await setLeaderboardFrameStatus(r.id, 'active'); toast(`${r.name} active`); reload() } },
+          ]}
+          emptyText="No leaderboard frames yet."
+        />
+      </AsyncView>
+      {adding && (
+        <EntityForm title="Add Leaderboard Frame" onClose={() => setAdding(false)} savedMessage="Frame created"
+          onSubmit={async (v) => { await createLeaderboardFrame(v); reload() }}
+          initial={{ scope: 'global', period: 'weekly', status: 'active' }} fields={fields} />
+      )}
+      {editing && (
+        <EntityForm title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} savedMessage="Frame updated"
+          onSubmit={async (v) => { await updateLeaderboardFrame(editing.id, v); reload() }}
+          initial={{ name: editing.name, emoji: editing.emoji, scope: editing.scope.toLowerCase(), period: editing.period.toLowerCase(), status: editing.status.toLowerCase() }}
+          fields={fields} />
+      )}
     </>
   )
 }
@@ -221,7 +281,20 @@ export function LeaderboardFrame() {
 /* ------------------------------------------------------------------ Profile Frame */
 export function ProfileFrame() {
   const toast = useToast()
+  const { data: rows, loading, error, reload } = useAsyncData(listFrames)
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(null)
+
+  const fields = [
+    { name: 'name', label: 'Frame name', required: true },
+    { name: 'emoji', label: 'Preview emoji', placeholder: '💫' },
+    { name: 'unlock_type', label: 'Unlock type', type: 'select', options: FRAME_UNLOCK_TYPES.map(gOpt), required: true },
+    { name: 'unlock_value', label: 'Unlock value (level / coins)', type: 'number' },
+    { name: 'price_coins', label: 'Price (coins)', type: 'number' },
+    { name: 'sort_order', label: 'Sort order', type: 'number' },
+    { name: 'status', label: 'Status', type: 'select', options: FRAME_STATUSES.map(gOpt) },
+  ]
+
   return (
     <>
       <PageHeader
@@ -229,43 +302,48 @@ export function ProfileFrame() {
         crumbs={['Home', 'Platform', 'Profile Frame']}
         actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Add Frame</Button>}
       />
-      <div className="gallery" style={{ marginBottom: 20 }}>
-        {frames.map((f) => (
-          <div className="gallery__item" key={f.id}>
-            <div className="gallery__preview">{f.emoji}</div>
-            <div className="gallery__meta">
-              <div><div className="n">{f.name}</div><div className="muted" style={{ fontSize: 11 }}>{f.unlock}</div></div>
-              <StatusBadge value={f.status} />
+      <AsyncView loading={loading} error={error} reload={reload}>
+        <div className="gallery" style={{ marginBottom: 20 }}>
+          {(rows || []).map((f) => (
+            <div className="gallery__item" key={f.id}>
+              <div className="gallery__preview">{f.emoji}</div>
+              <div className="gallery__meta">
+                <div><div className="n">{f.name}</div><div className="muted" style={{ fontSize: 11 }}>{f.unlock} · {num(f.owners)} owners</div></div>
+                <StatusBadge value={f.status} />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-      <DataTable
-        rows={frames}
-        searchKeys={['name', 'unlock', 'id']}
-        filters={[{ label: 'Unlock', options: [...new Set(frames.map((f) => f.unlock))], get: (r) => r.unlock }]}
-        columns={[
-          { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>{r.emoji}</span><b>{r.name}</b></span> },
-          { key: 'unlock', header: 'Unlock', render: (r) => <Tag>{r.unlock}</Tag> },
-          numCol('price', 'Price (coins)'),
-          statusCol(),
-        ]}
-        rowActions={(r) => [
-          { label: 'Edit', icon: 'edit', onClick: () => toast(`Edit ${r.name}`) },
-          { label: 'Replace asset', icon: 'upload', onClick: () => toast('Upload') },
-          { label: r.status === 'Active' ? 'Move to draft' : 'Publish', icon: 'externalLink', onClick: () => toast('Toggled') },
-        ]}
-      />
-      {adding && (
-        <EntityForm title="Add Profile Frame" onClose={() => setAdding(false)} savedMessage="Frame saved"
-          fields={[
-            { name: 'name', label: 'Frame name', required: true },
-            { name: 'emoji', label: 'Preview emoji', placeholder: '💫' },
-            { name: 'unlock', label: 'Unlock condition', type: 'select', options: ['Free', 'Level 10', 'Level 25', 'VIP', '500 coins', 'Event'] },
-            { name: 'price', label: 'Price (coins)', type: 'number' },
-            { name: 'animated', label: 'Animated frame', type: 'toggle', full: true },
+          ))}
+        </div>
+        <DataTable
+          rows={rows || []}
+          searchKeys={['name', 'unlock', 'idShort']}
+          filters={[{ label: 'Unlock', options: [...new Set((rows || []).map((f) => f.unlock))], get: (r) => r.unlock }]}
+          columns={[
+            { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>{r.emoji}</span><b>{r.name}</b></span> },
+            { key: 'unlock', header: 'Unlock', render: (r) => <Tag>{r.unlock}</Tag> },
+            numCol('price', 'Price (coins)'),
+            numCol('owners', 'Owners'),
+            statusCol(),
           ]}
+          rowActions={(r) => [
+            { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
+            r.status === 'Active'
+              ? { label: 'Move to draft', icon: 'lock', onClick: async () => { await setFrameStatus(r.id, 'draft'); toast(`${r.name} moved to draft`); reload() } }
+              : { label: 'Publish', icon: 'externalLink', onClick: async () => { await setFrameStatus(r.id, 'active'); toast(`${r.name} published`); reload() } },
+          ]}
+          emptyText="No profile frames yet."
         />
+      </AsyncView>
+      {adding && (
+        <EntityForm title="Add Profile Frame" onClose={() => setAdding(false)} savedMessage="Frame created"
+          onSubmit={async (v) => { await createFrame(v); reload() }}
+          initial={{ unlock_type: 'free', unlock_value: 0, price_coins: 0, sort_order: 0, status: 'active' }} fields={fields} />
+      )}
+      {editing && (
+        <EntityForm title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} savedMessage="Frame updated"
+          onSubmit={async (v) => { await updateFrame(editing.id, v); reload() }}
+          initial={{ name: editing.name, emoji: editing.emoji, unlock_type: editing.unlockType.toLowerCase(), unlock_value: editing.unlockValue, price_coins: editing.price, sort_order: editing.sortOrder, status: editing.status.toLowerCase() }}
+          fields={fields} />
       )}
     </>
   )
