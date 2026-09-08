@@ -24,7 +24,7 @@ import {
 
 import {
   SuperDashboard, SuperAdmins, MasterAccounts, AccessControl, AuditLogs, SuperSecurity,
-  SystemOverview, Infrastructure, Integrations, Backups,
+  SystemOverview, Infrastructure, Integrations, Backups, CoinTreasury,
 } from './pages/super.jsx'
 
 import { Profile, Login, NotFound } from './pages/shared.jsx'
@@ -118,6 +118,7 @@ export default function App() {
             <Route path="admins" element={<SuperAdmins />} />
             <Route path="masters" element={<MasterAccounts />} />
             <Route path="access" element={<AccessControl />} />
+            <Route path="treasury" element={<CoinTreasury />} />
             <Route path="audit" element={<AuditLogs />} />
             <Route path="security" element={<SuperSecurity />} />
             <Route path="system" element={<SystemOverview />} />

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { StatGrid, AsyncView } from './_templates.jsx'
 import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, EmptyState, useToast, ConfirmDialog } from '../components/ui.jsx'
-import { personCol, statusCol } from '../components/cells.jsx'
+import { personCol, statusCol, numCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
 import Icon from '../components/Icon.jsx'
@@ -14,6 +14,11 @@ import {
   inviteStaff, PLATFORM_ROLES, AGENCY_ROLES,
 } from '../lib/accounts.js'
 import { superDashboard, listAuditLogs, securityOverview, systemPulse } from '../lib/superAdmin.js'
+import {
+  getTreasury, listTreasuryEvents, mintCoins, distributeCoins,
+  listCoinMinters, addCoinMinter, removeCoinMinter, minterCandidates, profilePickList,
+  DISTRIBUTION_ROLES,
+} from '../lib/treasury.js'
 import { infrastructure, integrations, backups, num } from '../data/index.js'
 
 const CR = ['Home', 'Super Admin']
@@ -326,6 +331,232 @@ export function AccessControl() {
         </div>
       </Card>
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ Coin Treasury (Super Admin) */
+const ROLE_LABEL_D = { host: 'Hosts', agency: 'Agency managers', sub_admin: 'Sub admins', staff: 'All staff' }
+
+export function CoinTreasury() {
+  const toast = useToast()
+  const { staffRole } = useAuth()
+  const isSuper = staffRole?.role === 'super_admin'
+  const { data: t, loading, error, reload } = useAsyncData(getTreasury)
+  const { data: events, reload: reloadEvents } = useAsyncData(listTreasuryEvents)
+  const { data: people } = useAsyncData(profilePickList)
+
+  const [mint, setMint] = useState({ coins: '', note: '' })
+  const [mintBusy, setMintBusy] = useState(false)
+  const [dist, setDist] = useState({ perRecipient: '', audience: 'all', role: 'host', recipientIds: [], note: '' })
+  const [distBusy, setDistBusy] = useState(false)
+
+  const refreshAll = () => { reload(); reloadEvents() }
+
+  const doMint = async () => {
+    if (!Number(mint.coins)) { toast('Enter an amount'); return }
+    setMintBusy(true)
+    try {
+      const row = await mintCoins(mint)
+      toast(`Minted ${num(Number(mint.coins))} coins — balance ${num(Number(row.balance))}`)
+      setMint({ coins: '', note: '' })
+      refreshAll()
+    } catch (e) { toast(e.message || 'Could not generate coins') }
+    finally { setMintBusy(false) }
+  }
+
+  const targetCount = dist.audience === 'users' ? dist.recipientIds.length : null
+  const doDistribute = async () => {
+    if (!Number(dist.perRecipient)) { toast('Enter an amount per recipient'); return }
+    if (dist.audience === 'users' && !dist.recipientIds.length) { toast('Pick at least one recipient'); return }
+    setDistBusy(true)
+    try {
+      const res = await distributeCoins(dist)
+      toast(`Sent ${num(Number(res.total))} coins to ${res.recipients} — balance ${num(Number(res.balance))}`)
+      setDist({ perRecipient: '', audience: 'all', role: 'host', recipientIds: [], note: '' })
+      refreshAll()
+    } catch (e) { toast(e.message || 'Could not distribute coins') }
+    finally { setDistBusy(false) }
+  }
+
+  return (
+    <>
+      <PageHeader title={<>Coin Treasury <PanelChip panel="super" /></>} crumbs={[...CR, 'Coin Treasury']} />
+      <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+        Generating coins mints them into the platform treasury (the app's own supply — not a purchase). Distributing draws the
+        balance down and credits recipient wallets through the same <code>coin_grants</code> path the Master panel uses.
+      </div></Card>
+      <AsyncView loading={loading} error={error} reload={reload}>
+        {t && (
+          <>
+            <div className="grid cols-4">
+              {[
+                { k: 'Treasury balance', v: t.balance, tile: 'tile-purple', icon: 'wallet' },
+                { k: 'Minted (all time)', v: t.minted, tile: 'tile-blue', icon: 'plus' },
+                { k: 'Distributed', v: t.distributed, tile: 'tile-green', icon: 'arrowUpRight' },
+                { k: 'In circulation', v: t.circulation, tile: 'tile-orange', icon: 'coins' },
+              ].map((s) => (
+                <div className="stat" key={s.k}>
+                  <div className="stat__top">
+                    <div><div className="stat__label">{s.k}</div><div className="stat__value">{num(s.v)}</div></div>
+                    <div className={`stat__tile ${s.tile}`}><Icon name={s.icon} size={20} /></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid cols-2 mt-16">
+              <Card title="Generate coins" sub="Mints into the treasury balance">
+                <div className="form-grid">
+                  <div className="field">
+                    <label>Amount <span className="req">*</span></label>
+                    <input className="input" type="number" min="1" placeholder="e.g. 1000000"
+                      value={mint.coins} onChange={(e) => setMint((m) => ({ ...m, coins: e.target.value }))} />
+                  </div>
+                  <div className="field full">
+                    <label>Note</label>
+                    <input className="input" placeholder="Reason / batch reference"
+                      value={mint.note} onChange={(e) => setMint((m) => ({ ...m, note: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="hstack mt-16" style={{ justifyContent: 'flex-end' }}>
+                  <Button variant="primary" icon={mintBusy ? 'refresh' : 'plus'} disabled={mintBusy} onClick={doMint}>
+                    {mintBusy ? 'Generating…' : 'Generate'}
+                  </Button>
+                </div>
+              </Card>
+
+              <Card title="Distribute" sub="Credits wallets from the treasury balance">
+                <div className="form-grid">
+                  <div className="field">
+                    <label>Coins per recipient <span className="req">*</span></label>
+                    <input className="input" type="number" min="1" placeholder="e.g. 500"
+                      value={dist.perRecipient} onChange={(e) => setDist((d) => ({ ...d, perRecipient: e.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label>Audience</label>
+                    <select className="select" value={dist.audience} onChange={(e) => setDist((d) => ({ ...d, audience: e.target.value }))}>
+                      <option value="all">All users</option>
+                      <option value="role">By role</option>
+                      <option value="users">Specific users</option>
+                    </select>
+                  </div>
+                  {dist.audience === 'role' && (
+                    <div className="field">
+                      <label>Role</label>
+                      <select className="select" value={dist.role} onChange={(e) => setDist((d) => ({ ...d, role: e.target.value }))}>
+                        {DISTRIBUTION_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL_D[r]}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {dist.audience === 'users' && (
+                    <div className="field full">
+                      <label>Recipients ({dist.recipientIds.length} selected)</label>
+                      <select className="select" multiple size={5} value={dist.recipientIds}
+                        onChange={(e) => setDist((d) => ({ ...d, recipientIds: [...e.target.selectedOptions].map((o) => o.value) }))}>
+                        {(people || []).map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div className="field full">
+                    <label>Note</label>
+                    <input className="input" placeholder="Shown in each recipient's wallet ledger"
+                      value={dist.note} onChange={(e) => setDist((d) => ({ ...d, note: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="hstack spread mt-16">
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {Number(dist.perRecipient) > 0 && targetCount != null
+                      ? `${num(targetCount)} × ${num(Number(dist.perRecipient))} = ${num(targetCount * Number(dist.perRecipient))} coins`
+                      : Number(dist.perRecipient) > 0
+                        ? `${num(Number(dist.perRecipient))} coins each`
+                        : ''}
+                  </span>
+                  <Button variant="primary" icon={distBusy ? 'refresh' : 'arrowUpRight'} disabled={distBusy} onClick={doDistribute}>
+                    {distBusy ? 'Sending…' : 'Distribute'}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+
+            <Card flush title="Recent treasury activity" className="mt-16">
+              <DataTable
+                rows={events || []}
+                searchKeys={['type', 'audience', 'note', 'by', 'idShort']}
+                columns={[
+                  { key: 'type', header: 'Event', render: (r) => <Tag>{r.type}</Tag> },
+                  numCol('coins', 'Coins'),
+                  { key: 'perRecipient', header: 'Per recipient', align: 'right', render: (r) => r.perRecipient ? num(r.perRecipient) : '—' },
+                  { key: 'audience', header: 'Audience' },
+                  numCol('recipients', 'Recipients'),
+                  { key: 'note', header: 'Note', render: (r) => <span className="muted" style={{ fontSize: 12 }}>{r.note}</span> },
+                  { key: 'by', header: 'By' },
+                  { key: 'at', header: 'When', sortable: true },
+                ]}
+                emptyText="No treasury activity yet."
+              />
+            </Card>
+
+            {isSuper && <MinterAllowList />}
+          </>
+        )}
+      </AsyncView>
+    </>
+  )
+}
+
+function MinterAllowList() {
+  const toast = useToast()
+  const { data: rows, reload } = useAsyncData(listCoinMinters)
+  const { data: candidates } = useAsyncData(minterCandidates)
+  const [adding, setAdding] = useState(false)
+  const [removing, setRemoving] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  const doRemove = async () => {
+    setBusy(true)
+    try { await removeCoinMinter(removing.id); toast(`${removing.name} removed`); setRemoving(null); reload() }
+    catch (e) { toast(e.message || 'Could not remove') }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <Card flush title="Who can generate & distribute" sub="Super Admins always can — add other staff accounts here" className="mt-16"
+      action={<Button size="sm" icon="userPlus" onClick={() => setAdding(true)}>Add</Button>}>
+      <DataTable
+        rows={rows || []}
+        searchKeys={['name', 'username', 'idShort']}
+        columns={[
+          personCol('name', 'username'),
+          { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+          { key: 'addedBy', header: 'Added by' },
+          { key: 'addedAt', header: 'Added', sortable: true },
+        ]}
+        rowActions={(r) => [{ label: 'Remove', icon: 'trash', onClick: () => setRemoving(r) }]}
+        emptyText="Only Super Admins can mint right now."
+      />
+      {adding && (
+        <EntityForm
+          title="Allow an account to mint coins"
+          onClose={() => setAdding(false)}
+          onSubmit={async (v) => { await addCoinMinter(v.profile_id); toast('Added to the allow-list'); reload() }}
+          savedMessage="Added"
+          fields={[{
+            name: 'profile_id', label: 'Staff account', type: 'select', required: true,
+            options: candidates || [],
+            hint: (candidates && !candidates.length) ? 'Every non-super staff account already has access' : 'Only staff accounts are listed',
+          }]}
+        />
+      )}
+      {removing && (
+        <ConfirmDialog
+          title="Remove minting access?"
+          danger busy={busy} confirmLabel="Remove"
+          message={`${removing.name} (@${removing.username}) will no longer be able to generate or distribute coins.`}
+          onConfirm={doRemove}
+          onClose={() => setRemoving(null)}
+        />
+      )}
+    </Card>
   )
 }
 

@@ -120,6 +120,9 @@ export const NAV = {
       { label: 'Audit Logs', icon: 'fileText', to: '/super/audit' },
       { label: 'Security', icon: 'lock', to: '/super/security' },
     ]},
+    { section: 'Economy', items: [
+      { label: 'Coin Treasury', icon: 'coins', to: '/super/treasury' },
+    ]},
     { section: 'Infrastructure', items: [
       { label: 'System Overview', icon: 'activity', to: '/super/system' },
       { label: 'Infrastructure', icon: 'server', to: '/super/infrastructure' },
