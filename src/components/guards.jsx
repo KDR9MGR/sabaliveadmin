@@ -1,8 +1,19 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth.jsx'
 import { PANELS } from '../config/nav.js'
+import { panelFromHostname } from '../lib/panelHost.js'
 import { Button } from './ui.jsx'
 import Icon from './Icon.jsx'
+
+/* Where a signed-in staffer should land: honour the panel subdomain when the
+   role is allowed there (super_admin may browse all panels), otherwise the
+   panel their role resolves to. */
+export function landingPath(panel, staffRole) {
+  const wanted = panelFromHostname()
+  const canBrowseAll = staffRole?.role === 'super_admin'
+  const target = wanted && (canBrowseAll || wanted === panel) ? wanted : panel
+  return PANELS[target]?.base ?? '/login'
+}
 
 export function FullscreenLoader() {
   return (
@@ -56,8 +67,8 @@ export function RequirePanel({ panel, children }) {
 
 /* "/" — send a resolved staffer straight to their panel, everyone else to /login. */
 export function RootRedirect() {
-  const { loading, isStaff, panel } = useAuth()
+  const { loading, isStaff, panel, staffRole } = useAuth()
   if (loading) return <FullscreenLoader />
-  if (isStaff) return <Navigate to={PANELS[panel]?.base ?? '/login'} replace />
+  if (isStaff) return <Navigate to={landingPath(panel, staffRole)} replace />
   return <Navigate to="/login" replace />
 }

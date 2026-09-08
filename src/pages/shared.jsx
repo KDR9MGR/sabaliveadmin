@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Navigate, useNavigate, useRouteError } from 'react-router-dom'
 import { PageHeader, Card, Button, KV, EmptyState, useToast } from '../components/ui.jsx'
 import Icon from '../components/Icon.jsx'
-import { PANELS } from '../config/nav.js'
 import { useSettings } from '../config/settings.jsx'
 import { useAuth } from '../lib/auth.jsx'
+import { landingPath } from '../components/guards.jsx'
 
 /* ------------------------------------------------------------------ My Profile */
 export function Profile({ panel = 'Master / Admin' }) {
@@ -63,14 +63,14 @@ export function Profile({ panel = 'Master / Admin' }) {
 /* ------------------------------------------------------------------ Login */
 export function Login() {
   const { settings } = useSettings()
-  const { signIn, isStaff, loading: authLoading, panel } = useAuth()
+  const { signIn, isStaff, loading: authLoading, panel, staffRole } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   // already signed in with a staff role -> skip straight to their panel
-  if (!authLoading && isStaff) return <Navigate to={PANELS[panel]?.base ?? '/admin'} replace />
+  if (!authLoading && isStaff) return <Navigate to={landingPath(panel, staffRole)} replace />
 
   const submit = async (e) => {
     e.preventDefault()
@@ -93,22 +93,11 @@ export function Login() {
           </div>
         </div>
         <h2 style={{ fontSize: 24, lineHeight: 1.3, marginTop: 40, maxWidth: 360 }}>
-          One console, three levels of control.
+          Sign in to your admin console.
         </h2>
         <p style={{ fontSize: 13, opacity: 0.75, marginTop: 10, maxWidth: 380 }}>
           Your role in <code style={{ background: 'rgba(255,255,255,0.15)', padding: '1px 5px', borderRadius: 4 }}>staff_roles</code> decides which panel you land in after signing in.
         </p>
-        <div className="vstack" style={{ gap: 10, marginTop: 24 }}>
-          {Object.values(PANELS).map((p) => (
-            <div key={p.key} className="login__panel" style={{ cursor: 'default' }}>
-              <span className="login__panel-dot" style={{ background: p.color }} />
-              <span className="grow">
-                <b>{p.label}</b>
-                <span style={{ display: 'block', fontSize: 11.5, opacity: 0.7 }}>{p.scope}</span>
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
 
       <div className="login__form">
