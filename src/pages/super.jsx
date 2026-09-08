@@ -268,7 +268,7 @@ export function MasterAccounts() {
 }
 
 /* ------------------------------------------------------------------ Access Control (matrix) */
-const ROLES = ['Super Admin', 'Master', 'Admin', 'Agency', 'Sub Admin']
+const ROLES = ['Super Admin', 'Master', 'Admin', 'Sub Admin', 'Agency']
 const CAPS = [
   'View dashboards', 'Manage users', 'Manage admins', 'Manage agencies', 'Manage hosts',
   'Configure coins & gifts', 'Run payroll', 'Edit app config', 'Manage infrastructure',
