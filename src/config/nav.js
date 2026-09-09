@@ -25,7 +25,7 @@ export const NAV = {
       { label: 'Dashboard', icon: 'dashboard', to: '/admin' },
     ]},
     { section: 'Management', items: [
-      { label: 'User Management', icon: 'users', children: [
+      { label: 'User Management', icon: 'users', cap: 'manage_users', children: [
         { label: 'All Users', to: '/admin/users' },
         { label: 'Hosts / Creators', to: '/admin/users/hosts' },
         { label: 'Sub Admins', to: '/admin/users/sub-admins' },
@@ -33,18 +33,18 @@ export const NAV = {
         { label: 'Account Status', to: '/admin/users/status' },
         { label: 'Transfer Requests', to: '/admin/users/transfers' },
       ]},
-      { label: 'Admin Management', icon: 'shieldUser', children: [
+      { label: 'Admin Management', icon: 'shieldUser', cap: 'manage_admins', children: [
         { label: 'Admins', to: '/admin/admins' },
         { label: 'Sub Admins', to: '/admin/admins/sub-admins' },
         { label: 'Agencies', to: '/admin/admins/agencies' },
         { label: 'Roles & Permissions', to: '/admin/admins/roles' },
       ]},
-      { label: 'Agency Management', icon: 'building', children: [
+      { label: 'Agency Management', icon: 'building', cap: 'manage_agencies', children: [
         { label: 'Agencies', to: '/admin/agencies' },
         { label: 'Agency Requests', to: '/admin/agencies/requests' },
         { label: 'Commission Plans', to: '/admin/agencies/commission' },
       ]},
-      { label: 'Host Management', icon: 'video', children: [
+      { label: 'Host Management', icon: 'video', cap: 'manage_hosts', children: [
         { label: 'Hosts', to: '/admin/hosts' },
         { label: 'Host Assignment', to: '/admin/hosts/assignment' },
         { label: 'Applications', to: '/admin/hosts/applications' },
@@ -53,7 +53,7 @@ export const NAV = {
       ]},
     ]},
     { section: 'Monetisation', items: [
-      { label: 'Coin & Gift', icon: 'coins', children: [
+      { label: 'Coin & Gift', icon: 'coins', cap: 'manage_coins', children: [
         { label: 'Gift Settings', to: '/admin/coins/gifts' },
         { label: 'Coin Packages', to: '/admin/coins/packages' },
         { label: 'Transactions', to: '/admin/coins/transactions' },
@@ -61,8 +61,8 @@ export const NAV = {
         { label: 'Transfer Coins', to: '/admin/coins/transfer' },
         { label: 'Transfer History', to: '/admin/coins/transfer-history' },
       ]},
-      { label: 'Withdrawals', icon: 'wallet', to: '/admin/withdrawals' },
-      { label: 'Salary', icon: 'fileText', to: '/admin/salary' },
+      { label: 'Withdrawals', icon: 'wallet', cap: 'run_payroll', to: '/admin/withdrawals' },
+      { label: 'Salary', icon: 'fileText', cap: 'run_payroll', to: '/admin/salary' },
       { label: 'Reports & Analytics', icon: 'chart', to: '/admin/reports' },
     ]},
     { section: 'Platform', items: [
@@ -75,7 +75,7 @@ export const NAV = {
         { label: 'Legal Pages', to: '/admin/content/pages' },
         { label: 'Announcements', to: '/admin/content/announcements' },
       ]},
-      { label: 'Application Config', icon: 'sliders', to: '/admin/config' },
+      { label: 'Application Config', icon: 'sliders', cap: 'edit_config', to: '/admin/config' },
       { label: 'System Management', icon: 'server', to: '/admin/system' },
     ]},
     { section: 'Account', items: [
@@ -114,25 +114,25 @@ export const NAV = {
       { label: 'Dashboard', icon: 'dashboard', to: '/super' },
     ]},
     { section: 'Administration', items: [
-      { label: 'Admin Management', icon: 'shield', children: [
+      { label: 'Admin Management', icon: 'shield', cap: 'manage_admins', children: [
         { label: 'Admin Accounts', to: '/super/admins' },
         { label: 'Agency Staff', to: '/super/masters' },
         { label: 'Access Control', to: '/super/access' },
       ]},
-      { label: 'Audit Logs', icon: 'fileText', to: '/super/audit' },
-      { label: 'Security', icon: 'lock', to: '/super/security' },
+      { label: 'Audit Logs', icon: 'fileText', cap: 'view_audit', to: '/super/audit' },
+      { label: 'Security', icon: 'lock', cap: 'view_audit', to: '/super/security' },
     ]},
     { section: 'Economy', items: [
-      { label: 'Coin Treasury', icon: 'coins', to: '/super/treasury' },
+      { label: 'Coin Treasury', icon: 'coins', cap: 'manage_coins', to: '/super/treasury' },
     ]},
     { section: 'Infrastructure', items: [
-      { label: 'System Overview', icon: 'activity', to: '/super/system' },
-      { label: 'Infrastructure', icon: 'server', to: '/super/infrastructure' },
-      { label: 'Integrations & APIs', icon: 'layers', to: '/super/integrations' },
-      { label: 'Backups', icon: 'refresh', to: '/super/backups' },
+      { label: 'System Overview', icon: 'activity', cap: 'manage_infra', to: '/super/system' },
+      { label: 'Infrastructure', icon: 'server', cap: 'manage_infra', to: '/super/infrastructure' },
+      { label: 'Integrations & APIs', icon: 'layers', cap: 'manage_infra', to: '/super/integrations' },
+      { label: 'Backups', icon: 'refresh', cap: 'manage_infra', to: '/super/backups' },
     ]},
     { section: 'Configuration', items: [
-      { label: 'Application Config', icon: 'sliders', to: '/super/config' },
+      { label: 'Application Config', icon: 'sliders', cap: 'edit_config', to: '/super/config' },
     ]},
     { section: 'Account', items: [
       { label: 'My Profile', icon: 'user', to: '/super/profile' },

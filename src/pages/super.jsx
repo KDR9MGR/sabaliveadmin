@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { StatGrid, AsyncView } from './_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, EmptyState, useToast, ConfirmDialog } from '../components/ui.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, EmptyState, useToast, ConfirmDialog, Drawer } from '../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
@@ -11,8 +11,9 @@ import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
 import {
   listStaffAccounts, grantableProfiles, agencyOptions, grantRole, changeRole, revokeRole, superAdminCount,
-  inviteStaff, PLATFORM_ROLES, AGENCY_ROLES,
+  inviteStaff, setStaffPermissions, PLATFORM_ROLES, AGENCY_ROLES,
 } from '../lib/accounts.js'
+import { CAPABILITIES, roleBaseline, effectivePermissions } from '../lib/capabilities.js'
 import { superDashboard, listAuditLogs, securityOverview, systemPulse } from '../lib/superAdmin.js'
 import {
   getTreasury, listTreasuryEvents, mintCoins, distributeCoins,
@@ -112,6 +113,7 @@ function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro }) {
   const [invited, setInvited] = useState(null)
   const [changing, setChanging] = useState(null)
   const [revoking, setRevoking] = useState(null)
+  const [perms, setPerms] = useState(null)
   const [busy, setBusy] = useState(false)
 
   const roleField = { name: 'role', label: 'Role', type: 'select', required: true, options: grantRoleOpts }
@@ -168,6 +170,9 @@ function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro }) {
             { key: 'granted', header: 'Granted', sortable: true },
           ]}
           rowActions={(r) => [
+            r.roleRaw === 'super_admin'
+              ? { label: 'Full access (Super Admin)', icon: 'shield', onClick: () => {} }
+              : { label: 'Permissions', icon: 'sliders', onClick: () => setPerms(r) },
             { label: 'Change role', icon: 'shieldUser', onClick: () => setChanging(r) },
             { sep: true },
             r.id === user?.id
@@ -244,7 +249,85 @@ function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro }) {
           onClose={() => setRevoking(null)}
         />
       )}
+      {perms && (
+        <PermissionsDrawer
+          account={perms}
+          onClose={() => setPerms(null)}
+          onSaved={() => { setPerms(null); reload() }}
+        />
+      )}
     </>
+  )
+}
+
+/* Per-account capability overrides. Toggles start at the account's effective
+   value; the role baseline is shown as helper text. Only keys that differ
+   from the baseline are persisted. Enforcement: the UI hides gated nav/actions
+   and the privileged RPCs re-check via has_capability() (deny-only). */
+function PermissionsDrawer({ account, onClose, onSaved }) {
+  const toast = useToast()
+  const base = roleBaseline(account.roleRaw)
+  const [vals, setVals] = useState(() => effectivePermissions({ role: account.roleRaw, permissions: account.permissions }))
+  const [busy, setBusy] = useState(false)
+  const set = (k, v) => setVals((s) => ({ ...s, [k]: v }))
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      const delta = {}
+      for (const c of CAPABILITIES) {
+        if (!!vals[c.key] !== !!base[c.key]) delta[c.key] = !!vals[c.key]
+      }
+      await setStaffPermissions(account.id, delta)
+      toast(`Permissions updated for ${account.name}`)
+      onSaved()
+    } catch (e) {
+      toast(e?.message || 'Could not save permissions')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const reset = () => setVals(Object.fromEntries(CAPABILITIES.map((c) => [c.key, !!base[c.key]])))
+  const groups = [...new Set(CAPABILITIES.map((c) => c.group))]
+  const changed = CAPABILITIES.some((c) => !!vals[c.key] !== !!base[c.key])
+
+  return (
+    <Drawer
+      title={`Permissions — ${account.name}`}
+      onClose={busy ? () => {} : onClose}
+      footer={<>
+        <Button onClick={reset} disabled={busy || !changed}>Reset to role default</Button>
+        <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy} onClick={save}>
+          {busy ? 'Saving…' : 'Save'}
+        </Button>
+      </>}
+    >
+      <p className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}>
+        Baseline comes from the <b>{account.role}</b> role. Turning a capability <b>off</b> is enforced everywhere
+        (nav, screens and the privileged RPCs). Turning one <b>on</b> beyond the role only affects what they see —
+        the server still gates by role.
+      </p>
+      {groups.map((g) => (
+        <div key={g} style={{ marginTop: 14 }}>
+          <div className="nav-group__label" style={{ padding: '0 0 6px' }}>{g}</div>
+          {CAPABILITIES.filter((c) => c.group === g).map((c) => (
+            <div className="toggle-row" key={c.key}>
+              <div>
+                <div className="t-title">{c.label}</div>
+                <div className="t-desc">Role default: {base[c.key] ? 'allowed' : 'denied'}
+                  {(!!vals[c.key] !== !!base[c.key]) && <span style={{ color: 'var(--warning)' }}> · overridden</span>}
+                </div>
+              </div>
+              <label className="toggle">
+                <input type="checkbox" checked={!!vals[c.key]} onChange={(e) => set(c.key, e.target.checked)} />
+                <span className="track" /><span className="thumb" />
+              </label>
+            </div>
+          ))}
+        </div>
+      ))}
+    </Drawer>
   )
 }
 
@@ -272,57 +355,44 @@ export function MasterAccounts() {
   )
 }
 
-/* ------------------------------------------------------------------ Access Control (matrix) */
-const ROLES = ['Super Admin', 'Master', 'Admin', 'Sub Admin', 'Agency']
-const CAPS = [
-  'View dashboards', 'Manage users', 'Manage admins', 'Manage agencies', 'Manage hosts',
-  'Configure coins & gifts', 'Run payroll', 'Edit app config', 'Manage infrastructure',
-  'Access audit logs', 'Impersonate accounts', 'Export data',
+/* ------------------------------------------------------------------ Access Control */
+const BASELINE_ROLES = [
+  { key: 'super_admin', label: 'Super Admin' },
+  { key: 'admin', label: 'Admin' },
+  { key: 'agency_manager', label: 'Agency Manager' },
+  { key: 'sub_admin', label: 'Sub Admin' },
 ]
-const allow = (role, cap) => {
-  if (role === 'Super Admin') return true
-  if (role === 'Master') return !['Manage infrastructure', 'Impersonate accounts'].includes(cap)
-  if (role === 'Admin') return ['View dashboards', 'Manage users', 'Manage agencies', 'Manage hosts', 'Configure coins & gifts', 'Export data'].includes(cap)
-  if (role === 'Agency') return ['View dashboards', 'Manage hosts', 'Export data'].includes(cap)
-  if (role === 'Sub Admin') return ['View dashboards', 'Manage hosts'].includes(cap)
-  return false
-}
+const Mark = ({ on }) => (
+  <Icon name={on ? 'check' : 'x'} size={14} style={{ color: on ? 'var(--success)' : 'var(--text-muted)' }} />
+)
 
 export function AccessControl() {
-  const toast = useToast()
-  const [grid, setGrid] = useState(() => {
-    const g = {}
-    ROLES.forEach((r) => { g[r] = {}; CAPS.forEach((c) => { g[r][c] = allow(r, c) }) })
-    return g
-  })
-  const toggle = (r, c) => setGrid((g) => ({ ...g, [r]: { ...g[r], [c]: !g[r][c] } }))
+  const { data: accounts, loading, error, reload } = useAsyncData(
+    () => listStaffAccounts([...PLATFORM_ROLES, ...AGENCY_ROLES]), [])
+  const [perms, setPerms] = useState(null)
+
   return (
     <>
-      <PageHeader
-        title="Access Control"
-        crumbs={[...CR, 'Access Control']}
-      />
+      <PageHeader title="Access Control" crumbs={[...CR, 'Access Control']} />
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-        This matrix mirrors the Postgres RLS policies (<code>is_admin_or_above</code>, <code>manages_agency</code>, <code>is_super_admin</code>) and is <b>reference only</b> — it isn't editable here.
-        To actually grant, change or revoke a role, use <b>Admin Accounts</b> or <b>Agency Staff</b>.
+        Each staff account starts from its <b>role baseline</b> below. A Super Admin can then override individual
+        capabilities per account from <b>Admin Accounts</b> / <b>Agency Staff</b> (or the Edit action here).
+        Turning a capability off is enforced in the UI <i>and</i> the privileged RPCs; turning one on beyond the
+        role only changes what the account sees.
       </div></Card>
-      <Card flush title="Capability matrix" sub="Derived from RLS — reference only" action={<span />}>
+
+      <Card flush title="Role baseline" sub="The starting point for every account with that role" className="mb-16" action={<span />}>
         <div className="table-wrap">
           <table className="data">
             <thead>
-              <tr><th style={{ minWidth: 200 }}>Capability</th>{ROLES.map((r) => <th key={r} className="center">{r}</th>)}</tr>
+              <tr><th style={{ minWidth: 200 }}>Capability</th>{BASELINE_ROLES.map((r) => <th key={r.key} className="center">{r.label}</th>)}</tr>
             </thead>
             <tbody>
-              {CAPS.map((c) => (
-                <tr key={c}>
-                  <td style={{ fontWeight: 600 }}>{c}</td>
-                  {ROLES.map((r) => (
-                    <td key={r} className="center">
-                      <label className="toggle" style={{ margin: '0 auto', opacity: r === 'Super Admin' ? 0.5 : 1 }}>
-                        <input type="checkbox" checked={grid[r][c]} disabled={r === 'Super Admin'} onChange={() => toggle(r, c)} />
-                        <span className="track" /><span className="thumb" />
-                      </label>
-                    </td>
+              {CAPABILITIES.map((c) => (
+                <tr key={c.key}>
+                  <td style={{ fontWeight: 600 }}>{c.label}</td>
+                  {BASELINE_ROLES.map((r) => (
+                    <td key={r.key} className="center"><Mark on={!!roleBaseline(r.key)[c.key]} /></td>
                   ))}
                 </tr>
               ))}
@@ -330,6 +400,50 @@ export function AccessControl() {
           </table>
         </div>
       </Card>
+
+      <Card flush title="Per-account permissions" sub="Effective capabilities after any overrides" action={<span />}>
+        <AsyncView loading={loading} error={error} reload={reload}>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th style={{ minWidth: 180 }}>Account</th>
+                  {CAPABILITIES.map((c) => <th key={c.key} className="center" title={c.label} style={{ fontSize: 11 }}>{c.label}</th>)}
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {(accounts || []).map((a) => {
+                  const eff = effectivePermissions({ role: a.roleRaw, permissions: a.permissions })
+                  const base = roleBaseline(a.roleRaw)
+                  return (
+                    <tr key={a.id}>
+                      <td><Person name={a.name} meta={a.role} size="sm" /></td>
+                      {CAPABILITIES.map((c) => {
+                        const overridden = a.roleRaw !== 'super_admin' && !!eff[c.key] !== !!base[c.key]
+                        return (
+                          <td key={c.key} className="center" style={overridden ? { background: 'var(--warning-bg)' } : undefined}>
+                            <Mark on={!!eff[c.key]} />
+                          </td>
+                        )
+                      })}
+                      <td className="center">
+                        {a.roleRaw === 'super_admin'
+                          ? <span className="muted" style={{ fontSize: 11 }}>full</span>
+                          : <Button size="sm" icon="sliders" onClick={() => setPerms(a)}>Edit</Button>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </AsyncView>
+      </Card>
+
+      {perms && (
+        <PermissionsDrawer account={perms} onClose={() => setPerms(null)} onSaved={() => { setPerms(null); reload() }} />
+      )}
     </>
   )
 }
@@ -562,10 +676,12 @@ function MinterAllowList() {
 
 /* ------------------------------------------------------------------ Audit Logs (real) */
 export function AuditLogs() {
+  const { can } = useAuth()
   const { data: rows, loading, error, reload } = useAsyncData(listAuditLogs)
   return (
     <>
-      <PageHeader title="Audit Logs" crumbs={[...CR, 'Audit Logs']} actions={<Button icon="download">Export</Button>} />
+      <PageHeader title="Audit Logs" crumbs={[...CR, 'Audit Logs']}
+        actions={can('export_data') ? <Button icon="download">Export</Button> : null} />
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
         Reads the real <code>audit_logs</code> table. It's currently empty because admin write actions aren't logged server-side yet —
         the <code>decide_*</code> RPCs stamp <code>decided_by</code>/<code>reviewed_by</code> on their own rows, but there's no audit trigger.

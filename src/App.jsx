@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from './components/ui.jsx'
 import { SettingsProvider } from './config/settings.jsx'
 import { AuthProvider } from './lib/auth.jsx'
-import { RequireAuth, RequirePanel, RootRedirect } from './components/guards.jsx'
+import { RequireAuth, RequirePanel, RequireCap, RootRedirect } from './components/guards.jsx'
 import { AgencyScopeProvider } from './lib/agencyScope.jsx'
 import AppLayout from './components/layout/AppLayout.jsx'
 
@@ -46,40 +46,54 @@ export default function App() {
             <RequireAuth><RequirePanel panel="master"><AppLayout panel="master" /></RequirePanel></RequireAuth>
           }>
             <Route index element={<MasterDashboard />} />
-            <Route path="users" element={<UsersList />} />
-            <Route path="users/hosts" element={<HostsList />} />
-            <Route path="users/sub-admins" element={<SubAdminsList />} />
-            <Route path="users/ids" element={<UserIds />} />
-            <Route path="users/status" element={<AccountStatus />} />
-            <Route path="users/transfers" element={<TransferRequests />} />
-            <Route path="users/:id" element={<UserProfile />} />
 
-            <Route path="admins" element={<Admins />} />
-            <Route path="admins/sub-admins" element={<AdminSubAdmins />} />
-            <Route path="admins/agencies" element={<AgenciesAdmin />} />
-            <Route path="admins/roles" element={<RolesPermissions />} />
+            <Route element={<RequireCap cap="manage_users" />}>
+              <Route path="users" element={<UsersList />} />
+              <Route path="users/hosts" element={<HostsList />} />
+              <Route path="users/sub-admins" element={<SubAdminsList />} />
+              <Route path="users/ids" element={<UserIds />} />
+              <Route path="users/status" element={<AccountStatus />} />
+              <Route path="users/transfers" element={<TransferRequests />} />
+              <Route path="users/:id" element={<UserProfile />} />
+            </Route>
 
-            <Route path="agencies" element={<AgencyList />} />
-            <Route path="agencies/requests" element={<AgencyRequests />} />
-            <Route path="agencies/commission" element={<CommissionPlans />} />
-            <Route path="agencies/:id" element={<AgencyDetail />} />
+            <Route element={<RequireCap cap="manage_admins" />}>
+              <Route path="admins" element={<Admins />} />
+              <Route path="admins/sub-admins" element={<AdminSubAdmins />} />
+              <Route path="admins/agencies" element={<AgenciesAdmin />} />
+              <Route path="admins/roles" element={<RolesPermissions />} />
+            </Route>
 
-            <Route path="hosts" element={<HostsMgmt />} />
-            <Route path="hosts/assignment" element={<HostAssignment />} />
-            <Route path="hosts/applications" element={<HostApplications />} />
-            <Route path="hosts/kyc" element={<KycReview />} />
-            <Route path="hosts/codes" element={<HostCodes />} />
-            <Route path="hosts/:id" element={<HostDetail />} />
+            <Route element={<RequireCap cap="manage_agencies" />}>
+              <Route path="agencies" element={<AgencyList />} />
+              <Route path="agencies/requests" element={<AgencyRequests />} />
+              <Route path="agencies/commission" element={<CommissionPlans />} />
+              <Route path="agencies/:id" element={<AgencyDetail />} />
+            </Route>
 
-            <Route path="coins/gifts" element={<GiftSettings />} />
-            <Route path="coins/packages" element={<CoinPackages />} />
-            <Route path="coins/transactions" element={<Transactions />} />
-            <Route path="coins/gift-history" element={<GiftHistory />} />
-            <Route path="coins/transfer" element={<TransferCoins />} />
-            <Route path="coins/transfer-history" element={<TransferHistory />} />
+            <Route element={<RequireCap cap="manage_hosts" />}>
+              <Route path="hosts" element={<HostsMgmt />} />
+              <Route path="hosts/assignment" element={<HostAssignment />} />
+              <Route path="hosts/applications" element={<HostApplications />} />
+              <Route path="hosts/kyc" element={<KycReview />} />
+              <Route path="hosts/codes" element={<HostCodes />} />
+              <Route path="hosts/:id" element={<HostDetail />} />
+            </Route>
 
-            <Route path="salary" element={<Salary />} />
-            <Route path="withdrawals" element={<Withdrawals />} />
+            <Route element={<RequireCap cap="manage_coins" />}>
+              <Route path="coins/gifts" element={<GiftSettings />} />
+              <Route path="coins/packages" element={<CoinPackages />} />
+              <Route path="coins/transactions" element={<Transactions />} />
+              <Route path="coins/gift-history" element={<GiftHistory />} />
+              <Route path="coins/transfer" element={<TransferCoins />} />
+              <Route path="coins/transfer-history" element={<TransferHistory />} />
+            </Route>
+
+            <Route element={<RequireCap cap="run_payroll" />}>
+              <Route path="salary" element={<Salary />} />
+              <Route path="withdrawals" element={<Withdrawals />} />
+            </Route>
+
             <Route path="reports" element={<Reports />} />
             <Route path="live" element={<LiveRequests />} />
             <Route path="badges" element={<BadgeManagement />} />
@@ -90,7 +104,9 @@ export default function App() {
             <Route path="content/pages" element={<LegalPages />} />
             <Route path="content/announcements" element={<Announcements />} />
 
-            <Route path="config" element={<ApplicationConfig crumbRoot="Application Configuration" />} />
+            <Route element={<RequireCap cap="edit_config" />}>
+              <Route path="config" element={<ApplicationConfig crumbRoot="Application Configuration" />} />
+            </Route>
             <Route path="system" element={<SystemManagement />} />
             <Route path="profile" element={<Profile panel="Master / Admin" />} />
           </Route>
@@ -119,17 +135,32 @@ export default function App() {
             <RequireAuth><RequirePanel panel="super"><AppLayout panel="super" /></RequirePanel></RequireAuth>
           }>
             <Route index element={<SuperDashboard />} />
-            <Route path="admins" element={<SuperAdmins />} />
-            <Route path="masters" element={<MasterAccounts />} />
-            <Route path="access" element={<AccessControl />} />
-            <Route path="treasury" element={<CoinTreasury />} />
-            <Route path="audit" element={<AuditLogs />} />
-            <Route path="security" element={<SuperSecurity />} />
-            <Route path="system" element={<SystemOverview />} />
-            <Route path="infrastructure" element={<Infrastructure />} />
-            <Route path="integrations" element={<Integrations />} />
-            <Route path="backups" element={<Backups />} />
-            <Route path="config" element={<ApplicationConfig crumbRoot="Application Configuration" />} />
+
+            <Route element={<RequireCap cap="manage_admins" />}>
+              <Route path="admins" element={<SuperAdmins />} />
+              <Route path="masters" element={<MasterAccounts />} />
+              <Route path="access" element={<AccessControl />} />
+            </Route>
+
+            <Route element={<RequireCap cap="manage_coins" />}>
+              <Route path="treasury" element={<CoinTreasury />} />
+            </Route>
+
+            <Route element={<RequireCap cap="view_audit" />}>
+              <Route path="audit" element={<AuditLogs />} />
+              <Route path="security" element={<SuperSecurity />} />
+            </Route>
+
+            <Route element={<RequireCap cap="manage_infra" />}>
+              <Route path="system" element={<SystemOverview />} />
+              <Route path="infrastructure" element={<Infrastructure />} />
+              <Route path="integrations" element={<Integrations />} />
+              <Route path="backups" element={<Backups />} />
+            </Route>
+
+            <Route element={<RequireCap cap="edit_config" />}>
+              <Route path="config" element={<ApplicationConfig crumbRoot="Application Configuration" />} />
+            </Route>
             <Route path="profile" element={<Profile panel="Super Admin" />} />
           </Route>
 

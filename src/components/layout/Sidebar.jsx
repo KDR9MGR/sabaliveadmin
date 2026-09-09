@@ -3,12 +3,16 @@ import { NavLink, useLocation } from 'react-router-dom'
 import Icon from '../Icon.jsx'
 import { NAV, PANELS } from '../../config/nav.js'
 import { useSettings } from '../../config/settings.jsx'
+import { useAuth } from '../../lib/auth.jsx'
 
 export default function Sidebar({ panel, onNavigate }) {
   const groups = NAV[panel]
   const { pathname } = useLocation()
   const p = PANELS[panel]
   const { settings } = useSettings()
+  const { can } = useAuth()
+
+  const visible = (item) => !item.cap || can(item.cap)
 
   return (
     <aside className="sidebar">
@@ -21,27 +25,31 @@ export default function Sidebar({ panel, onNavigate }) {
         {p.label}
       </div>
       <nav className="sidebar__scroll">
-        {groups.map((g) => (
-          <div className="nav-group" key={g.section}>
-            <div className="nav-group__label">{g.section}</div>
-            {g.items.map((item) =>
-              item.children ? (
-                <NavParent key={item.label} item={item} pathname={pathname} onNavigate={onNavigate} />
-              ) : (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === p.base}
-                  className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}
-                  onClick={onNavigate}
-                >
-                  <Icon name={item.icon} className="nav-ico" />
-                  <span>{item.label}</span>
-                </NavLink>
-              )
-            )}
-          </div>
-        ))}
+        {groups.map((g) => {
+          const items = g.items.filter(visible)
+          if (!items.length) return null
+          return (
+            <div className="nav-group" key={g.section}>
+              <div className="nav-group__label">{g.section}</div>
+              {items.map((item) =>
+                item.children ? (
+                  <NavParent key={item.label} item={item} pathname={pathname} onNavigate={onNavigate} />
+                ) : (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === p.base}
+                    className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}
+                    onClick={onNavigate}
+                  >
+                    <Icon name={item.icon} className="nav-ico" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                )
+              )}
+            </div>
+          )
+        })}
       </nav>
     </aside>
   )

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from './supabase.js'
+import { can as canCap } from './capabilities.js'
 
 /* Which panel a staff_roles.role lands in. super_admin/admin get their own
    panel; agency_manager and sub_admin are both agency-scoped (see the
@@ -60,10 +61,11 @@ export function AuthProvider({ children }) {
   }, [])
 
   const panel = staffRole ? PANEL_FOR_ROLE[staffRole.role] : null
+  const can = useCallback((key) => canCap(staffRole, key), [staffRole])
 
   return (
     <Ctx.Provider value={{
-      session, user: session?.user ?? null, profile, staffRole, panel,
+      session, user: session?.user ?? null, profile, staffRole, panel, can,
       isStaff: !!staffRole, loading, signIn, signOut,
     }}>
       {children}

@@ -25,8 +25,17 @@ export async function listStaffAccounts(roles) {
     roleRaw: r.role,
     agencyId: r.agency_id,
     agency: r.agencies?.name || '—',
+    permissions: r.permissions || {},
     granted: fmtDate(r.created_at),
   }))
+}
+
+/* Per-user capability overrides (jsonb). Only a super_admin may write —
+   the existing "Only super admins change roles" UPDATE policy covers it. */
+export async function setStaffPermissions(userId, permissions) {
+  return unwrap(await supabase.from('staff_roles')
+    .update({ permissions: permissions || {} })
+    .eq('user_id', userId).select().single())
 }
 
 /* Profiles that don't yet have any staff_roles row — candidates to grant. */

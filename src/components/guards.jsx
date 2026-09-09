@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/auth.jsx'
 import { PANELS } from '../config/nav.js'
 import { panelFromHostname } from '../lib/panelHost.js'
@@ -63,6 +63,15 @@ export function RequirePanel({ panel, children }) {
   const canBrowseAll = staffRole?.role === 'super_admin'
   if (myPanel !== panel && !canBrowseAll) return <Navigate to={PANELS[myPanel]?.base ?? '/login'} replace />
   return children
+}
+
+/* Gate a route (or subtree) on a capability. A staffer lacking it is bounced
+   to their panel base — the sidebar already hides these links, this stops
+   deep-linking / stale tabs. Super Admins pass everything. */
+export function RequireCap({ cap, children }) {
+  const { can, panel } = useAuth()
+  if (cap && !can(cap)) return <Navigate to={PANELS[panel]?.base ?? '/login'} replace />
+  return children ?? <Outlet />
 }
 
 /* "/" — send a resolved staffer straight to their panel, everyone else to /login. */
