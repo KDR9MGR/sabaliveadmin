@@ -17,6 +17,7 @@ import {
 import { updateHost } from '../lib/admin.js'
 import { decideHostApplication, markHostApplicationUnderReview, createAssignment, updateAssignment } from '../lib/workflows.js'
 import { createSalaryPayment, setSalaryStatus, updateSalaryPayment, SALARY_ROLES } from '../lib/salary.js'
+import { HostCodesShell } from './master/hostCodes.jsx'
 import { num } from '../data/index.js'
 
 const CR = ['Home', 'Agency']
@@ -481,6 +482,27 @@ export function AgencySalary() {
         )
       }}
     </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- Host Codes (agency-scoped) */
+export function AgencyHostCodes() {
+  const { agencyId, agencyName, canPick } = useAgencyScope()
+  return (
+    <>
+      <PageHeader title="Host Codes" crumbs={[...CR, 'Host Codes']} />
+      <AgencyScopeBar />
+      {agencyId && (
+        <>
+          <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+            {canPick
+              ? <>Viewing codes for <b>{agencyName}</b>. Codes you generate as an admin are platform-wide — an agency manager generates ones scoped to their agency.</>
+              : <>Codes here are issued for <b>{agencyName || 'your agency'}</b> only. A host redeems one to unlock Go Live; ban a code or a single host's access at any time.</>}
+          </div></Card>
+          <HostCodesShell agencyId={agencyId} scopedName={canPick ? null : agencyName} />
+        </>
+      )}
+    </>
   )
 }
 

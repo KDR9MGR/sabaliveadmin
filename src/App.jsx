@@ -11,6 +11,7 @@ import { UsersList, HostsList, SubAdminsList, UserIds, AccountStatus, TransferRe
 import { Admins, AdminSubAdmins, AgenciesAdmin, RolesPermissions } from './pages/master/admins.jsx'
 import { AgencyList, AgencyRequests, CommissionPlans, AgencyDetail } from './pages/master/agencies.jsx'
 import { HostsMgmt, HostAssignment, HostApplications, HostDetail, KycReview } from './pages/master/hosts.jsx'
+import { HostCodes } from './pages/master/hostCodes.jsx'
 import { GiftSettings, CoinPackages, Transactions, GiftHistory, TransferCoins, TransferHistory } from './pages/master/coins.jsx'
 import { Banners, LegalPages, Announcements } from './pages/master/content.jsx'
 import ApplicationConfig from './pages/master/config.jsx'
@@ -20,6 +21,7 @@ import { Withdrawals } from './pages/master/withdrawals.jsx'
 import {
   AgencyDashboard, MyAgency, AgencyHosts, AgencyHostProfiles, AgencyApplications,
   AgencyAssignments, AgencySubAdmins, AgencyStats, AgencyEarnings, AgencySalary, AgencyAccount,
+  AgencyHostCodes,
 } from './pages/agency.jsx'
 
 import {
@@ -66,6 +68,7 @@ export default function App() {
             <Route path="hosts/assignment" element={<HostAssignment />} />
             <Route path="hosts/applications" element={<HostApplications />} />
             <Route path="hosts/kyc" element={<KycReview />} />
+            <Route path="hosts/codes" element={<HostCodes />} />
             <Route path="hosts/:id" element={<HostDetail />} />
 
             <Route path="coins/gifts" element={<GiftSettings />} />
@@ -101,6 +104,7 @@ export default function App() {
             <Route path="hosts" element={<AgencyHosts />} />
             <Route path="hosts/profiles" element={<AgencyHostProfiles />} />
             <Route path="hosts/applications" element={<AgencyApplications />} />
+            <Route path="hosts/codes" element={<AgencyHostCodes />} />
             <Route path="assignments" element={<AgencyAssignments />} />
             <Route path="sub-admins" element={<AgencySubAdmins />} />
             <Route path="stats" element={<AgencyStats />} />

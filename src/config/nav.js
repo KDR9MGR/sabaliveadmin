@@ -49,6 +49,7 @@ export const NAV = {
         { label: 'Host Assignment', to: '/admin/hosts/assignment' },
         { label: 'Applications', to: '/admin/hosts/applications' },
         { label: 'KYC Review', to: '/admin/hosts/kyc' },
+        { label: 'Host Codes', to: '/admin/hosts/codes' },
       ]},
     ]},
     { section: 'Monetisation', items: [
@@ -92,6 +93,7 @@ export const NAV = {
         { label: 'Hosts', to: '/agency/hosts' },
         { label: 'Host Profiles', to: '/agency/hosts/profiles' },
         { label: 'Applications', to: '/agency/hosts/applications' },
+        { label: 'Host Codes', to: '/agency/hosts/codes' },
       ]},
       { label: 'Assignments', icon: 'userCheck', to: '/agency/assignments' },
       { label: 'Sub Admins', icon: 'shieldUser', to: '/agency/sub-admins' },
