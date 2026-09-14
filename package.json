@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:site": "rm -rf dist-combined && npm run build:admin:zone && npm run build:landing:zone",
+    "build:admin:zone": "vite build --base /admin/ --outDir dist-combined/admin",
+    "build:landing:zone": "npm --prefix landing install && npm --prefix landing run build -- --outDir ../dist-combined --emptyOutDir false"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

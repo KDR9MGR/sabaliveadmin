@@ -14,6 +14,11 @@ Three panels, chosen by the signed-in user's `staff_roles.role`:
 
 `super_admin` can open all three; the others are locked to their one panel.
 
+The public marketing site (`sabalive.in`) lives alongside this app in
+[`landing/`](landing/README.md) — a separate Vite project, deployed together
+with this one from a single Vercel project (see
+[below](#public-site--admin-panel-one-vercel-project)).
+
 ## Local development
 
 ```bash
@@ -92,8 +97,44 @@ supabase functions deploy invite-staff --project-ref <project-ref>
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are
 injected by the Edge runtime — no secrets to configure.
 
-## Deploy (panel)
+## Public site + Admin panel: one Vercel project
 
-Vercel: build `vite build`, output `dist`, with the SPA rewrite in
-`vercel.json` so deep links resolve. Set the two `VITE_` variables in the
-Vercel project.
+`sabalive.in` (the public marketing site, in `landing/`) and
+`admin.sabalive.in` (this admin panel) are two independent frontends —
+different `package.json`, different source, no shared components — but
+they deploy from **one repo and one Vercel project**, split by hostname.
+
+**How the combined build works** (`npm run build:site`, what Vercel runs):
+
+1. `build:admin:zone` — builds *this* app with `vite build --base /admin/
+   --outDir dist-combined/admin`. Only the asset base path changes; the
+   app's own routes (`/login`, `/super`, `/agency/...`) and all source are
+   untouched — React Router still sees the real browser URL, the `base`
+   flag only changes where the JS/CSS bundle physically lives.
+2. `build:landing:zone` — builds `landing/` normally into the same
+   `dist-combined/` root (`--outDir ../dist-combined --emptyOutDir false`,
+   so it doesn't wipe the admin build sitting next to it).
+3. Result:
+   ```
+   dist-combined/
+     index.html, assets/…            ← landing (served at sabalive.in)
+     admin/index.html, admin/assets/… ← this app (served at admin.sabalive.in)
+   ```
+
+**Domain routing** (`vercel.json`, `rewrites` with a `host` condition):
+a request to `admin.sabalive.in` is rewritten to `/admin/index.html`
+(or `/admin/robots.txt`); every other host falls through to `/index.html`
+(the landing page). Vercel serves real static files (hashed JS/CSS) directly
+before rewrites ever apply, so this doesn't interfere with either app's
+assets.
+
+**In the Vercel dashboard**: one project, pointed at this repo.
+Project → Settings → Domains → add `sabalive.in`, `www.sabalive.in`, and
+`admin.sabalive.in` — all three to the *same* project. Build command and
+output directory are already set in `vercel.json`
+(`npm run build:site` → `dist-combined`); nothing to change there.
+
+Local dev is unaffected either way — `npm run dev` here still serves just
+the admin panel at `/`, and `npm --prefix landing run dev` serves the
+landing page on its own port. The `--base`/`--outDir` overrides only apply
+during `build:site`.

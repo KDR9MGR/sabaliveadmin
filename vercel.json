@@ -1,8 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "vite build",
-  "outputDirectory": "dist",
+  "buildCommand": "npm run build:site",
+  "outputDirectory": "dist-combined",
   "rewrites": [
+    { "source": "/robots.txt", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "destination": "/admin/robots.txt" },
+    { "source": "/(.*)", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "destination": "/admin/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
