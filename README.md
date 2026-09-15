@@ -121,18 +121,27 @@ they deploy from **one repo and one Vercel project**, split by hostname.
      admin/index.html, admin/assets/… ← this app (served at admin.sabalive.in)
    ```
 
-**Domain routing** (`vercel.json`, `rewrites` with a `host` condition):
-a request to `admin.sabalive.in` is rewritten to `/admin/index.html`
-(or `/admin/robots.txt`); every other host falls through to `/index.html`
-(the landing page). Vercel serves real static files (hashed JS/CSS) directly
-before rewrites ever apply, so this doesn't interfere with either app's
-assets.
+**Domain routing** (`vercel.json`, `routes` with a `host` condition — the
+full/legacy config format, not the simplified `rewrites` field): a request
+to `admin.sabalive.in` for anything other than `/admin/*` itself is routed
+to `/admin/index.html` (or `/admin/robots.txt`); every other host falls
+through to `/index.html` (the landing page). This has to use `routes` +
+an explicit `{ "handle": "filesystem" }` marker, not the simpler
+`rewrites` array — Vercel's static layer resolves an exact path like `/`
+to its matching `index.html` *before* `rewrites` are even considered
+(confirmed by testing in production: `admin.sabalive.in/login` rewrote
+correctly, but `admin.sabalive.in/` — matching the physical landing
+`index.html` — did not, until the routing config was switched to `routes`
+with the host rule placed *before* `{ "handle": "filesystem" }`). The host
+rule's pattern (`/(?!admin/).*`) explicitly excludes anything already under
+`/admin/`, so the admin app's own hashed JS/CSS still resolve as plain
+static files with no rewrite involved.
 
-**In the Vercel dashboard**: one project, pointed at this repo.
-Project → Settings → Domains → add `sabalive.in`, `www.sabalive.in`, and
-`admin.sabalive.in` — all three to the *same* project. Build command and
-output directory are already set in `vercel.json`
-(`npm run build:site` → `dist-combined`); nothing to change there.
+**In the Vercel dashboard**: one project, pointed at this repo — already
+done (`sabaliveadmin` project has `sabalive.in`, `www.sabalive.in` and
+`admin.sabalive.in` attached, DNS fully on Vercel's nameservers, no
+registrar-side records needed). Build command and output directory are
+already set in `vercel.json` (`npm run build:site` → `dist-combined`).
 
 Local dev is unaffected either way — `npm run dev` here still serves just
 the admin panel at `/`, and `npm --prefix landing run dev` serves the

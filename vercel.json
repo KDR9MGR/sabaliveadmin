@@ -2,9 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build:site",
   "outputDirectory": "dist-combined",
-  "rewrites": [
-    { "source": "/robots.txt", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "destination": "/admin/robots.txt" },
-    { "source": "/(.*)", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "destination": "/admin/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/robots.txt", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "dest": "/admin/robots.txt" },
+    { "src": "/(?!admin/).*", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "dest": "/admin/index.html" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
