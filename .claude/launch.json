@@ -2,6 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     { "name": "admin-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5173 },
+    { "name": "landing-dev", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "landing", "run", "dev"], "port": 5174 },
     { "name": "combined-static", "runtimeExecutable": "python3", "runtimeArgs": ["-m", "http.server", "4173", "--directory", "dist-combined"], "port": 4173 }
   ]
 }
