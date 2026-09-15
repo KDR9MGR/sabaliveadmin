@@ -56,9 +56,6 @@ export default function Header() {
         </nav>
 
         <div className="hidden lg:flex items-center gap-3">
-          <Button href={SITE.adminUrl} variant="ghost" size="md" className="!px-3">
-            Admin login
-          </Button>
           <Button to="/#download" variant="primary" size="md">
             Get the app
           </Button>
@@ -91,9 +88,6 @@ export default function Header() {
             ))}
           </nav>
           <div className="mt-4 flex flex-col gap-3">
-            <Button href={SITE.adminUrl} variant="secondary" size="md" className="w-full">
-              Admin login
-            </Button>
             <Button to="/#download" variant="primary" size="md" className="w-full" onClick={() => setOpen(false)}>
               Get the app
             </Button>

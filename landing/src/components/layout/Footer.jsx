@@ -43,16 +43,15 @@ export default function Footer() {
 
         <div className="mt-12 flex flex-col-reverse items-center gap-4 border-t border-stroke pt-6 sm:flex-row sm:justify-between">
           <p className="text-xs text-ink-muted">© {year} {SITE.name}. All rights reserved.</p>
-          <div className="flex items-center gap-5">
-            {SOCIAL_LINKS.map((s) => (
-              <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="text-ink-muted hover:text-white transition-colors" aria-label={s.label}>
-                {s.label}
-              </a>
-            ))}
-            <a href={SITE.adminUrl} className="text-xs font-medium text-ink-muted hover:text-white transition-colors">
-              Staff / Admin login
-            </a>
-          </div>
+          {SOCIAL_LINKS.length > 0 && (
+            <div className="flex items-center gap-5">
+              {SOCIAL_LINKS.map((s) => (
+                <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="text-ink-muted hover:text-white transition-colors" aria-label={s.label}>
+                  {s.label}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </Container>
     </footer>

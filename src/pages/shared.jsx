@@ -86,7 +86,7 @@ export function Login() {
     <div className="login">
       <div className="login__aside">
         <div className="hstack" style={{ gap: 12 }}>
-          <img src={`${import.meta.env.BASE_URL}favicon.svg`} width={38} height={38} alt="" />
+          <img src={`${import.meta.env.BASE_URL}icon-192.png`} width={38} height={38} alt="" />
           <div>
             <b style={{ fontSize: 20, display: 'block' }}>{settings.appName}</b>
             <span style={{ fontSize: 12, opacity: 0.7 }}>{settings.tagline}</span>

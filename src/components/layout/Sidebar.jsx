@@ -17,7 +17,7 @@ export default function Sidebar({ panel, onNavigate }) {
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
+        <img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="" />
         <b>{settings.appName}</b>
       </div>
       <div className="sidebar__panel-tag" title={p.scope}>
