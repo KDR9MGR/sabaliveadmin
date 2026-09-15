@@ -21,6 +21,7 @@ const PATHS = {
   chevronDown: 'M6 9 12 15 18 9',
   mail: 'M4 4h16v16H4zM22 6l-10 7L2 6',
   lock: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2ZM7 11V7a5 5 0 0 1 10 0v4',
+  trash: 'M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16ZM10 11v6M14 11v6',
 }
 
 export default function Icon({ name, size = 22, className = '', strokeWidth = 1.8 }) {

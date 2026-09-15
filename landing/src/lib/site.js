@@ -35,6 +35,7 @@ export const FOOTER_COMPANY_LINKS = [
 export const FOOTER_LEGAL_LINKS = [
   { label: 'Privacy Policy', to: '/privacy' },
   { label: 'Terms of Service', to: '/terms' },
+  { label: 'Delete Account', to: '/delete-account' },
 ]
 
 // Add real handles here once available — deliberately empty rather than

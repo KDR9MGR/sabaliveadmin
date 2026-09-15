@@ -159,8 +159,10 @@ export default function Privacy() {
           <li><strong className="text-white">Grievance redressal</strong> — raise a complaint about how your data is handled and get a response (see below).</li>
         </ul>
         <p className="mt-3">
-          You can update most profile information directly in the app. For anything else, contact us using the
-          details in the Grievance Officer section below.
+          You can update most profile information directly in the app. To erase your account and its data, use our{' '}
+          <a href="/delete-account" className="text-brand-bright hover:text-white">Delete Account</a> page — no app
+          install or sign-in required. For anything else, contact us using the details in the Grievance Officer
+          section below.
         </p>
       </section>
 

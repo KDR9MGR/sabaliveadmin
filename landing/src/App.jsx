@@ -8,6 +8,7 @@ import Faq from './pages/Faq.jsx'
 import Contact from './pages/Contact.jsx'
 import Privacy from './pages/Privacy.jsx'
 import Terms from './pages/Terms.jsx'
+import DeleteAccount from './pages/DeleteAccount.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 /* Runs after each page's own useSeo (which resets scroll to top) so an
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/delete-account" element={<DeleteAccount />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <ScrollToHash />
