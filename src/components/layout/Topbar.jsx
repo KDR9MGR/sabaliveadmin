@@ -42,7 +42,7 @@ function useOutside(ref, cb) {
 }
 
 const PANELS_FOR = {
-  super_admin: ['super', 'master', 'agency'],
+  super_admin: ['super', 'master', 'agency', 'country-admin', 'sub-admin', 'panel-agency'],
   admin: ['master'],
   sub_admin: ['agency'],
   agency_manager: ['agency'],
