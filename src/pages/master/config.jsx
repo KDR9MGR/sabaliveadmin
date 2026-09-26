@@ -33,6 +33,8 @@ function PlatformSection() {
       patch.maintenance_mode = !!v.maintenance_mode
       patch.allow_registrations = !!v.allow_registrations
       patch.brand_color = v.brand_color || '#7c3aed'
+      patch.accent_color = v.accent_color || '#F5279B'
+      patch.font_family = v.font_family || 'Poppins'
       await updateAppConfig(patch)
       toast('Platform settings saved')
       setForm(null)
@@ -60,6 +62,20 @@ function PlatformSection() {
             <input type="color" className="color-input" value={v.brand_color || '#7c3aed'} onChange={(e) => set('brand_color', e.target.value)} />
             <input className="input" style={{ width: 130 }} value={v.brand_color || ''} onChange={(e) => set('brand_color', e.target.value)} />
           </div>
+        </div>
+        <div className="field">
+          <label>Accent colour (shared / consumer app)</label>
+          <div className="hstack" style={{ gap: 10 }}>
+            <input type="color" className="color-input" value={v.accent_color || '#F5279B'} onChange={(e) => set('accent_color', e.target.value)} />
+            <input className="input" style={{ width: 130 }} value={v.accent_color || ''} onChange={(e) => set('accent_color', e.target.value)} />
+          </div>
+        </div>
+        <div className="field">
+          <label>Font family (shared / consumer app)</label>
+          <input className="input" value={v.font_family || ''} onChange={(e) => set('font_family', e.target.value)} placeholder="Poppins" />
+          <span className="hint">
+            Must be a valid <a href="https://fonts.google.com" target="_blank" rel="noopener noreferrer">Google Fonts</a> family name (e.g. "Poppins", "Inter", "Manrope") — the app fetches it live via <code>google_fonts</code>, so anything not on fonts.google.com won't resolve.
+          </span>
         </div>
         <div className="full" style={{ marginTop: 4 }}>
           <div className="toggle-row">

@@ -496,7 +496,7 @@ export function AgencyHostCodes() {
         <>
           <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
             {canPick
-              ? <>Viewing codes for <b>{agencyName}</b>. Codes you generate as an admin are platform-wide — an agency manager generates ones scoped to their agency.</>
+              ? <>Viewing codes for <b>{agencyName}</b>. Codes you generate here are scoped to this agency — switch the agency above before generating if you meant a different one.</>
               : <>Codes here are issued for <b>{agencyName || 'your agency'}</b> only. A host redeems one to unlock Go Live; ban a code or a single host's access at any time.</>}
           </div></Card>
           <HostCodesShell agencyId={agencyId} scopedName={canPick ? null : agencyName} />

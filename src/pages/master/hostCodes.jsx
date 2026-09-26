@@ -26,7 +26,7 @@ function plusDaysLocal(days) {
 }
 
 /* ------------------------------------------------------------------ Generate modal */
-function GenerateCodeModal({ scopedName, onClose, onDone }) {
+function GenerateCodeModal({ agencyId, scopedName, onClose, onDone }) {
   const toast = useToast()
   const [label, setLabel] = useState('')
   const [expiresAt, setExpiresAt] = useState(() => plusDaysLocal(30))
@@ -44,7 +44,7 @@ function GenerateCodeModal({ scopedName, onClose, onDone }) {
     if (!Number.isFinite(uses) || uses < 1 || uses > 500) { setError('Max uses must be between 1 and 500'); return }
     setBusy(true)
     try {
-      const row = await generateCode({ expiresAt: iso, label, maxUses: uses })
+      const row = await generateCode({ expiresAt: iso, label, maxUses: uses, agencyId })
       setResult(row)
       onDone?.()
     } catch (e) {
@@ -215,7 +215,7 @@ function CodesTable({ agencyId, scopedName }) {
       </AsyncView>
 
       {generating && (
-        <GenerateCodeModal scopedName={scopedName} onClose={() => setGenerating(false)} onDone={reload} />
+        <GenerateCodeModal agencyId={agencyId} scopedName={scopedName} onClose={() => setGenerating(false)} onDone={reload} />
       )}
       {confirm && (
         <ConfirmDialog

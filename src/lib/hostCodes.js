@@ -90,11 +90,12 @@ export async function listHostGrants(agencyId, { activeOnly = false } = {}) {
 }
 
 /* ---------------------------------------------------------------- writes (RPCs) */
-export async function generateCode({ expiresAt, label, maxUses }) {
+export async function generateCode({ expiresAt, label, maxUses, agencyId }) {
   return unwrap(await supabase.rpc('generate_host_code', {
     p_expires_at: expiresAt,
     p_label: label ? label.trim() : null,
     p_max_uses: Math.min(500, Math.max(1, Number(maxUses) || 1)),
+    p_agency_id: agencyId || null,
   }))
 }
 
