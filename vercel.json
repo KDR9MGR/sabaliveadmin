@@ -6,6 +6,7 @@
     { "src": "/robots.txt", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "dest": "/admin/robots.txt" },
     { "src": "/(?!admin/).*", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "dest": "/admin/index.html" },
     { "handle": "filesystem" },
+    { "src": "/(country-admin|sub-admin|panel-agency)(/.*)?", "dest": "/admin/index.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
