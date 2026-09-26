@@ -31,6 +31,21 @@ import {
 
 import { Profile, Login, NotFound } from './pages/shared.jsx'
 
+import {
+  CountryAdminDashboard, CountryUsers, CountryHosts, CountryTransferHost, CountryTransferAgency,
+  CountryTransferSubAdmin, CountrySubAdmins, CountryAgencies, CountryTransferCoins,
+  CountryCoinHistorySubAdmin, CountryCoinHistoryAgency, CountryCoinHistoryUser, CountryBadges,
+  CountryLeaderboard, CountryLiveRequest, CountrySalary, CountryProfileFrame, CountryProfile,
+} from './pages/countryAdmin.jsx'
+import {
+  SubAdminDashboard, SubAdminUsers, SubAdminHosts, SubAdminAgencies, SubAdminTransferCoins,
+  SubAdminCoinHistoryAgency, SubAdminCoinHistoryUser, SubAdminSalary, SubAdminProfile,
+} from './pages/subAdmin.jsx'
+import {
+  PanelAgencyDashboard, PanelAgencyUsers, PanelAgencyHosts, PanelAgencyTransferCoins,
+  PanelAgencyCoinHistoryUser, PanelAgencyLiveRequest, PanelAgencyProfile,
+} from './pages/panelAgency.jsx'
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -162,6 +177,59 @@ export default function App() {
               <Route path="config" element={<ApplicationConfig crumbRoot="Application Configuration" />} />
             </Route>
             <Route path="profile" element={<Profile panel="Super Admin" />} />
+          </Route>
+
+          {/* ---------------- New panels (additive; existing panels above are unchanged) ---------------- */}
+          {/* ---------------- Country Admin ---------------- */}
+          <Route path="/country-admin" element={
+            <RequireAuth><AppLayout panel="country-admin" /></RequireAuth>
+          }>
+            <Route index element={<CountryAdminDashboard />} />
+            <Route path="user-management/users" element={<CountryUsers />} />
+            <Route path="user-management/hosts" element={<CountryHosts />} />
+            <Route path="user-management/transfer-host" element={<CountryTransferHost />} />
+            <Route path="user-management/transfer-agency" element={<CountryTransferAgency />} />
+            <Route path="user-management/transfer-sub-admin" element={<CountryTransferSubAdmin />} />
+            <Route path="admin-management/sub-admin" element={<CountrySubAdmins />} />
+            <Route path="admin-management/agency" element={<CountryAgencies />} />
+            <Route path="coin-management/transfer-coins" element={<CountryTransferCoins />} />
+            <Route path="coin-management/history-sub-admin" element={<CountryCoinHistorySubAdmin />} />
+            <Route path="coin-management/history-agency" element={<CountryCoinHistoryAgency />} />
+            <Route path="coin-management/history-user" element={<CountryCoinHistoryUser />} />
+            <Route path="badges" element={<CountryBadges />} />
+            <Route path="leaderboard" element={<CountryLeaderboard />} />
+            <Route path="live-request" element={<CountryLiveRequest />} />
+            <Route path="salary" element={<CountrySalary />} />
+            <Route path="profile-frame" element={<CountryProfileFrame />} />
+            <Route path="profile" element={<CountryProfile />} />
+          </Route>
+
+          {/* ---------------- Sub Admin ---------------- */}
+          <Route path="/sub-admin" element={
+            <RequireAuth><AppLayout panel="sub-admin" /></RequireAuth>
+          }>
+            <Route index element={<SubAdminDashboard />} />
+            <Route path="user-management/users" element={<SubAdminUsers />} />
+            <Route path="user-management/hosts" element={<SubAdminHosts />} />
+            <Route path="admin-management/agency" element={<SubAdminAgencies />} />
+            <Route path="coin-management/transfer-coins" element={<SubAdminTransferCoins />} />
+            <Route path="coin-management/history-agency" element={<SubAdminCoinHistoryAgency />} />
+            <Route path="coin-management/history-user" element={<SubAdminCoinHistoryUser />} />
+            <Route path="salary" element={<SubAdminSalary />} />
+            <Route path="profile" element={<SubAdminProfile />} />
+          </Route>
+
+          {/* ---------------- Agency (new) ---------------- */}
+          <Route path="/panel-agency" element={
+            <RequireAuth><AppLayout panel="panel-agency" /></RequireAuth>
+          }>
+            <Route index element={<PanelAgencyDashboard />} />
+            <Route path="user-management/users" element={<PanelAgencyUsers />} />
+            <Route path="user-management/hosts" element={<PanelAgencyHosts />} />
+            <Route path="coin-management/transfer-coins" element={<PanelAgencyTransferCoins />} />
+            <Route path="coin-management/history-user" element={<PanelAgencyCoinHistoryUser />} />
+            <Route path="live-request" element={<PanelAgencyLiveRequest />} />
+            <Route path="profile" element={<PanelAgencyProfile />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

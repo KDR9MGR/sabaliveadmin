@@ -17,6 +17,23 @@ export const PANELS = {
     tagline: 'Agency operations', color: '#16a34a', icon: 'building',
     scope: 'Manages one agency — its hosts, assignments, sub-admins, earnings and payouts.',
   },
+
+  // ---- New panels (additive; existing panels above are unchanged) ----
+  'country-admin': {
+    key: 'country-admin', label: 'Country Admin', short: 'Country Admin', base: '/country-admin',
+    tagline: 'Country operations', color: '#0891b2', icon: 'globe',
+    scope: 'Manages one country — its sub admins, agencies, hosts and the coin cascade down to them.',
+  },
+  'sub-admin': {
+    key: 'sub-admin', label: 'Sub Admin', short: 'Sub Admin', base: '/sub-admin',
+    tagline: 'Sub admin operations', color: '#ca8a04', icon: 'shieldUser',
+    scope: 'Manages the agencies under it and the coin cascade one level down.',
+  },
+  'panel-agency': {
+    key: 'panel-agency', label: 'Agency', short: 'Agency', base: '/panel-agency',
+    tagline: 'Agency operations', color: '#dc2626', icon: 'building',
+    scope: 'Manages hosts, users and live requests for one agency.',
+  },
 }
 
 export const NAV = {
@@ -136,6 +153,90 @@ export const NAV = {
     ]},
     { section: 'Account', items: [
       { label: 'My Profile', icon: 'user', to: '/super/profile' },
+    ]},
+  ],
+
+  // ---- New panels (additive; existing panels above are unchanged) ----
+  'country-admin': [
+    { section: 'Overview', items: [
+      { label: 'Dashboard', icon: 'dashboard', to: '/country-admin' },
+    ]},
+    { section: 'Management', items: [
+      { label: 'User Management', icon: 'users', children: [
+        { label: 'Users', to: '/country-admin/user-management/users' },
+        { label: 'Hosts', to: '/country-admin/user-management/hosts' },
+        { label: 'Transfer Host', to: '/country-admin/user-management/transfer-host' },
+        { label: 'Transfer Agency', to: '/country-admin/user-management/transfer-agency' },
+        { label: 'Transfer Sub Admin', to: '/country-admin/user-management/transfer-sub-admin' },
+      ]},
+      { label: 'Admin Management', icon: 'shieldUser', children: [
+        { label: 'Sub Admin', to: '/country-admin/admin-management/sub-admin' },
+        { label: 'Agency', to: '/country-admin/admin-management/agency' },
+      ]},
+      { label: 'Coin Management', icon: 'coins', children: [
+        { label: 'Transfer Coins', to: '/country-admin/coin-management/transfer-coins' },
+        { label: 'History of Coin Transfer to Sub Admin', to: '/country-admin/coin-management/history-sub-admin' },
+        { label: 'History of Coin Transfer to Agency', to: '/country-admin/coin-management/history-agency' },
+        { label: 'History of Coin Transfer to User', to: '/country-admin/coin-management/history-user' },
+      ]},
+    ]},
+    { section: 'Platform', items: [
+      { label: 'Badge Management', icon: 'award', to: '/country-admin/badges' },
+      { label: 'Leaderboard Frame', icon: 'trophy', to: '/country-admin/leaderboard' },
+      { label: 'Live Request', icon: 'radio', to: '/country-admin/live-request' },
+      { label: 'Salary', icon: 'wallet', to: '/country-admin/salary' },
+      { label: 'Profile Frame', icon: 'frame', to: '/country-admin/profile-frame' },
+    ]},
+    { section: 'Account', items: [
+      { label: 'My Profile', icon: 'user', to: '/country-admin/profile' },
+    ]},
+  ],
+
+  'sub-admin': [
+    { section: 'Overview', items: [
+      { label: 'Dashboard', icon: 'dashboard', to: '/sub-admin' },
+    ]},
+    { section: 'Management', items: [
+      { label: 'User Management', icon: 'users', children: [
+        { label: 'Users', to: '/sub-admin/user-management/users' },
+        { label: 'Hosts', to: '/sub-admin/user-management/hosts' },
+      ]},
+      { label: 'Admin Management', icon: 'shieldUser', children: [
+        { label: 'Agency', to: '/sub-admin/admin-management/agency' },
+      ]},
+      { label: 'Coin Management', icon: 'coins', children: [
+        { label: 'Transfer Coins', to: '/sub-admin/coin-management/transfer-coins' },
+        { label: 'History of Coin Transfer to Agency', to: '/sub-admin/coin-management/history-agency' },
+        { label: 'History of Coin Transfer to User', to: '/sub-admin/coin-management/history-user' },
+      ]},
+    ]},
+    { section: 'Platform', items: [
+      { label: 'Salary', icon: 'wallet', to: '/sub-admin/salary' },
+    ]},
+    { section: 'Account', items: [
+      { label: 'My Profile', icon: 'user', to: '/sub-admin/profile' },
+    ]},
+  ],
+
+  'panel-agency': [
+    { section: 'Overview', items: [
+      { label: 'Dashboard', icon: 'dashboard', to: '/panel-agency' },
+    ]},
+    { section: 'Management', items: [
+      { label: 'User Management', icon: 'users', children: [
+        { label: 'Users', to: '/panel-agency/user-management/users' },
+        { label: 'Hosts', to: '/panel-agency/user-management/hosts' },
+      ]},
+      { label: 'Coin Management', icon: 'coins', children: [
+        { label: 'Transfer Coins', to: '/panel-agency/coin-management/transfer-coins' },
+        { label: 'History of Coin Transfer to User', to: '/panel-agency/coin-management/history-user' },
+      ]},
+    ]},
+    { section: 'Platform', items: [
+      { label: 'Live Request', icon: 'radio', to: '/panel-agency/live-request' },
+    ]},
+    { section: 'Account', items: [
+      { label: 'My Profile', icon: 'user', to: '/panel-agency/profile' },
     ]},
   ],
 }
