@@ -3,13 +3,15 @@ import { supabase } from './supabase.js'
 import { can as canCap } from './capabilities.js'
 
 /* Which panel a staff_roles.role lands in. super_admin/admin get their own
-   panel; agency_manager and sub_admin are both agency-scoped (see the
-   manages_agency() RLS helper) and share the Agency panel. */
+   panel; agency_manager and sub_admin are agency-scoped (see the
+   manages_agency() RLS helper) and land in the new per-role panels rather
+   than the legacy Global Admin panel (which no role routes to anymore —
+   it's reachable only by a super_admin browsing via the panel switcher). */
 export const PANEL_FOR_ROLE = {
   super_admin: 'super',
   admin: 'master',
-  sub_admin: 'agency',
-  agency_manager: 'agency',
+  sub_admin: 'sub-admin',
+  agency_manager: 'panel-agency',
 }
 
 const Ctx = createContext(null)

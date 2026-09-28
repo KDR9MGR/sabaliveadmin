@@ -129,9 +129,9 @@ export default function App() {
             <Route path="profile" element={<Profile panel="Master / Admin" />} />
           </Route>
 
-          {/* ---------------- Global Admin (agency) ---------------- */}
-          <Route path="/agency" element={
-            <RequireAuth><RequirePanel panel="agency"><AgencyScopeProvider><AppLayout panel="agency" /></AgencyScopeProvider></RequirePanel></RequireAuth>
+          {/* ---------------- Global Admin (legacy — no role logs in here anymore) ---------------- */}
+          <Route path="/global-admin" element={
+            <RequireAuth><RequirePanel panel="global-admin"><AgencyScopeProvider><AppLayout panel="global-admin" /></AgencyScopeProvider></RequirePanel></RequireAuth>
           }>
             <Route index element={<AgencyDashboard />} />
             <Route path="profile-agency" element={<MyAgency />} />
@@ -187,7 +187,7 @@ export default function App() {
           {/* ---------------- New panels (additive; existing panels above are unchanged) ---------------- */}
           {/* ---------------- Country Admin ---------------- */}
           <Route path="/country-admin" element={
-            <RequireAuth><AppLayout panel="country-admin" /></RequireAuth>
+            <RequireAuth><RequirePanel panel="country-admin"><AppLayout panel="country-admin" /></RequirePanel></RequireAuth>
           }>
             <Route index element={<CountryAdminDashboard />} />
             <Route path="user-management/users" element={<CountryUsers />} />
@@ -213,7 +213,7 @@ export default function App() {
 
           {/* ---------------- Sub Admin ---------------- */}
           <Route path="/sub-admin" element={
-            <RequireAuth><AgencyScopeProvider><AppLayout panel="sub-admin" /></AgencyScopeProvider></RequireAuth>
+            <RequireAuth><RequirePanel panel="sub-admin"><AgencyScopeProvider><AppLayout panel="sub-admin" /></AgencyScopeProvider></RequirePanel></RequireAuth>
           }>
             <Route index element={<SubAdminDashboard />} />
             <Route path="user-management/users" element={<SubAdminUsers />} />
@@ -228,7 +228,7 @@ export default function App() {
 
           {/* ---------------- Agency (new) ---------------- */}
           <Route path="/panel-agency" element={
-            <RequireAuth><AgencyScopeProvider><AppLayout panel="panel-agency" /></AgencyScopeProvider></RequireAuth>
+            <RequireAuth><RequirePanel panel="panel-agency"><AgencyScopeProvider><AppLayout panel="panel-agency" /></AgencyScopeProvider></RequirePanel></RequireAuth>
           }>
             <Route index element={<PanelAgencyDashboard />} />
             <Route path="user-management/users" element={<PanelAgencyUsers />} />

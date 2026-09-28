@@ -12,10 +12,10 @@ export const PANELS = {
     tagline: 'Application management', color: '#7c3aed', icon: 'shieldUser',
     scope: 'Runs the app day to day — users, agencies, hosts, coins, content, app settings.',
   },
-  agency: {
-    key: 'agency', label: 'Global Admin', short: 'Global Admin', base: '/agency',
+  'global-admin': {
+    key: 'global-admin', label: 'Global Admin', short: 'Global Admin', base: '/global-admin',
     tagline: 'Agency operations', color: '#16a34a', icon: 'building',
-    scope: 'Manages one agency — its hosts, assignments, sub-admins, earnings and payouts.',
+    scope: 'Legacy agency panel — no role logs in here anymore (see the Sub Admin / Agency panels below); reachable only by a Super Admin browsing via the panel switcher.',
   },
 
   // ---- New panels (additive; existing panels above are unchanged) ----
@@ -100,29 +100,29 @@ export const NAV = {
     ]},
   ],
 
-  agency: [
+  'global-admin': [
     { section: 'Overview', items: [
-      { label: 'Dashboard', icon: 'dashboard', to: '/agency' },
-      { label: 'My Agency', icon: 'building', to: '/agency/profile-agency' },
+      { label: 'Dashboard', icon: 'dashboard', to: '/global-admin' },
+      { label: 'My Agency', icon: 'building', to: '/global-admin/profile-agency' },
     ]},
     { section: 'Operations', items: [
       { label: 'Host Management', icon: 'video', children: [
-        { label: 'Hosts', to: '/agency/hosts' },
-        { label: 'Host Profiles', to: '/agency/hosts/profiles' },
-        { label: 'Applications', to: '/agency/hosts/applications' },
-        { label: 'Host Codes', to: '/agency/hosts/codes' },
+        { label: 'Hosts', to: '/global-admin/hosts' },
+        { label: 'Host Profiles', to: '/global-admin/hosts/profiles' },
+        { label: 'Applications', to: '/global-admin/hosts/applications' },
+        { label: 'Host Codes', to: '/global-admin/hosts/codes' },
       ]},
-      { label: 'Assignments', icon: 'userCheck', to: '/agency/assignments' },
-      { label: 'Sub Admins', icon: 'shieldUser', to: '/agency/sub-admins' },
+      { label: 'Assignments', icon: 'userCheck', to: '/global-admin/assignments' },
+      { label: 'Sub Admins', icon: 'shieldUser', to: '/global-admin/sub-admins' },
     ]},
     { section: 'Performance', items: [
-      { label: 'Statistics', icon: 'chart', to: '/agency/stats' },
-      { label: 'Earnings', icon: 'wallet', to: '/agency/earnings' },
-      { label: 'Salary', icon: 'fileText', to: '/agency/salary' },
+      { label: 'Statistics', icon: 'chart', to: '/global-admin/stats' },
+      { label: 'Earnings', icon: 'wallet', to: '/global-admin/earnings' },
+      { label: 'Salary', icon: 'fileText', to: '/global-admin/salary' },
     ]},
     { section: 'Account', items: [
-      { label: 'Agency Account', icon: 'idCard', to: '/agency/account' },
-      { label: 'My Profile', icon: 'user', to: '/agency/profile' },
+      { label: 'Agency Account', icon: 'idCard', to: '/global-admin/account' },
+      { label: 'My Profile', icon: 'user', to: '/global-admin/profile' },
     ]},
   ],
 

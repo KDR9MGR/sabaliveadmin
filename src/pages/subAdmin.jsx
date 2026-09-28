@@ -11,7 +11,7 @@ import { AgencyDashboard, AgencyHostProfiles, AgencyHosts, MyAgency, AgencySalar
 
 const CR = ['Home']
 
-export const SubAdminDashboard = AgencyDashboard
+export const SubAdminDashboard = () => <AgencyDashboard panel="sub-admin" />
 export const SubAdminUsers = AgencyHostProfiles
 export const SubAdminHosts = AgencyHosts
 

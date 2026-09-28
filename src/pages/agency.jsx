@@ -51,14 +51,17 @@ function ScopedBody({ agencyId, load, children }) {
 }
 
 /* --------------------------------------------------- Dashboard */
-export function AgencyDashboard() {
+/* [panel] names whichever panel is actually rendering this — Global Admin,
+   Sub Admin or Agency all reuse this same component, so the chip must not
+   hardcode one of them. */
+export function AgencyDashboard({ panel = 'global-admin' }) {
   const { agencyName } = useAgencyScope()
   return (
     <AgencyPage title="Dashboard" load={agencyDashboard}>
       {(d) => (
         <>
           <div className="banner" style={{ marginBottom: 16 }}>
-            <h3>{agencyName || 'Your agency'} <PanelChip panel="agency" /></h3>
+            <h3>{agencyName || 'Your agency'} <PanelChip panel={panel} /></h3>
             <p>{d.stats[0].value} hosts · {d.stats[1].value} live now</p>
           </div>
           <StatGrid stats={d.stats} />

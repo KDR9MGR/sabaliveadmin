@@ -4,7 +4,7 @@
 import { Profile } from './shared.jsx'
 import { AgencyDashboard, AgencyHostProfiles, AgencyHosts, AgencyHostCodes, AgencyTransferCoins, AgencyCoinHistory } from './agency.jsx'
 
-export const PanelAgencyDashboard = AgencyDashboard
+export const PanelAgencyDashboard = () => <AgencyDashboard panel="panel-agency" />
 export const PanelAgencyUsers = AgencyHostProfiles
 export const PanelAgencyHosts = AgencyHosts
 
