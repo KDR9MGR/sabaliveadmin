@@ -6,7 +6,7 @@ const PREFIX_TO_PANEL = {
   super: 'super',
   master: 'master',
   admin: 'master',
-  agency: 'agency',
+  agency: 'global-admin',
 }
 
 export function panelFromHostname(hostname = typeof window !== 'undefined' ? window.location.hostname : '') {
