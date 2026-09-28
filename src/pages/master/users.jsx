@@ -14,6 +14,7 @@ import {
 import EntityForm from '../../components/EntityForm.jsx'
 import { relativeTime } from '../../lib/format.js'
 import { HostsTable } from './hosts.jsx'
+import { listBadges, listFrames, grantBadge, grantUserFrame } from '../../lib/gamification.js'
 
 const CRUMBS = ['Home', 'User Management']
 const STATUS_OPTS = ['active', 'inactive', 'suspended']
@@ -61,12 +62,14 @@ export function UsersList() {
             personCol('name', 'username'),
             { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
             roleCol(),
+            { key: 'agency', header: 'Agency', render: (r) => r.agency === '—' ? <span className="muted">—</span> : <Tag>{r.agency}</Tag> },
             { key: 'level', header: 'Level', align: 'right' },
             numCol('followers', 'Followers'),
             numCol('coins', 'Coins'),
             { key: 'kyc', header: 'KYC', render: (r) => r.kyc === '—' ? <span className="muted">—</span> : <StatusBadge value={r.kyc} /> },
             { key: 'location', header: 'Region' },
             statusCol(),
+            { key: 'isLive', header: 'Live', render: (r) => r.isLive ? <StatusBadge value="Live" /> : <span className="muted">Offline</span> },
             { key: 'joined', header: 'Joined', sortable: true },
           ]}
           rowActions={(r) => [
@@ -326,7 +329,7 @@ export function UserProfile() {
         </>}
       />
       <AsyncView loading={loading} error={error} reload={reload}>
-        {u ? <UserProfileBody data={data} onStatus={changeStatus} /> : (
+        {u ? <UserProfileBody data={data} onStatus={changeStatus} onGranted={reload} /> : (
           <Card><div className="card__body"><EmptyState icon="helpCircle" title="User not found" text="No profile with this ID." /></div></Card>
         )}
       </AsyncView>
@@ -334,13 +337,31 @@ export function UserProfile() {
   )
 }
 
-function UserProfileBody({ data, onStatus }) {
+function UserProfileBody({ data, onStatus, onGranted }) {
   const u = data.profile
   const w = u.wallets || {}
   const hp = u.host_profiles
   const sr = u.staff_roles
   const kyc = (u.kyc_verifications || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
   const role = sr ? (ROLE_LABEL[sr.role] || sr.role) : hp ? 'Host' : 'User'
+  const [granting, setGranting] = useState(null) // 'badge' | 'frame'
+  const toast = useToast()
+  const { data: catalog } = useAsyncData(async () => ({
+    badges: await listBadges(),
+    frames: await listFrames(),
+  }))
+
+  const grant = async (kind, id) => {
+    try {
+      if (kind === 'badge') await grantBadge(u.id, id)
+      else await grantUserFrame(u.id, id)
+      toast('Granted')
+      setGranting(null)
+      onGranted?.()
+    } catch (e) {
+      toast(e.message || 'Could not grant')
+    }
+  }
 
   return (
     <div className="grid dash">
@@ -352,6 +373,7 @@ function UserProfileBody({ data, onStatus }) {
             <div className="hstack wrap" style={{ gap: 8 }}>
               <StatusBadge value={u.status} />
               {u.verified && <StatusBadge value="Verified" />}
+              {u.is_live && <StatusBadge value="Live" />}
               <Tag role>{role}</Tag>
             </div>
           </div>
@@ -383,6 +405,50 @@ function UserProfileBody({ data, onStatus }) {
               ))}
             </div>
           ) : <EmptyState icon="gift" title="No gift activity yet" />}
+        </Card>
+
+        <Card title="Badges" action={<Button size="sm" icon="userPlus" onClick={() => setGranting('badge')}>Assign badge</Button>}>
+          {data.badges.length ? (
+            <div className="hstack wrap" style={{ gap: 10 }}>
+              {data.badges.map((b, i) => (
+                <span key={i} className="hstack" style={{ gap: 6, background: 'var(--surface-2)', padding: '6px 10px', borderRadius: 8 }}>
+                  <span style={{ fontSize: 16 }}>{b.badges?.emoji}</span>
+                  <b style={{ fontSize: 12.5 }}>{b.badges?.name}</b>
+                </span>
+              ))}
+            </div>
+          ) : <EmptyState icon="award" title="No badges yet" />}
+        </Card>
+
+        <Card title="Profile Frame" action={<Button size="sm" icon="userPlus" onClick={() => setGranting('frame')}>Assign frame</Button>}>
+          {data.frames.length ? (
+            <div className="hstack wrap" style={{ gap: 10 }}>
+              {data.frames.map((f, i) => (
+                <span key={i} className="hstack" style={{ gap: 6, background: 'var(--surface-2)', padding: '6px 10px', borderRadius: 8 }}>
+                  <span style={{ fontSize: 16 }}>{f.frames?.emoji}</span>
+                  <b style={{ fontSize: 12.5 }}>{f.frames?.name}</b>
+                  {f.equipped && <StatusBadge value="Active" />}
+                </span>
+              ))}
+            </div>
+          ) : <EmptyState icon="frame" title="No profile frames yet" />}
+        </Card>
+
+        <Card title="Friends" sub={`${data.followers.length} followers · ${data.following.length} following (most recent 50 each)`}>
+          {(data.followers.length || data.following.length) ? (
+            <DataTable
+              rows={[
+                ...data.followers.map((p) => ({ ...p, dir: 'Follower' })),
+                ...data.following.map((p) => ({ ...p, dir: 'Following' })),
+              ]}
+              searchKeys={['name', 'username']}
+              columns={[
+                personCol('name', 'username'),
+                { key: 'dir', header: 'Relation', render: (r) => <Tag>{r.dir}</Tag> },
+              ]}
+              emptyText="No connections yet."
+            />
+          ) : <EmptyState icon="users" title="No followers or following yet" />}
         </Card>
       </div>
 
@@ -425,6 +491,22 @@ function UserProfileBody({ data, onStatus }) {
           </div>
         </Card>
       </div>
+
+      {granting && (
+        <EntityForm
+          title={granting === 'badge' ? `Assign a badge to ${u.name}` : `Assign a frame to ${u.name}`}
+          onClose={() => setGranting(null)}
+          onSubmit={(v) => grant(granting, v.item_id)}
+          savedMessage="Assigned"
+          fields={[{
+            name: 'item_id',
+            label: granting === 'badge' ? 'Badge' : 'Frame',
+            type: 'select',
+            required: true,
+            options: (granting === 'badge' ? catalog?.badges : catalog?.frames)?.map((x) => ({ value: x.id, label: `${x.emoji} ${x.name}` })) || [],
+          }]}
+        />
+      )}
     </div>
   )
 }

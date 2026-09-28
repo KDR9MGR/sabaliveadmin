@@ -19,7 +19,7 @@ function deriveRole(row) {
 export async function listUsers() {
   const rows = unwrap(await supabase
     .from('profiles')
-    .select('id, name, username, location, level, followers_count, verified, status, created_at, wallets(coins), host_profiles(tier, status, kyc_status), staff_roles(role, agency_id)')
+    .select('id, name, username, location, level, followers_count, verified, status, is_live, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name)), staff_roles(role, agency_id, agencies(name))')
     .order('created_at', { ascending: false })
     .limit(1000))
   return rows.map((r) => ({
@@ -32,17 +32,19 @@ export async function listUsers() {
     followers: r.followers_count,
     verified: r.verified,
     status: titleCase(r.status),
+    isLive: !!r.is_live,
     kyc: r.host_profiles ? titleCase(r.host_profiles.kyc_status) : '—',
     role: deriveRole(r),
     isHost: !!r.host_profiles,
     isStaff: !!r.staff_roles,
+    agency: r.host_profiles?.agencies?.name || r.staff_roles?.agencies?.name || '—',
     coins: r.wallets?.coins ?? 0,
     joined: fmtDate(r.created_at),
   }))
 }
 
 export async function getUserDetail(id) {
-  const [profile, gifts, streams] = await Promise.all([
+  const [profile, gifts, streams, badges, frames, following, followers] = await Promise.all([
     supabase.from('profiles')
       .select('*, wallets(coins, diamonds), host_profiles(*, agencies(name)), staff_roles(role, agency_id, agencies(name)), kyc_verifications!profile_id(status, document_type, created_at)')
       .eq('id', id).maybeSingle().then(unwrap),
@@ -53,8 +55,28 @@ export async function getUserDetail(id) {
     supabase.from('live_streams')
       .select('title, status, viewer_count, gift_coin_total, started_at')
       .eq('host_id', id).order('started_at', { ascending: false }).limit(8).then(unwrap),
+    supabase.from('user_badges')
+      .select('awarded_at, badges(id, name, emoji, criteria)')
+      .eq('profile_id', id).order('awarded_at', { ascending: false }).then(unwrap),
+    supabase.from('user_frames')
+      .select('equipped, acquired_at, frames(id, name, emoji, unlock_type)')
+      .eq('profile_id', id).order('acquired_at', { ascending: false }).then(unwrap),
+    supabase.from('follows')
+      .select('followee:followee_id(id, name, username)')
+      .eq('follower_id', id).limit(50).then(unwrap),
+    supabase.from('follows')
+      .select('follower:follower_id(id, name, username)')
+      .eq('followee_id', id).limit(50).then(unwrap),
   ])
-  return { profile, gifts: gifts || [], streams: streams || [] }
+  return {
+    profile,
+    gifts: gifts || [],
+    streams: streams || [],
+    badges: badges || [],
+    frames: frames || [],
+    following: (following || []).map((f) => f.followee).filter(Boolean),
+    followers: (followers || []).map((f) => f.follower).filter(Boolean),
+  }
 }
 
 export async function setUserStatus(id, status) {

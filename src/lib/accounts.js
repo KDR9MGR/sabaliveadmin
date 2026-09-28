@@ -83,11 +83,15 @@ export async function revokeRole(user_id) {
 // Function (service_role; only a super_admin may call it). Returns
 // { user_id, email, role, temp_password } — temp_password is set only when
 // the server generated one.
-export async function inviteStaff({ email, role, agency_id, full_name }) {
+export async function inviteStaff({ email, role, agency_id, full_name, username, phone, location, password, payment_pin }) {
   const { role: r, agency_id: aid, needsAgency } = normalize(role, agency_id)
   if (needsAgency && !aid) throw new Error('Agency-scoped roles need an agency selected')
   const { data, error } = await supabase.functions.invoke('invite-staff', {
-    body: { email: String(email || '').trim(), role: r, agency_id: aid, full_name: full_name || null },
+    body: {
+      email: String(email || '').trim(), role: r, agency_id: aid,
+      full_name: full_name || null, username: username || null, phone: phone || null,
+      location: location || null, password: password || null, payment_pin: payment_pin || null,
+    },
   })
   if (error) {
     let msg = error.message

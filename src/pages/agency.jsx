@@ -17,6 +17,7 @@ import {
 import { updateHost } from '../lib/admin.js'
 import { decideHostApplication, markHostApplicationUnderReview, createAssignment, updateAssignment } from '../lib/workflows.js'
 import { createSalaryPayment, setSalaryStatus, updateSalaryPayment, SALARY_ROLES } from '../lib/salary.js'
+import { myMintBalance, myCoinGrants, distributeCoins } from '../lib/treasury.js'
 import { HostCodesShell } from './master/hostCodes.jsx'
 import { num } from '../data/index.js'
 
@@ -481,6 +482,92 @@ export function AgencySalary() {
           </>
         )
       }}
+    </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- Transfer Coins (real: distribute_coins RPC) */
+/* Draws from the shared platform treasury, same mechanism Super Admin's own
+   Coin Treasury uses — the caller just needs to be on the coin_minters
+   allow-list (Super Admin → Coin Treasury → Minter Allow-list). Recipients
+   are scoped in this UI to the agency's own hosts. */
+export function AgencyTransferCoins() {
+  const toast = useToast()
+  const [busy, setBusy] = useState(false)
+  const [values, setValues] = useState({ granted_to: '', coins: '', note: '' })
+  const set = (k, v) => setValues((s) => ({ ...s, [k]: v }))
+
+  return (
+    <AgencyPage
+      title="Transfer Coins"
+      load={async (agencyId) => {
+        const [hosts, balance] = await Promise.all([listAgencyHosts(agencyId), myMintBalance()])
+        return { hosts, balance }
+      }}
+    >
+      {({ hosts, balance }, reload) => {
+        const submit = async () => {
+          if (!values.granted_to || !values.coins) { toast('Pick a recipient and an amount'); return }
+          setBusy(true)
+          try {
+            await distributeCoins({ perRecipient: values.coins, audience: 'users', recipientIds: [values.granted_to], note: values.note })
+            toast(`${values.coins} coins sent`)
+            setValues({ granted_to: '', coins: '', note: '' })
+            reload()
+          } catch (e) {
+            toast(e.message || 'Transfer failed — you may need to be added to the Coin Minters allow-list by a Super Admin')
+          } finally { setBusy(false) }
+        }
+        return (
+          <Card title="Send coins to a host" sub={`Available treasury balance: ${num(balance)} coins`}>
+            <div className="form-grid">
+              <div className="field full">
+                <label>Host <span className="req">*</span></label>
+                <select className="select" value={values.granted_to} onChange={(e) => set('granted_to', e.target.value)}>
+                  <option value="">Select a host…</option>
+                  {hosts.map((h) => <option key={h.id} value={h.id}>{h.name} (@{h.username})</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label>Amount (coins) <span className="req">*</span></label>
+                <input className="input" type="number" placeholder="e.g. 500" value={values.coins} onChange={(e) => set('coins', e.target.value)} />
+              </div>
+              <div className="field full">
+                <label>Note</label>
+                <textarea className="textarea" placeholder="Reason for the transfer" value={values.note} onChange={(e) => set('note', e.target.value)} />
+              </div>
+            </div>
+            <div className="hstack mt-16" style={{ justifyContent: 'flex-end', gap: 10 }}>
+              <Button onClick={() => setValues({ granted_to: '', coins: '', note: '' })}>Clear</Button>
+              <Button variant="primary" icon={busy ? 'refresh' : 'coins'} disabled={busy} onClick={submit}>
+                {busy ? 'Sending…' : 'Send Coins'}
+              </Button>
+            </div>
+          </Card>
+        )
+      }}
+    </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- Coin History (real: coin_grants, granted_by = me) */
+export function AgencyCoinHistory() {
+  return (
+    <AgencyPage title="History of Coin Transfer to User" load={async () => myCoinGrants()}>
+      {(rows) => (
+        <DataTable
+          rows={rows}
+          searchKeys={['recipient', 'username', 'note', 'idShort']}
+          columns={[
+            { key: 'idShort', header: 'Ref', render: (r) => <span className="mono muted">{r.idShort}</span> },
+            personCol('recipient', 'username'),
+            numCol('coins', 'Coins'),
+            { key: 'note', header: 'Note' },
+            { key: 'date', header: 'Date', sortable: true },
+          ]}
+          emptyText="No coin transfers sent yet."
+        />
+      )}
     </AgencyPage>
   )
 }

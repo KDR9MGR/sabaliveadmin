@@ -46,6 +46,33 @@ export async function mintCoins({ coins, note }) {
   return unwrap(await supabase.rpc('mint_coins', { p_coins: Number(coins), p_note: note || null }))
 }
 
+/* Lighter treasury read for a coin_minters-listed agency_manager/sub_admin —
+   just the balance they may distribute from, skipping the platform-wide
+   circulation total (their wallets read would only see their own row anyway). */
+export async function myMintBalance() {
+  const row = unwrap(await supabase.from('coin_treasury').select('balance').eq('id', true).single())
+  return Number(row.balance)
+}
+
+/* Coin grants a staffer has personally made (any admin, or a coin_minters
+   -listed agency_manager/sub_admin distributing to their own hosts). */
+export async function myCoinGrants() {
+  const me = (await supabase.auth.getSession()).data.session?.user?.id
+  const rows = unwrap(await supabase.from('coin_grants')
+    .select('id, coins, note, created_at, recipient:granted_to(name, username)')
+    .eq('granted_by', me)
+    .order('created_at', { ascending: false })
+    .limit(200))
+  return rows.map((r) => ({
+    id: r.id, idShort: shortId(r.id),
+    coins: Number(r.coins),
+    recipient: r.recipient?.name || '—',
+    username: r.recipient?.username,
+    note: r.note || '—',
+    date: fmtDate(r.created_at),
+  }))
+}
+
 export async function distributeCoins({ perRecipient, audience, role, recipientIds, note }) {
   const { data, error } = await supabase.rpc('distribute_coins', {
     p_per_recipient: Number(perRecipient),

@@ -69,6 +69,12 @@ export async function grantBadge(profileId, badgeId) {
     .select())
 }
 
+export async function grantUserFrame(profileId, frameId) {
+  return unwrap(await supabase.from('user_frames')
+    .upsert({ profile_id: profileId, frame_id: frameId }, { onConflict: 'profile_id,frame_id', ignoreDuplicates: true })
+    .select())
+}
+
 /* ---------------------------------------------------------------- profile frames */
 export async function listFrames() {
   const [frames, owners] = await Promise.all([

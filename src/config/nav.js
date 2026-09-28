@@ -13,7 +13,7 @@ export const PANELS = {
     scope: 'Runs the app day to day — users, agencies, hosts, coins, content, app settings.',
   },
   agency: {
-    key: 'agency', label: 'Agency / Manager', short: 'Agency', base: '/agency',
+    key: 'agency', label: 'Global Admin', short: 'Global Admin', base: '/agency',
     tagline: 'Agency operations', color: '#16a34a', icon: 'building',
     scope: 'Manages one agency — its hosts, assignments, sub-admins, earnings and payouts.',
   },

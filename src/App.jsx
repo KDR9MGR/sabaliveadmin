@@ -8,7 +8,7 @@ import AppLayout from './components/layout/AppLayout.jsx'
 
 import MasterDashboard from './pages/master/Dashboard.jsx'
 import { UsersList, HostsList, SubAdminsList, UserIds, AccountStatus, TransferRequests, UserProfile } from './pages/master/users.jsx'
-import { Admins, AdminSubAdmins, AgenciesAdmin, RolesPermissions } from './pages/master/admins.jsx'
+import { Admins, AddMasterAdmin, AdminSubAdmins, AgenciesAdmin, RolesPermissions } from './pages/master/admins.jsx'
 import { AgencyList, AgencyRequests, CommissionPlans, AgencyDetail } from './pages/master/agencies.jsx'
 import { HostsMgmt, HostAssignment, HostApplications, HostDetail, KycReview } from './pages/master/hosts.jsx'
 import { HostCodes } from './pages/master/hostCodes.jsx'
@@ -25,7 +25,8 @@ import {
 } from './pages/agency.jsx'
 
 import {
-  SuperDashboard, SuperAdmins, MasterAccounts, AccessControl, AuditLogs, SuperSecurity,
+  SuperDashboard, SuperAdmins, MasterAccounts, AddAdminAccount, AddAgencyStaffAccount,
+  AccessControl, AuditLogs, SuperSecurity,
   SystemOverview, Infrastructure, Integrations, Backups, CoinTreasury,
 } from './pages/super.jsx'
 
@@ -33,7 +34,8 @@ import { Profile, Login, NotFound } from './pages/shared.jsx'
 
 import {
   CountryAdminDashboard, CountryUsers, CountryHosts, CountryTransferHost, CountryTransferAgency,
-  CountryTransferSubAdmin, CountrySubAdmins, CountryAgencies, CountryTransferCoins,
+  CountryTransferSubAdmin, CountrySubAdmins, CountryAddSubAdmin, CountryAgencies, CountryAddAgency,
+  CountryTransferCoins,
   CountryCoinHistorySubAdmin, CountryCoinHistoryAgency, CountryCoinHistoryUser, CountryBadges,
   CountryLeaderboard, CountryLiveRequest, CountrySalary, CountryProfileFrame, CountryProfile,
 } from './pages/countryAdmin.jsx'
@@ -74,6 +76,7 @@ export default function App() {
 
             <Route element={<RequireCap cap="manage_admins" />}>
               <Route path="admins" element={<Admins />} />
+              <Route path="admins/add" element={<AddMasterAdmin />} />
               <Route path="admins/sub-admins" element={<AdminSubAdmins />} />
               <Route path="admins/agencies" element={<AgenciesAdmin />} />
               <Route path="admins/roles" element={<RolesPermissions />} />
@@ -126,7 +129,7 @@ export default function App() {
             <Route path="profile" element={<Profile panel="Master / Admin" />} />
           </Route>
 
-          {/* ---------------- Agency / Manager ---------------- */}
+          {/* ---------------- Global Admin (agency) ---------------- */}
           <Route path="/agency" element={
             <RequireAuth><RequirePanel panel="agency"><AgencyScopeProvider><AppLayout panel="agency" /></AgencyScopeProvider></RequirePanel></RequireAuth>
           }>
@@ -142,7 +145,7 @@ export default function App() {
             <Route path="earnings" element={<AgencyEarnings />} />
             <Route path="salary" element={<AgencySalary />} />
             <Route path="account" element={<AgencyAccount />} />
-            <Route path="profile" element={<Profile panel="Agency / Manager" />} />
+            <Route path="profile" element={<Profile panel="Global Admin" />} />
           </Route>
 
           {/* ---------------- Super Admin ---------------- */}
@@ -153,7 +156,9 @@ export default function App() {
 
             <Route element={<RequireCap cap="manage_admins" />}>
               <Route path="admins" element={<SuperAdmins />} />
+              <Route path="admins/add" element={<AddAdminAccount />} />
               <Route path="masters" element={<MasterAccounts />} />
+              <Route path="masters/add" element={<AddAgencyStaffAccount />} />
               <Route path="access" element={<AccessControl />} />
             </Route>
 
@@ -191,7 +196,9 @@ export default function App() {
             <Route path="user-management/transfer-agency" element={<CountryTransferAgency />} />
             <Route path="user-management/transfer-sub-admin" element={<CountryTransferSubAdmin />} />
             <Route path="admin-management/sub-admin" element={<CountrySubAdmins />} />
+            <Route path="admin-management/sub-admin/add" element={<CountryAddSubAdmin />} />
             <Route path="admin-management/agency" element={<CountryAgencies />} />
+            <Route path="admin-management/agency/add" element={<CountryAddAgency />} />
             <Route path="coin-management/transfer-coins" element={<CountryTransferCoins />} />
             <Route path="coin-management/history-sub-admin" element={<CountryCoinHistorySubAdmin />} />
             <Route path="coin-management/history-agency" element={<CountryCoinHistoryAgency />} />
@@ -206,7 +213,7 @@ export default function App() {
 
           {/* ---------------- Sub Admin ---------------- */}
           <Route path="/sub-admin" element={
-            <RequireAuth><AppLayout panel="sub-admin" /></RequireAuth>
+            <RequireAuth><AgencyScopeProvider><AppLayout panel="sub-admin" /></AgencyScopeProvider></RequireAuth>
           }>
             <Route index element={<SubAdminDashboard />} />
             <Route path="user-management/users" element={<SubAdminUsers />} />
@@ -221,7 +228,7 @@ export default function App() {
 
           {/* ---------------- Agency (new) ---------------- */}
           <Route path="/panel-agency" element={
-            <RequireAuth><AppLayout panel="panel-agency" /></RequireAuth>
+            <RequireAuth><AgencyScopeProvider><AppLayout panel="panel-agency" /></AgencyScopeProvider></RequireAuth>
           }>
             <Route index element={<PanelAgencyDashboard />} />
             <Route path="user-management/users" element={<PanelAgencyUsers />} />

@@ -1,39 +1,29 @@
-/* Sub Admin panel — new, additive, layout only (see panelsShared.jsx).
-   Sits between Country Admin and Agency: manages agencies under it, and
-   the coin cascade one level down. */
-import { PageHeader, Card } from '../components/ui.jsx'
-import { StatGrid } from './_templates.jsx'
+/* Sub Admin panel — new, additive. Reuses the existing Agency panel's real,
+   agency-scoped data layer (AgencyScopeProvider + lib/agency.js) rather than
+   duplicating it — a sub_admin account is already scoped the same way
+   today. Multi-agency oversight isn't in the schema yet (one sub_admin =
+   one agency, same as an agency_manager), so "Coin History to Agency"
+   stays an honest placeholder — agencies don't hold a coin balance
+   themselves, only user wallets do. */
 import { PanelPlaceholder } from './panelsShared.jsx'
 import { Profile } from './shared.jsx'
+import { AgencyDashboard, AgencyHostProfiles, AgencyHosts, MyAgency, AgencySalary, AgencyTransferCoins, AgencyCoinHistory } from './agency.jsx'
 
 const CR = ['Home']
 
-export function SubAdminDashboard() {
-  const stats = [
-    { key: 'Hosts', value: 0, icon: 'video', tile: 'tile-green' },
-    { key: 'Agency', value: 0, icon: 'building', tile: 'tile-red' },
-    { key: 'Total Gifting (this month)', value: 0, icon: 'gift', tile: 'tile-blue' },
-  ]
-  return (
-    <>
-      <PageHeader title="Dashboard" crumbs={CR} />
-      <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-        Sub Admin overview — layout only, tiles show placeholder counts until wired to real data.
-      </div></Card>
-      <StatGrid stats={stats} />
-    </>
-  )
-}
+export const SubAdminDashboard = AgencyDashboard
+export const SubAdminUsers = AgencyHostProfiles
+export const SubAdminHosts = AgencyHosts
 
-export const SubAdminUsers = () => <PanelPlaceholder title="Users" crumbs={[...CR, 'User Management', 'Users']} icon="users" />
-export const SubAdminHosts = () => <PanelPlaceholder title="Hosts" crumbs={[...CR, 'User Management', 'Hosts']} icon="video" />
+export const SubAdminAgencies = MyAgency
 
-export const SubAdminAgencies = () => <PanelPlaceholder title="Agency" crumbs={[...CR, 'Admin Management', 'Agency']} icon="building" text="Agencies under this sub admin." />
+export const SubAdminTransferCoins = AgencyTransferCoins
+export const SubAdminCoinHistoryAgency = () => (
+  <PanelPlaceholder title="History of Coin Transfer to Agency" crumbs={[...CR, 'Coin Management', 'History — Agency']} icon="fileText"
+    text="Agencies don't hold a coin balance themselves — only user wallets do — so there's nothing to show here. Coin transfers to users are real; see History — User." />
+)
+export const SubAdminCoinHistoryUser = AgencyCoinHistory
 
-export const SubAdminTransferCoins = () => <PanelPlaceholder title="Transfer Coins" crumbs={[...CR, 'Coin Management', 'Transfer Coins']} icon="coins" text="Send coins down to an agency or user." />
-export const SubAdminCoinHistoryAgency = () => <PanelPlaceholder title="History of Coin Transfer to Agency" crumbs={[...CR, 'Coin Management', 'History — Agency']} icon="fileText" />
-export const SubAdminCoinHistoryUser = () => <PanelPlaceholder title="History of Coin Transfer to User" crumbs={[...CR, 'Coin Management', 'History — User']} icon="fileText" />
-
-export const SubAdminSalary = () => <PanelPlaceholder title="Salary" crumbs={[...CR, 'Salary']} icon="wallet" />
+export const SubAdminSalary = AgencySalary
 
 export const SubAdminProfile = () => <Profile panel="Sub Admin" />

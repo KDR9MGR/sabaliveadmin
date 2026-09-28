@@ -5,35 +5,45 @@ import { AsyncView } from '../_templates.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { listStaff } from '../../lib/admin.js'
 import { AgencyList } from './agencies.jsx'
+import { StaffAccountsPage } from '../super.jsx'
+import { AddStaffForm } from '../addStaff.jsx'
 
 const CRUMBS = ['Home', 'Admin Management']
 
 /* --------------------------------------------------- Admins (real: staff_roles) */
+/* Unified admin/sub-admin/agency-manager account management — same real
+   invite/grant/change/revoke flow as Super Admin → Admin Accounts, just
+   scoped to all three roles at once and crumbed under Admin Management. */
 export function Admins() {
-  const toast = useToast()
-  const { data: rows, loading, error, reload } = useAsyncData(() => listStaff(['super_admin', 'admin']))
   return (
-    <>
-      <PageHeader
-        title="Admins"
-        crumbs={[...CRUMBS, 'Admins']}
-        actions={<Button icon="helpCircle" onClick={() => toast('Admin roles are granted from Super Admin → Access Control')}>About roles</Button>}
-      />
-      <AsyncView loading={loading} error={error} reload={reload}>
-        <DataTable
-          rows={rows || []}
-          searchKeys={['name', 'username', 'idShort']}
-          filters={[{ label: 'Role', options: ['Super Admin', 'Admin'], get: (r) => r.role }]}
-          columns={[
-            personCol('name', 'username'),
-            { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
-            { key: 'role', header: 'Role', sortable: true },
-            { key: 'joined', header: 'Granted', sortable: true },
-          ]}
-          emptyText="Only the bootstrap Super Admin exists so far."
-        />
-      </AsyncView>
-    </>
+    <StaffAccountsPage
+      roles={['admin', 'sub_admin', 'agency_manager']}
+      grantRoleOpts={[
+        { value: 'admin', label: 'Admin' },
+        { value: 'sub_admin', label: 'Sub Admin' },
+        { value: 'agency_manager', label: 'Agency' },
+      ]}
+      title="Admin Management"
+      crumbLabel="Admins"
+      crumbRoot={CRUMBS}
+      addPath="/admin/admins/add"
+      intro="Admin, Sub Admin and Agency accounts. Sub Admin and Agency need an agency selected — only a Super Admin can invite, grant, change or revoke a role."
+    />
+  )
+}
+
+export function AddMasterAdmin() {
+  return (
+    <AddStaffForm
+      title="Add Admin"
+      crumbRoot={[...CRUMBS, 'Admins']}
+      backTo="/admin/admins"
+      roleOpts={[
+        { value: 'admin', label: 'Admin' },
+        { value: 'sub_admin', label: 'Sub Admin' },
+        { value: 'agency_manager', label: 'Agency' },
+      ]}
+    />
   )
 }
 
