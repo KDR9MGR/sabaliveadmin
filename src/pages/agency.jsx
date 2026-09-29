@@ -9,7 +9,7 @@ import Icon from '../components/Icon.jsx'
 import PanelChip from '../components/PanelChip.jsx'
 import { boldMd } from '../data/util.js'
 import { useAsyncData } from '../lib/useAsync.js'
-import { useAgencyScope, AgencyScopeBar } from '../lib/agencyScope.jsx'
+import { useAgencyScope } from '../lib/agencyScope.jsx'
 import {
   getAgency, agencyDashboard, listAgencyHosts, listAgencyApplications,
   listAgencyAssignments, listAgencySubAdmins, listAgencySalary, agencyEarnings,
@@ -23,20 +23,20 @@ import { num } from '../data/index.js'
 
 const CR = ['Home', 'Agency']
 const opt = (v) => ({ value: v, label: v.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') })
-const TIER_OPTS = ['bronze', 'silver', 'gold', 'platinum'].map(opt)
 const HOST_STATUS_OPTS = ['active', 'inactive', 'suspended', 'banned'].map(opt)
 const KYC_OPTS = ['not_submitted', 'pending', 'verified', 'rejected'].map(opt)
 const SHIFT_OPTS = ['morning', 'evening', 'night', 'flexible'].map(opt)
 const ASSIGN_STATUS_OPTS = ['on_track', 'behind', 'exceeded'].map(opt)
 const SALARY_ROLE_OPTS = SALARY_ROLES.map(opt)
 
-/* Common shell: scope bar + async fork. Renders nothing useful until an agency is in scope. */
+/* Common shell: async fork, scoped to whichever single agency the signed-in
+   account resolves to. No switcher — nobody can browse a different agency
+   from here. */
 function AgencyPage({ title, actions, load, children }) {
   const { agencyId } = useAgencyScope()
   return (
     <>
       <PageHeader title={title} crumbs={[...CR, title]} actions={agencyId ? actions : null} />
-      <AgencyScopeBar />
       {agencyId
         ? <ScopedBody agencyId={agencyId} load={load}>{children}</ScopedBody>
         : null}
@@ -133,7 +133,7 @@ export function MyAgency() {
 function HostsBody({ rows, reload }) {
   const toast = useToast()
   const [editing, setEditing] = useState(null)
-  const save = async (v) => { await updateHost(editing.id, { tier: v.tier, status: v.status, kyc_status: v.kyc_status }); reload() }
+  const save = async (v) => { await updateHost(editing.id, { status: v.status, kyc_status: v.kyc_status }); reload() }
   return (
     <>
       <DataTable
@@ -144,10 +144,8 @@ function HostsBody({ rows, reload }) {
           { label: 'Active', value: 'a', filter: (r) => r.status === 'Active' },
           { label: 'Banned', value: 'b', filter: (r) => r.status === 'Banned' },
         ]}
-        filters={[{ label: 'Tier', options: ['Bronze', 'Silver', 'Gold', 'Platinum'], get: (r) => r.tier }]}
         columns={[
           personCol('name', 'username'),
-          { key: 'tier', header: 'Tier', render: (r) => <Tag>{r.tier}</Tag> },
           numCol('followers', 'Followers'),
           numCol('coins', 'Coins'),
           numCol('diamonds', 'Diamonds'),
@@ -156,7 +154,7 @@ function HostsBody({ rows, reload }) {
           statusCol(),
         ]}
         rowActions={(r) => [
-          { label: 'Edit tier / status', icon: 'edit', onClick: () => setEditing(r) },
+          { label: 'Edit status', icon: 'edit', onClick: () => setEditing(r) },
           { sep: true },
           r.status === 'Banned'
             ? { label: 'Unban', icon: 'lock', onClick: async () => { await updateHost(r.id, { status: 'active' }); toast(`${r.name} unbanned`); reload() } }
@@ -166,9 +164,8 @@ function HostsBody({ rows, reload }) {
       />
       {editing && (
         <EntityForm title={`Edit host — ${editing.name}`} onClose={() => setEditing(null)} onSubmit={save} savedMessage="Host updated"
-          initial={{ tier: editing.tier.toLowerCase(), status: editing.status.toLowerCase(), kyc_status: editing.kyc.toLowerCase().replace(' ', '_') }}
+          initial={{ status: editing.status.toLowerCase(), kyc_status: editing.kyc.toLowerCase().replace(' ', '_') }}
           fields={[
-            { name: 'tier', label: 'Tier', type: 'select', options: TIER_OPTS, required: true },
             { name: 'status', label: 'Status', type: 'select', options: HOST_STATUS_OPTS, required: true },
             { name: 'kyc_status', label: 'KYC status', type: 'select', options: KYC_OPTS },
           ]} />
@@ -188,7 +185,6 @@ export function AgencyHostProfiles() {
           searchKeys={['name', 'username', 'idShort']}
           columns={[
             personCol('name', 'username'),
-            { key: 'tier', header: 'Tier', render: (r) => <Tag>{r.tier}</Tag> },
             { key: 'verified', header: 'Verified', render: (r) => r.kyc === 'Verified' ? <StatusBadge value="Verified" /> : <span className="muted">No</span> },
             { key: 'rating', header: 'Rating', align: 'right' },
             statusCol(),
@@ -577,19 +573,16 @@ export function AgencyCoinHistory() {
 
 /* --------------------------------------------------- Host Codes (agency-scoped) */
 export function AgencyHostCodes() {
-  const { agencyId, agencyName, canPick } = useAgencyScope()
+  const { agencyId, agencyName } = useAgencyScope()
   return (
     <>
       <PageHeader title="Host Codes" crumbs={[...CR, 'Host Codes']} />
-      <AgencyScopeBar />
       {agencyId && (
         <>
           <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-            {canPick
-              ? <>Viewing codes for <b>{agencyName}</b>. Codes you generate here are scoped to this agency — switch the agency above before generating if you meant a different one.</>
-              : <>Codes here are issued for <b>{agencyName || 'your agency'}</b> only. A host redeems one to unlock Go Live; ban a code or a single host's access at any time.</>}
+            Codes here are issued for <b>{agencyName || 'your agency'}</b> only. A host redeems one to unlock Go Live; ban a code or a single host's access at any time.
           </div></Card>
-          <HostCodesShell agencyId={agencyId} scopedName={canPick ? null : agencyName} />
+          <HostCodesShell agencyId={agencyId} scopedName={agencyName} />
         </>
       )}
     </>
@@ -601,7 +594,6 @@ export function AgencyAccount() {
   return (
     <>
       <PageHeader title="Agency Account" crumbs={[...CR, 'Account']} />
-      <AgencyScopeBar />
       <Card><div className="card__body">
         <EmptyState icon="idCard" title="Payout account isn't modelled yet"
           text="Bank / payout details for agencies aren't in the backend schema. Payslip status lives under Salary; host transfers under the Master panel." />
