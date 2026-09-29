@@ -177,21 +177,42 @@ export function AgencyHosts() {
   return <AgencyPage title="Host Management" load={listAgencyHosts}>{(rows, reload) => <HostsBody rows={rows} reload={reload} />}</AgencyPage>
 }
 export function AgencyHostProfiles() {
+  const { agencyName } = useAgencyScope()
+  const toast = useToast()
   return (
-    <AgencyPage title="Host Profiles" load={listAgencyHosts}>
-      {(rows) => (
-        <DataTable
-          rows={rows}
-          searchKeys={['name', 'username', 'idShort']}
-          columns={[
-            personCol('name', 'username'),
-            { key: 'verified', header: 'Verified', render: (r) => r.kyc === 'Verified' ? <StatusBadge value="Verified" /> : <span className="muted">No</span> },
-            { key: 'rating', header: 'Rating', align: 'right' },
-            statusCol(),
-          ]}
-          emptyText="No host profiles yet."
-        />
-      )}
+    <AgencyPage title="Users" load={listAgencyHosts}>
+      {(rows, reload) => {
+        const changeStatus = async (r, status) => {
+          try { await updateHost(r.id, { status }); toast(`${r.name} → ${status}`); reload() }
+          catch (e) { toast(e.message || 'Could not update status') }
+        }
+        return (
+          <DataTable
+            rows={rows}
+            searchKeys={['name', 'username', 'idShort']}
+            columns={[
+              personCol('name', 'username'),
+              { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+              numCol('coins', 'Coins'),
+              { key: 'agency', header: 'Agency', render: () => <Tag>{agencyName || '—'}</Tag> },
+              statusCol('status', 'User Status'),
+              { key: 'isLive', header: 'Live Status', render: (r) => r.isLive ? <StatusBadge value="Live" /> : <span className="muted">Offline</span> },
+              {
+                key: 'liveAction', header: 'Live Action', render: (r) => (
+                  <div className="hstack" style={{ gap: 6 }}>
+                    <Button size="sm" variant="primary" disabled={r.status !== 'Banned'} onClick={() => changeStatus(r, 'active')}>Yes</Button>
+                    <Button size="sm" variant="danger" disabled={r.status === 'Banned'} onClick={() => changeStatus(r, 'banned')}>No</Button>
+                  </div>
+                ),
+              },
+              { key: 'avatar', header: 'Image', render: (r) => r.avatar
+                ? <img src={r.avatar} alt="" width={40} height={40} style={{ borderRadius: 8, objectFit: 'cover' }} />
+                : <span className="muted">—</span> },
+            ]}
+            emptyText="No host profiles yet."
+          />
+        )
+      }}
     </AgencyPage>
   )
 }

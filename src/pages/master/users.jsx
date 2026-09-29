@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { AsyncView } from '../_templates.jsx'
 import { PageHeader, Card, Button, Person, StatusBadge, Tag, KV, useToast, EmptyState } from '../../components/ui.jsx'
-import { personCol, statusCol, roleCol, numCol } from '../../components/cells.jsx'
+import { personCol, statusCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import Icon from '../../components/Icon.jsx'
 import { useState } from 'react'
@@ -61,16 +61,21 @@ export function UsersList() {
           columns={[
             personCol('name', 'username'),
             { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
-            roleCol(),
-            { key: 'agency', header: 'Agency', render: (r) => r.agency === '—' ? <span className="muted">—</span> : <Tag>{r.agency}</Tag> },
-            { key: 'level', header: 'Level', align: 'right' },
-            numCol('followers', 'Followers'),
             numCol('coins', 'Coins'),
-            { key: 'kyc', header: 'KYC', render: (r) => r.kyc === '—' ? <span className="muted">—</span> : <StatusBadge value={r.kyc} /> },
-            { key: 'location', header: 'Region' },
-            statusCol(),
-            { key: 'isLive', header: 'Live', render: (r) => r.isLive ? <StatusBadge value="Live" /> : <span className="muted">Offline</span> },
-            { key: 'joined', header: 'Joined', sortable: true },
+            { key: 'agency', header: 'Agency', render: (r) => r.agency === '—' ? <span className="muted">—</span> : <Tag>{r.agency}</Tag> },
+            { key: 'status', header: 'User Status', render: (r) => <StatusBadge value={r.status} /> },
+            { key: 'isLive', header: 'Live Status', render: (r) => r.isLive ? <StatusBadge value="Live" /> : <span className="muted">Offline</span> },
+            {
+              key: 'liveAction', header: 'Live Action', render: (r) => (
+                <div className="hstack" style={{ gap: 6 }}>
+                  <Button size="sm" variant="primary" disabled={r.status !== 'Suspended'} onClick={() => changeStatus(r, 'active')}>Yes</Button>
+                  <Button size="sm" variant="danger" disabled={r.status === 'Suspended'} onClick={() => changeStatus(r, 'suspended')}>No</Button>
+                </div>
+              ),
+            },
+            { key: 'avatar', header: 'Image', render: (r) => r.avatar
+              ? <img src={r.avatar} alt="" width={40} height={40} style={{ borderRadius: 8, objectFit: 'cover' }} />
+              : <span className="muted">—</span> },
           ]}
           rowActions={(r) => [
             { label: 'View profile', icon: 'eye', onClick: () => nav(`/admin/users/${r.id}`) },

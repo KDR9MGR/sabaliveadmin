@@ -15,7 +15,7 @@ export async function getAgency(agencyId) {
 /* ---------------------------------------------------------------- hosts in this agency */
 async function agencyHostRows(agencyId) {
   return unwrap(await supabase.from('host_profiles')
-    .select('profile_id, tier, rating, live_hours_total, kyc_status, status, created_at, profiles(name, username, followers_count, level, verified, wallets(coins, diamonds))')
+    .select('profile_id, tier, rating, live_hours_total, kyc_status, status, created_at, profiles(name, username, followers_count, level, verified, is_live, avatar_url, wallets(coins, diamonds))')
     .eq('agency_id', agencyId)
     .order('created_at', { ascending: false }))
 }
@@ -26,6 +26,8 @@ export async function listAgencyHosts(agencyId) {
     idShort: shortId(r.profile_id),
     name: r.profiles?.name ?? '—',
     username: r.profiles?.username,
+    avatar: r.profiles?.avatar_url || null,
+    isLive: !!r.profiles?.is_live,
     tier: titleCase(r.tier),
     rating: Number(r.rating).toFixed(1),
     followers: r.profiles?.followers_count ?? 0,

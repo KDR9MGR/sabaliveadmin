@@ -19,7 +19,7 @@ function deriveRole(row) {
 export async function listUsers() {
   const rows = unwrap(await supabase
     .from('profiles')
-    .select('id, name, username, location, level, followers_count, verified, status, is_live, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name)), staff_roles(role, agency_id, agencies(name))')
+    .select('id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name)), staff_roles(role, agency_id, agencies(name))')
     .order('created_at', { ascending: false })
     .limit(1000))
   return rows.map((r) => ({
@@ -27,6 +27,7 @@ export async function listUsers() {
     idShort: shortId(r.id),
     name: r.name,
     username: r.username,
+    avatar: r.avatar_url || null,
     location: r.location,
     level: r.level,
     followers: r.followers_count,
