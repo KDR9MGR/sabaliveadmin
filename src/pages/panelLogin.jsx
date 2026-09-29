@@ -102,19 +102,21 @@ function PanelLoginPage({ panelKey, quickLinks = [] }) {
   )
 }
 
+/* Every panel links to all 3 others, not just the ones below it in the
+   hierarchy — the quick-links are cross-navigation between login pages,
+   not a reflection of who reports to whom. */
+const ALL_PANEL_KEYS = ['global-admin', 'country-admin', 'sub-admin', 'panel-agency']
+const otherPanels = (self) => ALL_PANEL_KEYS.filter((k) => k !== self).map((panelKey) => ({ panelKey }))
+
 export const GlobalAdminLogin = () => (
-  <PanelLoginPage panelKey="global-admin" quickLinks={[
-    { panelKey: 'country-admin' }, { panelKey: 'sub-admin' }, { panelKey: 'panel-agency' },
-  ]} />
+  <PanelLoginPage panelKey="global-admin" quickLinks={otherPanels('global-admin')} />
 )
 export const CountryAdminLogin = () => (
-  <PanelLoginPage panelKey="country-admin" quickLinks={[
-    { panelKey: 'sub-admin' }, { panelKey: 'panel-agency' },
-  ]} />
+  <PanelLoginPage panelKey="country-admin" quickLinks={otherPanels('country-admin')} />
 )
 export const SubAdminLogin = () => (
-  <PanelLoginPage panelKey="sub-admin" quickLinks={[{ panelKey: 'panel-agency' }]} />
+  <PanelLoginPage panelKey="sub-admin" quickLinks={otherPanels('sub-admin')} />
 )
 export const AgencyLogin = () => (
-  <PanelLoginPage panelKey="panel-agency" quickLinks={[]} />
+  <PanelLoginPage panelKey="panel-agency" quickLinks={otherPanels('panel-agency')} />
 )
