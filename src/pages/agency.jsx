@@ -18,7 +18,9 @@ import { updateHost } from '../lib/admin.js'
 import { decideHostApplication, markHostApplicationUnderReview, createAssignment, updateAssignment } from '../lib/workflows.js'
 import { createSalaryPayment, setSalaryStatus, updateSalaryPayment, SALARY_ROLES } from '../lib/salary.js'
 import { myMintBalance, myCoinGrants, distributeCoins } from '../lib/treasury.js'
+import { profileOptions } from '../lib/coins.js'
 import { HostCodesShell } from './master/hostCodes.jsx'
+import UserPicker from '../components/UserPicker.jsx'
 import { num } from '../data/index.js'
 
 const CR = ['Home', 'Agency']
@@ -520,12 +522,12 @@ export function AgencyTransferCoins() {
   return (
     <AgencyPage
       title="Transfer Coins"
-      load={async (agencyId) => {
-        const [hosts, balance] = await Promise.all([listAgencyHosts(agencyId), myMintBalance()])
-        return { hosts, balance }
+      load={async () => {
+        const [users, balance] = await Promise.all([profileOptions(), myMintBalance()])
+        return { users, balance }
       }}
     >
-      {({ hosts, balance }, reload) => {
+      {({ users, balance }, reload) => {
         const submit = async () => {
           if (!values.granted_to || !values.coins) { toast('Pick a recipient and an amount'); return }
           setBusy(true)
@@ -539,14 +541,11 @@ export function AgencyTransferCoins() {
           } finally { setBusy(false) }
         }
         return (
-          <Card title="Send coins to a host" sub={`Available treasury balance: ${num(balance)} coins`}>
+          <Card title="Send coins to a user" sub={`Available treasury balance: ${num(balance)} coins`}>
             <div className="form-grid">
               <div className="field full">
-                <label>Host <span className="req">*</span></label>
-                <select className="select" value={values.granted_to} onChange={(e) => set('granted_to', e.target.value)}>
-                  <option value="">Select a host…</option>
-                  {hosts.map((h) => <option key={h.id} value={h.id}>{h.name} (@{h.username})</option>)}
-                </select>
+                <label>User <span className="req">*</span></label>
+                <UserPicker options={users} value={values.granted_to} onChange={(v) => set('granted_to', v)} />
               </div>
               <div className="field">
                 <label>Amount (coins) <span className="req">*</span></label>

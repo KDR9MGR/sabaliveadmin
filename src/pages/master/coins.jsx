@@ -12,6 +12,7 @@ import {
   createCoinGrant, listCoinGrants, profileOptions,
   GIFT_CATEGORIES, PLATFORMS,
 } from '../../lib/coins.js'
+import UserPicker from '../../components/UserPicker.jsx'
 
 const CRUMBS = ['Home', 'Coin & Gift Management']
 const opt = (v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })
@@ -271,10 +272,7 @@ export function TransferCoins() {
           <div className="form-grid">
             <div className="field full">
               <label>Recipient <span className="req">*</span></label>
-              <select className="select" value={values.granted_to} onChange={(e) => set('granted_to', e.target.value)}>
-                <option value="">Select a user…</option>
-                {(opts || []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              <UserPicker options={opts || []} value={values.granted_to} onChange={(v) => set('granted_to', v)} />
             </div>
             <div className="field">
               <label>Amount (coins) <span className="req">*</span></label>

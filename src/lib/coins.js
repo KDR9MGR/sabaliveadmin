@@ -14,7 +14,11 @@ export const PLATFORMS = ['all', 'android', 'ios']
 /* ---------------------------------------------------------------- pickers */
 export async function profileOptions() {
   const rows = unwrap(await supabase.from('profiles').select('id, name, username').order('name').limit(1000))
-  return rows.map((p) => ({ value: p.id, label: `${p.name} (@${p.username})` }))
+  return rows.map((p) => ({
+    value: p.id,
+    label: `${p.name} (@${p.username})`,
+    search: `${p.name} ${p.username} ${p.id}`.toLowerCase(),
+  }))
 }
 
 /* ---------------------------------------------------------------- gifts */
