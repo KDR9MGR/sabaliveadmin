@@ -47,6 +47,7 @@ import {
   PanelAgencyDashboard, PanelAgencyUsers, PanelAgencyHosts, PanelAgencyTransferCoins,
   PanelAgencyCoinHistoryUser, PanelAgencyLiveRequest, PanelAgencyProfile,
 } from './pages/panelAgency.jsx'
+import { GlobalAdminLogin, CountryAdminLogin, SubAdminLogin, AgencyLogin } from './pages/panelLogin.jsx'
 
 export default function App() {
   return (
@@ -57,6 +58,10 @@ export default function App() {
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/global-admin/login" element={<GlobalAdminLogin />} />
+          <Route path="/country-admin/login" element={<CountryAdminLogin />} />
+          <Route path="/sub-admin/login" element={<SubAdminLogin />} />
+          <Route path="/panel-agency/login" element={<AgencyLogin />} />
 
           {/* ---------------- Master / Admin ---------------- */}
           <Route path="/admin" element={
