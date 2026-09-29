@@ -45,11 +45,13 @@ function NoAccessScreen({ onSignOut }) {
   )
 }
 
-/* Gate: must be signed in AND have a staff_roles row. */
-export function RequireAuth({ children }) {
+/* Gate: must be signed in AND have a staff_roles row. `loginPath` lets a
+   panel send an unauthenticated visitor to its own branded login page
+   (e.g. /sub-admin/login) instead of the generic /login. */
+export function RequireAuth({ children, loginPath = '/login' }) {
   const { loading, user, isStaff, signOut } = useAuth()
   if (loading) return <FullscreenLoader />
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to={loginPath} replace />
   if (!isStaff) return <NoAccessScreen onSignOut={signOut} />
   return children
 }
