@@ -4,15 +4,24 @@ React + Vite admin panel for the Saba Live platform. It talks to the same
 Supabase project as the consumer app and is protected entirely by Postgres
 RLS — it only ever holds the **anon / publishable** key.
 
-Three panels, chosen by the signed-in user's `staff_roles.role`:
+Panels, chosen by the signed-in user's `staff_roles.role`:
 
 | Role | Panel | Scope |
 | --- | --- | --- |
 | `super_admin` | Super Admin (`/super`) | everything + staff accounts + system |
 | `admin` | Master / Admin (`/admin`) | day-to-day app management |
-| `agency_manager`, `sub_admin` | Agency (`/agency`) | one agency only (`manages_agency`) |
+| `global_admin` | Global Admin (`/global-admin`) | the whole tree below: every country admin, sub admin, agency and host |
+| `country_admin` | Country Admin (`/country-admin`) | the sub admins it owns, their agencies and hosts |
+| `sub_admin` | Sub Admin (`/sub-admin`) | the agencies it owns |
+| `agency_manager` | Agency (`/panel-agency`) | one agency only (`manages_agency`); a standalone login |
 
-`super_admin` can open all three; the others are locked to their one panel.
+The ladder is Super > Master/Admin > Global > Country > Sub > Agency. Coins move
+down it wallet-to-wallet; account creation stays Super Admin only.
+`super_admin` can open every panel; the others are locked to their own.
+
+The old Agency / Manager panel now lives at `/agency-manager` (it was previously
+filed under `/global-admin`). No role logs in there and it is not in the panel
+switcher.
 
 The public marketing site (`sabalive.in`) lives alongside this app in
 [`landing/`](landing/README.md) — a separate Vite project, deployed together

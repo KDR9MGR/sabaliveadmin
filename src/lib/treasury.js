@@ -88,10 +88,11 @@ export async function distributeCoins({ perRecipient, audience, role, recipientI
 /* -------------------------------------------------------------- minter allow-list */
 export async function listCoinMinters() {
   const rows = unwrap(await supabase.from('coin_minters')
-    .select('profile_id, added_at, profile:profile_id(name, username), adder:added_by(name)')
+    .select('profile_id, added_at, profile:profile_id(name, username, display_id), adder:added_by(name)')
     .order('added_at', { ascending: false }))
   return rows.map((m) => ({
     id: m.profile_id, idShort: shortId(m.profile_id),
+    displayId: m.profile?.display_id,
     name: m.profile?.name || shortId(m.profile_id),
     username: m.profile?.username,
     addedBy: m.adder?.name || '—',

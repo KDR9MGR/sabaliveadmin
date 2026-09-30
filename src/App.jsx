@@ -34,19 +34,25 @@ import { Profile, Login, NotFound } from './pages/shared.jsx'
 
 import {
   CountryAdminDashboard, CountryUsers, CountryHosts, CountryTransferHost, CountryTransferAgency,
-  CountryTransferSubAdmin, CountrySubAdmins, CountryAddSubAdmin, CountryAgencies, CountryAddAgency,
+  CountryTransferSubAdmin, CountrySubAdmins, CountryAgencies,
   CountryTransferCoins,
   CountryCoinHistorySubAdmin, CountryCoinHistoryAgency, CountryCoinHistoryUser, CountryBadges,
   CountryLeaderboard, CountryLiveRequest, CountrySalary, CountryProfileFrame, CountryProfile,
 } from './pages/countryAdmin.jsx'
 import {
   SubAdminDashboard, SubAdminUsers, SubAdminHosts, SubAdminAgencies, SubAdminTransferCoins,
-  SubAdminCoinHistoryAgency, SubAdminCoinHistoryUser, SubAdminSalary, SubAdminProfile,
+  SubAdminCoinHistoryAgency, SubAdminCoinHistoryUser, SubAdminSalary, SubAdminLiveRequests, SubAdminProfile,
 } from './pages/subAdmin.jsx'
 import {
   PanelAgencyDashboard, PanelAgencyUsers, PanelAgencyHosts, PanelAgencyTransferCoins,
   PanelAgencyCoinHistoryUser, PanelAgencyLiveRequest, PanelAgencyProfile,
 } from './pages/panelAgency.jsx'
+import {
+  GlobalAdminDashboard, GlobalUsers, GlobalHosts, GlobalTransferHost, GlobalTransferAgency, GlobalTransferSubAdmin,
+  GlobalCountryAdmins, GlobalSubAdmins, GlobalAgencies, GlobalTransferCoins,
+  GlobalCoinHistoryCountryAdmin, GlobalCoinHistorySubAdmin, GlobalCoinHistoryAgency, GlobalCoinHistoryUser,
+  GlobalBadges, GlobalLeaderboard, GlobalLiveRequest, GlobalSalary, GlobalProfileFrame, GlobalProfile,
+} from './pages/globalAdmin.jsx'
 import { GlobalAdminLogin, CountryAdminLogin, SubAdminLogin, AgencyLogin } from './pages/panelLogin.jsx'
 
 export default function App() {
@@ -134,9 +140,35 @@ export default function App() {
             <Route path="profile" element={<Profile panel="Master / Admin" />} />
           </Route>
 
-          {/* ---------------- Global Admin (legacy — no role logs in here anymore) ---------------- */}
+          {/* ---------------- Global Admin (top of Global > Country > Sub > Agency) ---------------- */}
           <Route path="/global-admin" element={
-            <RequireAuth loginPath="/global-admin/login"><RequirePanel panel="global-admin"><AgencyScopeProvider><AppLayout panel="global-admin" /></AgencyScopeProvider></RequirePanel></RequireAuth>
+            <RequireAuth loginPath="/global-admin/login"><RequirePanel panel="global-admin"><AppLayout panel="global-admin" /></RequirePanel></RequireAuth>
+          }>
+            <Route index element={<GlobalAdminDashboard />} />
+            <Route path="user-management/users" element={<GlobalUsers />} />
+            <Route path="user-management/hosts" element={<GlobalHosts />} />
+            <Route path="user-management/transfer-host" element={<GlobalTransferHost />} />
+            <Route path="user-management/transfer-agency" element={<GlobalTransferAgency />} />
+            <Route path="user-management/transfer-sub-admin" element={<GlobalTransferSubAdmin />} />
+            <Route path="admin-management/country-admin" element={<GlobalCountryAdmins />} />
+            <Route path="admin-management/sub-admin" element={<GlobalSubAdmins />} />
+            <Route path="admin-management/agency" element={<GlobalAgencies />} />
+            <Route path="coin-management/transfer-coins" element={<GlobalTransferCoins />} />
+            <Route path="coin-management/history-country-admin" element={<GlobalCoinHistoryCountryAdmin />} />
+            <Route path="coin-management/history-sub-admin" element={<GlobalCoinHistorySubAdmin />} />
+            <Route path="coin-management/history-agency" element={<GlobalCoinHistoryAgency />} />
+            <Route path="coin-management/history-user" element={<GlobalCoinHistoryUser />} />
+            <Route path="badges" element={<GlobalBadges />} />
+            <Route path="leaderboard" element={<GlobalLeaderboard />} />
+            <Route path="live-request" element={<GlobalLiveRequest />} />
+            <Route path="salary" element={<GlobalSalary />} />
+            <Route path="profile-frame" element={<GlobalProfileFrame />} />
+            <Route path="profile" element={<GlobalProfile />} />
+          </Route>
+
+          {/* ---------------- Agency Manager (legacy — no role logs in here; was filed under 'global-admin') ---------------- */}
+          <Route path="/agency-manager" element={
+            <RequireAuth><RequirePanel panel="agency-manager"><AgencyScopeProvider><AppLayout panel="agency-manager" /></AgencyScopeProvider></RequirePanel></RequireAuth>
           }>
             <Route index element={<AgencyDashboard />} />
             <Route path="profile-agency" element={<MyAgency />} />
@@ -150,7 +182,7 @@ export default function App() {
             <Route path="earnings" element={<AgencyEarnings />} />
             <Route path="salary" element={<AgencySalary />} />
             <Route path="account" element={<AgencyAccount />} />
-            <Route path="profile" element={<Profile panel="Global Admin" />} />
+            <Route path="profile" element={<Profile panel="Agency Manager" />} />
           </Route>
 
           {/* ---------------- Super Admin ---------------- */}
@@ -201,9 +233,7 @@ export default function App() {
             <Route path="user-management/transfer-agency" element={<CountryTransferAgency />} />
             <Route path="user-management/transfer-sub-admin" element={<CountryTransferSubAdmin />} />
             <Route path="admin-management/sub-admin" element={<CountrySubAdmins />} />
-            <Route path="admin-management/sub-admin/add" element={<CountryAddSubAdmin />} />
             <Route path="admin-management/agency" element={<CountryAgencies />} />
-            <Route path="admin-management/agency/add" element={<CountryAddAgency />} />
             <Route path="coin-management/transfer-coins" element={<CountryTransferCoins />} />
             <Route path="coin-management/history-sub-admin" element={<CountryCoinHistorySubAdmin />} />
             <Route path="coin-management/history-agency" element={<CountryCoinHistoryAgency />} />
@@ -227,6 +257,7 @@ export default function App() {
             <Route path="coin-management/transfer-coins" element={<SubAdminTransferCoins />} />
             <Route path="coin-management/history-agency" element={<SubAdminCoinHistoryAgency />} />
             <Route path="coin-management/history-user" element={<SubAdminCoinHistoryUser />} />
+            <Route path="live-request" element={<SubAdminLiveRequests />} />
             <Route path="salary" element={<SubAdminSalary />} />
             <Route path="profile" element={<SubAdminProfile />} />
           </Route>

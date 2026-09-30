@@ -6,14 +6,15 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader, Card, Button, EmptyState } from '../components/ui.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
-import { inviteStaff, agencyOptions, AGENCY_ROLES } from '../lib/accounts.js'
+import { inviteStaff, agencyOptions, countryAdminOptions, AGENCY_ROLES } from '../lib/accounts.js'
 
 export function AddStaffForm({ title = 'Add Admin', crumbRoot, roleOpts, backTo }) {
   const nav = useNavigate()
   const { data: agencies } = useAsyncData(agencyOptions)
+  const { data: countryAdmins } = useAsyncData(countryAdminOptions)
   const [v, setV] = useState({
     email: '', full_name: '', username: '', phone: '', location: '',
-    role: roleOpts[0]?.value || '', agency_id: '',
+    role: roleOpts[0]?.value || '', agency_id: '', country_admin_id: '',
     password: '', confirm_password: '', payment_pin: '', confirm_payment_pin: '',
   })
   const [busy, setBusy] = useState(false)
@@ -102,6 +103,15 @@ export function AddStaffForm({ title = 'Add Admin', crumbRoot, roleOpts, backTo 
               <select className="select" value={v.agency_id} onChange={(e) => set('agency_id', e.target.value)}>
                 <option value="">Select…</option>
                 {(agencies || []).map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+              </select>
+            </div>
+          )}
+          {v.role === 'sub_admin' && (
+            <div className="field">
+              <label>Country Admin</label>
+              <select className="select" value={v.country_admin_id} onChange={(e) => set('country_admin_id', e.target.value)}>
+                <option value="">None yet</option>
+                {(countryAdmins || []).map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
               </select>
             </div>
           )}

@@ -46,8 +46,8 @@ export function UsersList() {
         <DataTable
           rows={rows || []}
           onRowClick={(r) => nav(`/admin/users/${r.id}`)}
-          searchKeys={['name', 'username', 'idShort', 'location']}
-          searchPlaceholder="Search by name or username…"
+          searchKeys={['name', 'username', 'displayId', 'location']}
+          searchPlaceholder="Search by name, username or user ID…"
           tabs={[
             { label: 'All', value: 'all', filter: () => true },
             { label: 'Hosts', value: 'h', filter: (r) => r.isHost },
@@ -60,7 +60,7 @@ export function UsersList() {
           ]}
           columns={[
             personCol('name', 'username'),
-            { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+            { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
             numCol('coins', 'Coins'),
             { key: 'agency', header: 'Agency', render: (r) => r.agency === '—' ? <span className="muted">—</span> : <Tag>{r.agency}</Tag> },
             { key: 'status', header: 'User Status', render: (r) => <StatusBadge value={r.status} /> },
@@ -110,10 +110,10 @@ export function SubAdminsList() {
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
-          searchKeys={['name', 'username', 'agency', 'idShort']}
+          searchKeys={['name', 'username', 'agency', 'displayId']}
           columns={[
             personCol('name', 'username'),
-            { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+            { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
             { key: 'agency', header: 'Assigned Agency', sortable: true },
             { key: 'joined', header: 'Granted', sortable: true },
           ]}
@@ -137,23 +137,26 @@ export function UserIds() {
         actions={<Button icon="helpCircle" onClick={() => toast('Custom / vanity IDs are not modelled in the backend yet')}>Policy</Button>}
       />
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-        System IDs are the <code>profiles.id</code> UUIDs. Custom / vanity IDs aren't in the schema yet — this view is a lookup for the real identifiers.
+        <code>User ID</code> is <code>profiles.display_id</code> — the permanent, public-facing ID users see and quote in support requests.
+        <code>System ID</code> is the internal <code>profiles.id</code> UUID, kept here for lookups/joins only; admins shouldn't need to read it out. Custom / vanity IDs aren't in the schema yet.
       </div></Card>
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
-          searchKeys={['name', 'username', 'id', 'idShort']}
+          searchKeys={['name', 'username', 'displayId']}
           filters={[{ label: 'Status', options: ['Active', 'Inactive', 'Suspended'], get: (r) => r.status }]}
           columns={[
             personCol('name', 'username'),
-            { key: 'id', header: 'System ID', render: (r) => <span className="mono">{r.id}</span> },
+            { key: 'displayId', header: 'User ID', render: (r) => <span className="mono">{r.displayId}</span> },
+            { key: 'id', header: 'System ID', render: (r) => <span className="mono muted">{r.id}</span> },
             { key: 'level', header: 'Level', align: 'right' },
             numCol('followers', 'Followers'),
             statusCol(),
           ]}
           rowActions={(r) => [
             { label: 'Open profile', icon: 'user', onClick: () => nav(`/admin/users/${r.id}`) },
-            { label: 'Copy ID', icon: 'copy', onClick: () => { navigator.clipboard?.writeText(r.id); toast('System ID copied') } },
+            { label: 'Copy User ID', icon: 'copy', onClick: () => { navigator.clipboard?.writeText(String(r.displayId)); toast('User ID copied') } },
+            { label: 'Copy System ID', icon: 'copy', onClick: () => { navigator.clipboard?.writeText(r.id); toast('System ID copied') } },
           ]}
           emptyText="No users yet."
         />
@@ -384,7 +387,7 @@ function UserProfileBody({ data, onStatus, onGranted }) {
           </div>
           <div className="mt-16">
             <KV rows={[
-              ['User ID', <span className="mono">{u.id}</span>],
+              ['User ID', <span className="mono">{u.display_id}</span>],
               ['Username', '@' + (u.username || '—')],
               ['Region', u.location],
               ['Level', `Lv. ${u.level}`],

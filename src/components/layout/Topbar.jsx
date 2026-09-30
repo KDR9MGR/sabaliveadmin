@@ -4,7 +4,7 @@ import Icon from '../Icon.jsx'
 import { PANELS } from '../../config/nav.js'
 import { useAuth } from '../../lib/auth.jsx'
 
-const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
+const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', global_admin: 'Global Admin', country_admin: 'Country Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
 
 export default function Topbar({ panel, onToggleSidebar }) {
   const nav = useNavigate()
@@ -41,9 +41,12 @@ function useOutside(ref, cb) {
   }, [ref, cb])
 }
 
+/* The legacy 'agency-manager' panel is deliberately not offered here. */
 const PANELS_FOR = {
   super_admin: ['super', 'master', 'global-admin', 'country-admin', 'sub-admin', 'panel-agency'],
   admin: ['master'],
+  global_admin: ['global-admin'],
+  country_admin: ['country-admin'],
   sub_admin: ['sub-admin'],
   agency_manager: ['panel-agency'],
 }

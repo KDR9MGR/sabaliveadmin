@@ -3,16 +3,19 @@ import { supabase } from './supabase.js'
 import { useAuth } from './auth.jsx'
 
 /* Which agency the Agency panel is currently scoped to.
-   - agency_manager / sub_admin: fixed to their staff_roles.agency_id (RLS enforces it too).
-   - super_admin / admin browsing the panel: pick one (persisted); everything scopes to it. */
+   - agency_manager: fixed to their staff_roles.agency_id (RLS enforces it too).
+   - sub_admin: picks among the agencies they own (agencies.sub_admin_id), plus their
+     legacy staff_roles.agency_id. RLS (manages_agency) enforces the same set.
+   - super_admin / admin browsing the panel: pick any one (persisted); everything scopes to it. */
 const Ctx = createContext(null)
 export const useAgencyScope = () => useContext(Ctx)
 
 const KEY = 'sabalive.agencyScope'
 
 export function AgencyScopeProvider({ children }) {
-  const { staffRole } = useAuth()
-  const fixedId = staffRole?.agency_id || null
+  const { staffRole, user } = useAuth()
+  const isSub = staffRole?.role === 'sub_admin'
+  const fixedId = isSub ? null : (staffRole?.agency_id || null)
   const canPick = !fixedId
 
   const [agencies, setAgencies] = useState([])
@@ -27,11 +30,18 @@ export function AgencyScopeProvider({ children }) {
         .then(({ data }) => setFixedName(data?.name || 'Your agency'))
       return
     }
-    supabase.from('agencies').select('id, name').order('name').then(({ data }) => {
-      setAgencies(data || [])
-      setPicked((cur) => cur || data?.[0]?.id || null)
+    if (isSub && !user?.id) return
+    let q = supabase.from('agencies').select('id, name').order('name')
+    if (isSub) {
+      q = q.or(`sub_admin_id.eq.${user.id}${staffRole.agency_id ? `,id.eq.${staffRole.agency_id}` : ''}`)
+    }
+    q.then(({ data }) => {
+      const list = data || []
+      setAgencies(list)
+      // a remembered pick can belong to another account — only keep it if it's in this list
+      setPicked((cur) => (cur && list.some((a) => a.id === cur) ? cur : list[0]?.id || null))
     })
-  }, [fixedId])
+  }, [fixedId, isSub, user?.id, staffRole?.agency_id])
 
   const agencyId = fixedId || picked
   const agencyName = fixedId ? fixedName : (agencies.find((a) => a.id === agencyId)?.name || '')
@@ -42,7 +52,7 @@ export function AgencyScopeProvider({ children }) {
   }
 
   return (
-    <Ctx.Provider value={{ agencyId, agencyName, canPick, agencies, setAgencyId }}>
+    <Ctx.Provider value={{ agencyId, agencyName, canPick, isSub, agencies, setAgencyId }}>
       {children}
     </Ctx.Provider>
   )
@@ -52,12 +62,14 @@ export function AgencyScopeProvider({ children }) {
 export function AgencyScopeBar() {
   const scope = useAgencyScope()
   if (!scope) return null
-  const { agencyId, agencyName, canPick, agencies, setAgencyId } = scope
+  const { agencyId, agencyName, canPick, isSub, agencies, setAgencyId } = scope
 
   if (canPick && !agencies.length) {
     return (
       <div className="card mb-16"><div className="card__body" style={{ fontSize: 13, color: 'var(--text-soft)' }}>
-        No agencies exist yet — create one from the Master panel (<b>Agency Management</b>) before using this panel.
+        {isSub
+          ? <>You don't own any agencies yet — add one under <b>Admin Management → Agency</b>.</>
+          : <>No agencies exist yet — create one from the Master panel (<b>Agency Management</b>) before using this panel.</>}
       </div></div>
     )
   }

@@ -61,7 +61,7 @@ function RequestsTable() {
     <AsyncView loading={loading} error={error} reload={reload}>
       <DataTable
         rows={rows || []}
-        searchKeys={['host', 'username', 'type', 'idShort']}
+        searchKeys={['host', 'username', 'userDisplayId', 'agency', 'type']}
         tabs={[
           { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
           { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
@@ -73,20 +73,23 @@ function RequestsTable() {
           { label: 'Priority', options: ['High', 'Medium', 'Low'], get: (r) => r.priority },
         ]}
         columns={[
-          { key: 'idShort', header: 'Request', render: (r) => <span className="mono muted">{r.idShort}</span> },
-          { key: 'host', header: 'Host', render: (r) => <Person name={r.host} size="sm" meta={r.username ? `@${r.username}` : undefined} /> },
+          { key: 'host', header: 'User', render: (r) => <Person name={r.host} size="sm" meta={r.username ? `@${r.username}` : undefined} /> },
+          { key: 'userDisplayId', header: 'User ID', render: (r) => <span className="mono muted">{r.userDisplayId}</span> },
+          { key: 'agency', header: 'Agency', render: (r) => r.agency === '—' ? <span className="muted">—</span> : <Tag>{r.agency}</Tag> },
+          { key: 'agencyDisplayId', header: 'Agency ID', render: (r) => r.agencyDisplayId != null ? <span className="mono muted">{r.agencyDisplayId}</span> : <span className="muted">—</span> },
           { key: 'type', header: 'Type', render: (r) => <Tag>{r.type}</Tag> },
           { key: 'priority', header: 'Priority', render: (r) => <Badge tone={r.priority === 'High' ? 'danger' : r.priority === 'Medium' ? 'warning' : 'muted'}>{r.priority}</Badge> },
-          { key: 'notes', header: 'Notes', render: (r) => <span className="muted" style={{ fontSize: 12 }}>{r.notes}</span> },
           { key: 'submitted', header: 'Submitted', sortable: true },
           statusCol(),
+          {
+            key: 'actions', header: 'Actions', render: (r) => r.status === 'Pending' ? (
+              <div className="hstack" style={{ gap: 6 }}>
+                <Button size="sm" variant="primary" disabled={busy === r.id} onClick={() => decide(r, true)}>Accept</Button>
+                <Button size="sm" variant="danger" disabled={busy === r.id} onClick={() => decide(r, false)}>Reject</Button>
+              </div>
+            ) : <span className="muted" style={{ fontSize: 12 }}>By {r.reviewedBy}</span>,
+          },
         ]}
-        rowActions={(r) => (r.status === 'Pending' ? [
-          { label: busy === r.id ? 'Working…' : 'Approve', icon: 'check', onClick: () => decide(r, true) },
-          { label: 'Reject', icon: 'x', onClick: () => decide(r, false) },
-        ] : [
-          { label: `Reviewed by ${r.reviewedBy}`, icon: 'eye', onClick: () => toast(`${r.idShort} — ${r.status} on ${r.reviewed}`) },
-        ])}
         emptyText="No live requests."
       />
     </AsyncView>

@@ -149,7 +149,7 @@ export async function decideWithdrawal(id, approve) {
 export async function listLiveRequests() {
   const rows = unwrap(await supabase
     .from('live_requests')
-    .select('id, type, priority, status, notes, created_at, reviewed_at, host:host_id(name, username), reviewer:reviewed_by(name)')
+    .select('id, type, priority, status, notes, created_at, reviewed_at, host:host_id(name, username, display_id, host_profiles(agency_id, agencies(name, display_id))), reviewer:reviewed_by(name)')
     .order('created_at', { ascending: false })
     .limit(500))
   return rows.map((r) => ({
@@ -157,6 +157,9 @@ export async function listLiveRequests() {
     idShort: shortId(r.id),
     host: r.host?.name || '—',
     username: r.host?.username,
+    userDisplayId: r.host?.display_id,
+    agency: r.host?.host_profiles?.agencies?.name || '—',
+    agencyDisplayId: r.host?.host_profiles?.agencies?.display_id ?? null,
     type: titleCase(r.type),
     priority: titleCase(r.priority),
     notes: r.notes || '—',

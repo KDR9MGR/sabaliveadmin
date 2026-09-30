@@ -7,7 +7,7 @@
     { "src": "/", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "dest": "/admin/index.html" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "has": [{ "type": "host", "value": "admin.sabalive.in" }], "dest": "/admin/index.html" },
-    { "src": "/(country-admin|sub-admin|panel-agency)(/.*)?", "dest": "/admin/index.html" },
+    { "src": "/(global-admin|country-admin|sub-admin|panel-agency|agency-manager)(/.*)?", "dest": "/admin/index.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

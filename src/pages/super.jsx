@@ -154,11 +154,11 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
-          searchKeys={['name', 'username', 'agency', 'idShort']}
+          searchKeys={['name', 'username', 'agency', 'displayId']}
           filters={[{ label: 'Role', options: [...new Set((rows || []).map((r) => r.role))], get: (r) => r.role }]}
           columns={[
             personCol('name', 'username'),
-            { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+            { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
             { key: 'role', header: 'Role', render: (r) => <Tag role>{r.role}</Tag> },
             { key: 'agency', header: 'Agency', sortable: true, render: (r) => r.agency === '—' ? <span className="muted">—</span> : r.agency },
             { key: 'accountStatus', header: 'Account', render: (r) => <StatusBadge value={r.accountStatus} /> },
@@ -299,11 +299,11 @@ export function SuperAdmins() {
   return (
     <StaffAccountsPage
       roles={PLATFORM_ROLES}
-      grantRoleOpts={[{ value: 'admin', label: 'Admin' }, { value: 'super_admin', label: 'Super Admin' }]}
+      grantRoleOpts={[{ value: 'admin', label: 'Admin' }, { value: 'super_admin', label: 'Super Admin' }, { value: 'global_admin', label: 'Global Admin' }, { value: 'country_admin', label: 'Country Admin' }]}
       title="Admin Accounts"
       crumbLabel="Admins"
       addPath="/super/admins/add"
-      intro="Platform-wide roles. Admin and Super Admin see everything (is_admin_or_above); only a Super Admin can grant, change or revoke roles. New accounts must sign up through the app first — this screen grants a role to an existing user."
+      intro="Platform-wide roles. Admin and Super Admin see everything (is_admin_or_above); Global and Country Admin are scoped down the Global > Country > Sub > Agency ladder. Only a Super Admin can grant, change or revoke roles. New accounts must sign up through the app first — this screen grants a role to an existing user."
     />
   )
 }
@@ -327,7 +327,7 @@ export function AddAdminAccount() {
       title="Add Admin"
       crumbRoot={[...CR, 'Admins']}
       backTo="/super/admins"
-      roleOpts={[{ value: 'admin', label: 'Admin' }, { value: 'super_admin', label: 'Super Admin' }]}
+      roleOpts={[{ value: 'admin', label: 'Admin' }, { value: 'super_admin', label: 'Super Admin' }, { value: 'global_admin', label: 'Global Admin' }, { value: 'country_admin', label: 'Country Admin' }]}
     />
   )
 }
@@ -626,10 +626,10 @@ function MinterAllowList() {
       action={<Button size="sm" icon="userPlus" onClick={() => setAdding(true)}>Add</Button>}>
       <DataTable
         rows={rows || []}
-        searchKeys={['name', 'username', 'idShort']}
+        searchKeys={['name', 'username', 'displayId']}
         columns={[
           personCol('name', 'username'),
-          { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+          { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
           { key: 'addedBy', header: 'Added by' },
           { key: 'addedAt', header: 'Added', sortable: true },
         ]}

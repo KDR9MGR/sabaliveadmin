@@ -13,11 +13,11 @@ export const PLATFORMS = ['all', 'android', 'ios']
 
 /* ---------------------------------------------------------------- pickers */
 export async function profileOptions() {
-  const rows = unwrap(await supabase.from('profiles').select('id, name, username').order('name').limit(1000))
+  const rows = unwrap(await supabase.from('profiles').select('id, name, username, display_id').order('name').limit(1000))
   return rows.map((p) => ({
     value: p.id,
-    label: `${p.name} (@${p.username})`,
-    search: `${p.name} ${p.username} ${p.id}`.toLowerCase(),
+    label: `${p.name} (@${p.username}) · ID ${p.display_id}`,
+    search: `${p.name} ${p.username} ${p.display_id}`.toLowerCase(),
   }))
 }
 

@@ -13,17 +13,21 @@ export async function getAgency(agencyId) {
 }
 
 /* ---------------------------------------------------------------- hosts in this agency */
+/* `agencyId` may be a single id or an array (a Country Admin's hosts span many agencies). */
 async function agencyHostRows(agencyId) {
   return unwrap(await supabase.from('host_profiles')
-    .select('profile_id, tier, rating, live_hours_total, kyc_status, status, created_at, profiles(name, username, followers_count, level, verified, is_live, avatar_url, wallets(coins, diamonds))')
-    .eq('agency_id', agencyId)
+    .select('profile_id, agency_id, tier, rating, live_hours_total, kyc_status, status, created_at, agencies(name), profiles(name, username, followers_count, level, verified, is_live, avatar_url, display_id, wallets(coins, diamonds))')
+    .in('agency_id', [].concat(agencyId))
     .order('created_at', { ascending: false }))
 }
 export async function listAgencyHosts(agencyId) {
   const rows = await agencyHostRows(agencyId)
   return rows.map((r) => ({
     id: r.profile_id,
+    agencyId: r.agency_id,
+    agencyName: r.agencies?.name ?? '—',
     idShort: shortId(r.profile_id),
+    displayId: r.profiles?.display_id,
     name: r.profiles?.name ?? '—',
     username: r.profiles?.username,
     avatar: r.profiles?.avatar_url || null,
@@ -120,6 +124,31 @@ export async function listAgencyAssignments(agencyId) {
   }))
 }
 
+/* ---------------------------------------------------------------- go-live requests filed by this agency's hosts */
+export async function listAgencyLiveRequests(agencyId) {
+  const hostRows = unwrap(await supabase.from('host_profiles').select('profile_id').eq('agency_id', agencyId))
+  const ids = hostRows.map((h) => h.profile_id)
+  if (!ids.length) return []
+  const rows = unwrap(await supabase.from('live_requests')
+    .select('id, type, priority, status, notes, created_at, reviewed_at, host:host_id(name, username, display_id), reviewer:reviewed_by(name)')
+    .in('host_id', ids)
+    .order('created_at', { ascending: false }))
+  return rows.map((r) => ({
+    id: r.id,
+    idShort: shortId(r.id),
+    host: r.host?.name || '—',
+    username: r.host?.username,
+    userDisplayId: r.host?.display_id,
+    type: titleCase(r.type),
+    priority: titleCase(r.priority),
+    notes: r.notes || '—',
+    status: titleCase(r.status),
+    reviewedBy: r.reviewer?.name || '—',
+    submitted: fmtDate(r.created_at),
+    reviewed: r.reviewed_at ? fmtDate(r.reviewed_at) : '—',
+  }))
+}
+
 /* ---------------------------------------------------------------- salary scoped to this agency */
 export async function listAgencySalary(agencyId) {
   const rows = unwrap(await supabase.from('salary_payments')
@@ -145,12 +174,13 @@ export async function listAgencySalary(agencyId) {
 /* ---------------------------------------------------------------- sub-admins in this agency (read-only for managers) */
 export async function listAgencySubAdmins(agencyId) {
   const rows = unwrap(await supabase.from('staff_roles')
-    .select('user_id, created_at, profiles(name, username, status)')
+    .select('user_id, created_at, profiles(name, username, status, display_id)')
     .eq('role', 'sub_admin').eq('agency_id', agencyId)
     .order('created_at', { ascending: false }))
   return rows.map((r) => ({
     id: r.user_id,
     idShort: shortId(r.user_id),
+    displayId: r.profiles?.display_id,
     name: r.profiles?.name || '—',
     username: r.profiles?.username,
     accountStatus: r.profiles?.status,

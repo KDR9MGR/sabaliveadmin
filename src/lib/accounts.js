@@ -3,20 +3,21 @@ import { shortId, fmtDate, ROLE_LABEL } from './admin.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 
-export const PLATFORM_ROLES = ['super_admin', 'admin']
+export const PLATFORM_ROLES = ['super_admin', 'admin', 'global_admin', 'country_admin']
 export const AGENCY_ROLES = ['agency_manager', 'sub_admin']
 export const ROLE_OPTS = Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }))
 
 /* ---------------------------------------------------------------- list */
 export async function listStaffAccounts(roles) {
   let q = supabase.from('staff_roles')
-    .select('user_id, role, agency_id, permissions, created_at, profiles(name, username, status, verified), agencies(name)')
+    .select('user_id, role, agency_id, permissions, created_at, profiles(name, username, status, verified, display_id), agencies(name)')
     .order('created_at', { ascending: false })
   if (roles?.length) q = q.in('role', roles)
   const rows = unwrap(await q)
   return rows.map((r) => ({
     id: r.user_id,
     idShort: shortId(r.user_id),
+    displayId: r.profiles?.display_id,
     name: r.profiles?.name || '—',
     username: r.profiles?.username,
     accountStatus: r.profiles?.status,
@@ -48,6 +49,13 @@ export async function grantableProfiles() {
   return (profiles || [])
     .filter((p) => !taken.has(p.id))
     .map((p) => ({ value: p.id, label: `${p.name} (@${p.username})` }))
+}
+
+/* Country admins a new sub admin can be placed under (optional at creation). */
+export async function countryAdminOptions() {
+  const rows = unwrap(await supabase.from('staff_roles')
+    .select('user_id, profiles(name, username)').eq('role', 'country_admin'))
+  return rows.map((r) => ({ value: r.user_id, label: `${r.profiles?.name || shortId(r.user_id)} (@${r.profiles?.username || '—'})` }))
 }
 
 export async function agencyOptions() {
@@ -83,12 +91,13 @@ export async function revokeRole(user_id) {
 // Function (service_role; only a super_admin may call it). Returns
 // { user_id, email, role, temp_password } — temp_password is set only when
 // the server generated one.
-export async function inviteStaff({ email, role, agency_id, full_name, username, phone, location, password, payment_pin }) {
+export async function inviteStaff({ email, role, agency_id, country_admin_id, full_name, username, phone, location, password, payment_pin }) {
   const { role: r, agency_id: aid, needsAgency } = normalize(role, agency_id)
   if (needsAgency && !aid) throw new Error('Agency-scoped roles need an agency selected')
   const { data, error } = await supabase.functions.invoke('invite-staff', {
     body: {
       email: String(email || '').trim(), role: r, agency_id: aid,
+      country_admin_id: r === 'sub_admin' ? (country_admin_id || null) : null,
       full_name: full_name || null, username: username || null, phone: phone || null,
       location: location || null, password: password || null, payment_pin: payment_pin || null,
     },

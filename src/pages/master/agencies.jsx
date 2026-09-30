@@ -58,13 +58,13 @@ export function AgencyList({ crumbLabel = 'Agencies', crumbRoot = CRUMBS } = {})
         <DataTable
           rows={rows || []}
           onRowClick={(r) => nav(`/admin/agencies/${r.id}`)}
-          searchKeys={['name', 'manager', 'idShort', 'country']}
+          searchKeys={['name', 'manager', 'displayId', 'country']}
           searchPlaceholder="Search agencies…"
           filters={[
             { label: 'Status', options: ['Active', 'Inactive', 'Pending'], get: (r) => r.status },
           ]}
           columns={[
-            { key: 'name', header: 'Agency', sortable: true, render: (r) => <Person name={r.name} meta={r.idShort} size="sm" /> },
+            { key: 'name', header: 'Agency', sortable: true, render: (r) => <Person name={r.name} meta={`ID ${r.displayId}`} size="sm" /> },
             { key: 'manager', header: 'Manager', render: (r) => r.manager === 'Unassigned' ? <span className="muted">Unassigned</span> : r.manager },
             numCol('hosts', 'Hosts'),
             { key: 'commission', header: 'Commission', align: 'right', render: (r) => `${r.commission}%` },
@@ -176,7 +176,7 @@ function AgencyDetailBody({ data, onOpenHost }) {
 
       <Card title="Agency info" className="mt-16">
         <KV rows={[
-          ['Agency ID', <span className="mono">{a.id}</span>],
+          ['Agency ID', <span className="mono">{a.display_id}</span>],
           ['Manager', a.manager?.name || 'Unassigned'],
           ['Region', a.country],
           ['Commission', `${a.commission_percent}%`],

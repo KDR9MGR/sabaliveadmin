@@ -9,18 +9,16 @@ import Icon from '../components/Icon.jsx'
 import PanelChip from '../components/PanelChip.jsx'
 import { boldMd } from '../data/util.js'
 import { useAsyncData } from '../lib/useAsync.js'
-import { useAgencyScope } from '../lib/agencyScope.jsx'
+import { useAgencyScope, AgencyScopeBar } from '../lib/agencyScope.jsx'
 import {
   getAgency, agencyDashboard, listAgencyHosts, listAgencyApplications,
   listAgencyAssignments, listAgencySubAdmins, listAgencySalary, agencyEarnings,
+  listAgencyLiveRequests,
 } from '../lib/agency.js'
 import { updateHost } from '../lib/admin.js'
-import { decideHostApplication, markHostApplicationUnderReview, createAssignment, updateAssignment } from '../lib/workflows.js'
+import { decideHostApplication, markHostApplicationUnderReview, createAssignment, updateAssignment, decideLiveRequest } from '../lib/workflows.js'
 import { createSalaryPayment, setSalaryStatus, updateSalaryPayment, SALARY_ROLES } from '../lib/salary.js'
-import { myMintBalance, myCoinGrants, distributeCoins } from '../lib/treasury.js'
-import { profileOptions } from '../lib/coins.js'
 import { HostCodesShell } from './master/hostCodes.jsx'
-import UserPicker from '../components/UserPicker.jsx'
 import { num } from '../data/index.js'
 
 const CR = ['Home', 'Agency']
@@ -32,13 +30,15 @@ const ASSIGN_STATUS_OPTS = ['on_track', 'behind', 'exceeded'].map(opt)
 const SALARY_ROLE_OPTS = SALARY_ROLES.map(opt)
 
 /* Common shell: async fork, scoped to whichever single agency the signed-in
-   account resolves to. No switcher — nobody can browse a different agency
-   from here. */
+   account resolves to. Only a sub admin (who owns several agencies) gets a
+   switcher, and only among the agencies they own. */
 function AgencyPage({ title, actions, load, children }) {
-  const { agencyId } = useAgencyScope()
+  const { agencyId, isSub } = useAgencyScope()
   return (
     <>
       <PageHeader title={title} crumbs={[...CR, title]} actions={agencyId ? actions : null} />
+      {/* A sub admin owns several agencies, so they pick which one to work in. */}
+      {isSub && <AgencyScopeBar />}
       {agencyId
         ? <ScopedBody agencyId={agencyId} load={load}>{children}</ScopedBody>
         : null}
@@ -53,10 +53,10 @@ function ScopedBody({ agencyId, load, children }) {
 }
 
 /* --------------------------------------------------- Dashboard */
-/* [panel] names whichever panel is actually rendering this — Global Admin,
-   Sub Admin or Agency all reuse this same component, so the chip must not
-   hardcode one of them. */
-export function AgencyDashboard({ panel = 'global-admin' }) {
+/* [panel] names whichever panel is actually rendering this — Sub Admin,
+   Agency or the legacy Agency Manager panel all reuse this same component, so
+   the chip must not hardcode one of them. */
+export function AgencyDashboard({ panel = 'agency-manager' }) {
   const { agencyName } = useAgencyScope()
   return (
     <AgencyPage title="Dashboard" load={agencyDashboard}>
@@ -112,7 +112,7 @@ export function MyAgency() {
           <Card title="Agency profile" sub="Edited by platform admins — read-only here">
             <KV rows={[
               ['Name', a.name],
-              ['Agency ID', <span className="mono">{a.id}</span>],
+              ['Agency ID', <span className="mono">{a.display_id}</span>],
               ['Manager', a.manager?.name || 'Unassigned'],
               ['Region', a.country],
               ['Commission', `${a.commission_percent}%`],
@@ -132,7 +132,7 @@ export function MyAgency() {
 }
 
 /* --------------------------------------------------- Hosts */
-function HostsBody({ rows, reload }) {
+export function HostsBody({ rows, reload, extraColumns = [] }) {
   const toast = useToast()
   const [editing, setEditing] = useState(null)
   const save = async (v) => { await updateHost(editing.id, { status: v.status, kyc_status: v.kyc_status }); reload() }
@@ -148,6 +148,7 @@ function HostsBody({ rows, reload }) {
         ]}
         columns={[
           personCol('name', 'username'),
+          ...extraColumns,
           numCol('followers', 'Followers'),
           numCol('coins', 'Coins'),
           numCol('diamonds', 'Diamonds'),
@@ -191,10 +192,10 @@ export function AgencyHostProfiles() {
         return (
           <DataTable
             rows={rows}
-            searchKeys={['name', 'username', 'idShort']}
+            searchKeys={['name', 'username', 'displayId']}
             columns={[
               personCol('name', 'username'),
-              { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+              { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
               numCol('coins', 'Coins'),
               { key: 'agency', header: 'Agency', render: () => <Tag>{agencyName || '—'}</Tag> },
               statusCol('status', 'User Status'),
@@ -261,6 +262,52 @@ export function AgencyApplications() {
               ]
             }}
             emptyText="No applications routed to this agency."
+          />
+        )
+      }}
+    </AgencyPage>
+  )
+}
+
+/* --------------------------------------------------- Live Requests (go-live requests from this agency's hosts only) */
+export function AgencyLiveRequests() {
+  const toast = useToast()
+  const [busy, setBusy] = useState(null)
+  return (
+    <AgencyPage title="Live Request" load={listAgencyLiveRequests}>
+      {(rows, reload) => {
+        const decide = async (r, approve) => {
+          setBusy(r.id)
+          try { await decideLiveRequest(r.id, approve); toast(`${r.host} — ${approve ? 'accepted' : 'rejected'}`); reload() }
+          catch (e) { toast(e.message || 'Could not update request') }
+          finally { setBusy(null) }
+        }
+        return (
+          <DataTable
+            rows={rows}
+            searchKeys={['host', 'username', 'userDisplayId', 'type']}
+            tabs={[
+              { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
+              { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
+              { label: 'Rejected', value: 'r', filter: (r) => r.status === 'Rejected' },
+              { label: 'All', value: 'all', filter: () => true },
+            ]}
+            columns={[
+              personCol('host', 'username'),
+              { key: 'userDisplayId', header: 'User ID', render: (r) => <span className="mono muted">{r.userDisplayId}</span> },
+              { key: 'type', header: 'Type', render: (r) => <Tag>{r.type}</Tag> },
+              { key: 'submitted', header: 'Submitted', sortable: true },
+              statusCol(),
+              {
+                key: 'actions', header: 'Actions', render: (r) => r.status === 'Pending' ? (
+                  <div className="hstack" style={{ gap: 6 }}>
+                    <Button size="sm" variant="primary" disabled={busy === r.id} onClick={() => decide(r, true)}>Accept</Button>
+                    <Button size="sm" variant="danger" disabled={busy === r.id} onClick={() => decide(r, false)}>Reject</Button>
+                  </div>
+                ) : <span className="muted" style={{ fontSize: 12 }}>By {r.reviewedBy}</span>,
+              },
+            ]}
+            emptyText="No live requests from this agency's hosts."
           />
         )
       }}
@@ -347,10 +394,10 @@ export function AgencySubAdmins() {
           </div></Card>
           <DataTable
             rows={rows}
-            searchKeys={['name', 'username', 'idShort']}
+            searchKeys={['name', 'username', 'displayId']}
             columns={[
               personCol('name', 'username'),
-              { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+              { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
               { key: 'accountStatus', header: 'Account', render: (r) => <StatusBadge value={r.accountStatus} /> },
               { key: 'granted', header: 'Granted', sortable: true },
             ]}
@@ -504,89 +551,6 @@ export function AgencySalary() {
           </>
         )
       }}
-    </AgencyPage>
-  )
-}
-
-/* --------------------------------------------------- Transfer Coins (real: distribute_coins RPC) */
-/* Draws from the shared platform treasury, same mechanism Super Admin's own
-   Coin Treasury uses — the caller just needs to be on the coin_minters
-   allow-list (Super Admin → Coin Treasury → Minter Allow-list). Recipients
-   are scoped in this UI to the agency's own hosts. */
-export function AgencyTransferCoins() {
-  const toast = useToast()
-  const [busy, setBusy] = useState(false)
-  const [values, setValues] = useState({ granted_to: '', coins: '', note: '' })
-  const set = (k, v) => setValues((s) => ({ ...s, [k]: v }))
-
-  return (
-    <AgencyPage
-      title="Transfer Coins"
-      load={async () => {
-        const [users, balance] = await Promise.all([profileOptions(), myMintBalance()])
-        return { users, balance }
-      }}
-    >
-      {({ users, balance }, reload) => {
-        const submit = async () => {
-          if (!values.granted_to || !values.coins) { toast('Pick a recipient and an amount'); return }
-          setBusy(true)
-          try {
-            await distributeCoins({ perRecipient: values.coins, audience: 'users', recipientIds: [values.granted_to], note: values.note })
-            toast(`${values.coins} coins sent`)
-            setValues({ granted_to: '', coins: '', note: '' })
-            reload()
-          } catch (e) {
-            toast(e.message || 'Transfer failed — you may need to be added to the Coin Minters allow-list by a Super Admin')
-          } finally { setBusy(false) }
-        }
-        return (
-          <Card title="Send coins to a user" sub={`Available treasury balance: ${num(balance)} coins`}>
-            <div className="form-grid">
-              <div className="field full">
-                <label>User <span className="req">*</span></label>
-                <UserPicker options={users} value={values.granted_to} onChange={(v) => set('granted_to', v)} />
-              </div>
-              <div className="field">
-                <label>Amount (coins) <span className="req">*</span></label>
-                <input className="input" type="number" placeholder="e.g. 500" value={values.coins} onChange={(e) => set('coins', e.target.value)} />
-              </div>
-              <div className="field full">
-                <label>Note</label>
-                <textarea className="textarea" placeholder="Reason for the transfer" value={values.note} onChange={(e) => set('note', e.target.value)} />
-              </div>
-            </div>
-            <div className="hstack mt-16" style={{ justifyContent: 'flex-end', gap: 10 }}>
-              <Button onClick={() => setValues({ granted_to: '', coins: '', note: '' })}>Clear</Button>
-              <Button variant="primary" icon={busy ? 'refresh' : 'coins'} disabled={busy} onClick={submit}>
-                {busy ? 'Sending…' : 'Send Coins'}
-              </Button>
-            </div>
-          </Card>
-        )
-      }}
-    </AgencyPage>
-  )
-}
-
-/* --------------------------------------------------- Coin History (real: coin_grants, granted_by = me) */
-export function AgencyCoinHistory() {
-  return (
-    <AgencyPage title="History of Coin Transfer to User" load={async () => myCoinGrants()}>
-      {(rows) => (
-        <DataTable
-          rows={rows}
-          searchKeys={['recipient', 'username', 'note', 'idShort']}
-          columns={[
-            { key: 'idShort', header: 'Ref', render: (r) => <span className="mono muted">{r.idShort}</span> },
-            personCol('recipient', 'username'),
-            numCol('coins', 'Coins'),
-            { key: 'note', header: 'Note' },
-            { key: 'date', header: 'Date', sortable: true },
-          ]}
-          emptyText="No coin transfers sent yet."
-        />
-      )}
     </AgencyPage>
   )
 }

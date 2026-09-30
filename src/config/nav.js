@@ -14,14 +14,23 @@ export const PANELS = {
   },
   'global-admin': {
     key: 'global-admin', label: 'Global Admin', short: 'Global Admin', base: '/global-admin',
-    tagline: 'Agency operations', color: '#16a34a', icon: 'building',
-    scope: 'Legacy agency panel — no role logs in here anymore (see the Sub Admin / Agency panels below); reachable only by a Super Admin browsing via the panel switcher.',
+    tagline: 'Global operations', color: '#16a34a', icon: 'globe',
+    scope: 'Sees the whole tree — every country admin, sub admin, agency and host — and moves coins down through all of it.',
+  },
+  // The old "Agency / Manager" panel. It used to be filed under the key
+  // 'global-admin'; renamed so "Global Admin" only ever means the top of the
+  // Global > Country > Sub > Agency ladder. No role logs in here — superseded
+  // by the Agency panel — and it is not offered in the panel switcher.
+  'agency-manager': {
+    key: 'agency-manager', label: 'Agency Manager (legacy)', short: 'Agency Mgr', base: '/agency-manager',
+    tagline: 'Legacy agency panel', color: '#64748b', icon: 'briefcase',
+    scope: 'Legacy agency-manager panel — superseded by the Agency panel. No role logs in here.',
   },
 
   // ---- New panels (additive; existing panels above are unchanged) ----
   'country-admin': {
     key: 'country-admin', label: 'Country Admin', short: 'Country Admin', base: '/country-admin',
-    tagline: 'Country operations', color: '#0891b2', icon: 'globe',
+    tagline: 'Country operations', color: '#0891b2', icon: 'flag',
     scope: 'Manages one country — its sub admins, agencies, hosts and the coin cascade down to them.',
   },
   'sub-admin': {
@@ -103,26 +112,63 @@ export const NAV = {
   'global-admin': [
     { section: 'Overview', items: [
       { label: 'Dashboard', icon: 'dashboard', to: '/global-admin' },
-      { label: 'My Agency', icon: 'building', to: '/global-admin/profile-agency' },
+    ]},
+    { section: 'Management', items: [
+      { label: 'User Management', icon: 'users', children: [
+        { label: 'Users', to: '/global-admin/user-management/users' },
+        { label: 'Hosts', to: '/global-admin/user-management/hosts' },
+        { label: 'Transfer Host', to: '/global-admin/user-management/transfer-host' },
+        { label: 'Transfer Agency', to: '/global-admin/user-management/transfer-agency' },
+        { label: 'Transfer Sub Admin', to: '/global-admin/user-management/transfer-sub-admin' },
+      ]},
+      { label: 'Admin Management', icon: 'shieldUser', children: [
+        { label: 'Country Admin', to: '/global-admin/admin-management/country-admin' },
+        { label: 'Sub Admin', to: '/global-admin/admin-management/sub-admin' },
+        { label: 'Agency', to: '/global-admin/admin-management/agency' },
+      ]},
+      { label: 'Coin Management', icon: 'coins', children: [
+        { label: 'Transfer Coins', to: '/global-admin/coin-management/transfer-coins' },
+        { label: 'History of Coin Transfer to Country Admin', to: '/global-admin/coin-management/history-country-admin' },
+        { label: 'History of Coin Transfer to Sub Admin', to: '/global-admin/coin-management/history-sub-admin' },
+        { label: 'History of Coin Transfer to Agency', to: '/global-admin/coin-management/history-agency' },
+        { label: 'History of Coin Transfer to User', to: '/global-admin/coin-management/history-user' },
+      ]},
+    ]},
+    { section: 'Platform', items: [
+      { label: 'Badge Management', icon: 'award', to: '/global-admin/badges' },
+      { label: 'Leaderboard Frame', icon: 'trophy', to: '/global-admin/leaderboard' },
+      { label: 'Live Request', icon: 'radio', to: '/global-admin/live-request' },
+      { label: 'Salary', icon: 'wallet', to: '/global-admin/salary' },
+      { label: 'Profile Frame', icon: 'frame', to: '/global-admin/profile-frame' },
+    ]},
+    { section: 'Account', items: [
+      { label: 'My Profile', icon: 'user', to: '/global-admin/profile' },
+    ]},
+  ],
+
+  'agency-manager': [
+    { section: 'Overview', items: [
+      { label: 'Dashboard', icon: 'dashboard', to: '/agency-manager' },
+      { label: 'My Agency', icon: 'building', to: '/agency-manager/profile-agency' },
     ]},
     { section: 'Operations', items: [
       { label: 'Host Management', icon: 'video', children: [
-        { label: 'Hosts', to: '/global-admin/hosts' },
-        { label: 'Host Profiles', to: '/global-admin/hosts/profiles' },
-        { label: 'Applications', to: '/global-admin/hosts/applications' },
-        { label: 'Host Codes', to: '/global-admin/hosts/codes' },
+        { label: 'Hosts', to: '/agency-manager/hosts' },
+        { label: 'Host Profiles', to: '/agency-manager/hosts/profiles' },
+        { label: 'Applications', to: '/agency-manager/hosts/applications' },
+        { label: 'Host Codes', to: '/agency-manager/hosts/codes' },
       ]},
-      { label: 'Assignments', icon: 'userCheck', to: '/global-admin/assignments' },
-      { label: 'Sub Admins', icon: 'shieldUser', to: '/global-admin/sub-admins' },
+      { label: 'Assignments', icon: 'userCheck', to: '/agency-manager/assignments' },
+      { label: 'Sub Admins', icon: 'shieldUser', to: '/agency-manager/sub-admins' },
     ]},
     { section: 'Performance', items: [
-      { label: 'Statistics', icon: 'chart', to: '/global-admin/stats' },
-      { label: 'Earnings', icon: 'wallet', to: '/global-admin/earnings' },
-      { label: 'Salary', icon: 'fileText', to: '/global-admin/salary' },
+      { label: 'Statistics', icon: 'chart', to: '/agency-manager/stats' },
+      { label: 'Earnings', icon: 'wallet', to: '/agency-manager/earnings' },
+      { label: 'Salary', icon: 'fileText', to: '/agency-manager/salary' },
     ]},
     { section: 'Account', items: [
-      { label: 'Agency Account', icon: 'idCard', to: '/global-admin/account' },
-      { label: 'My Profile', icon: 'user', to: '/global-admin/profile' },
+      { label: 'Agency Account', icon: 'idCard', to: '/agency-manager/account' },
+      { label: 'My Profile', icon: 'user', to: '/agency-manager/profile' },
     ]},
   ],
 
@@ -211,6 +257,7 @@ export const NAV = {
       ]},
     ]},
     { section: 'Platform', items: [
+      { label: 'Live Request', icon: 'radio', to: '/sub-admin/live-request' },
       { label: 'Salary', icon: 'wallet', to: '/sub-admin/salary' },
     ]},
     { section: 'Account', items: [

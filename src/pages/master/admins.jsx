@@ -56,10 +56,10 @@ export function AdminSubAdmins() {
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
-          searchKeys={['name', 'username', 'agency', 'idShort']}
+          searchKeys={['name', 'username', 'agency', 'displayId']}
           columns={[
             personCol('name', 'username'),
-            { key: 'idShort', header: 'User ID', render: (r) => <span className="mono muted">{r.idShort}</span> },
+            { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
             { key: 'agency', header: 'Assigned Agency', sortable: true },
             { key: 'joined', header: 'Granted', sortable: true },
           ]}

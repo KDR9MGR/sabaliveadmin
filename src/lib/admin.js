@@ -7,7 +7,7 @@ export const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 const titleCase = (s) =>
   s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s
-export const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
+export const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', global_admin: 'Global Admin', country_admin: 'Country Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
 
 function deriveRole(row) {
   if (row.staff_roles?.role) return ROLE_LABEL[row.staff_roles.role] || row.staff_roles.role
@@ -19,12 +19,13 @@ function deriveRole(row) {
 export async function listUsers() {
   const rows = unwrap(await supabase
     .from('profiles')
-    .select('id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name)), staff_roles(role, agency_id, agencies(name))')
+    .select('id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name)), staff_roles(role, agency_id, agencies(name))')
     .order('created_at', { ascending: false })
     .limit(1000))
   return rows.map((r) => ({
     id: r.id,
     idShort: shortId(r.id),
+    displayId: r.display_id,
     name: r.name,
     username: r.username,
     avatar: r.avatar_url || null,
@@ -139,7 +140,7 @@ export async function updateHost(id, patch) {
 export async function listAgencies() {
   const [agencies, hostRows] = await Promise.all([
     supabase.from('agencies')
-      .select('id, name, status, country, commission_percent, created_at, manager:manager_id(name, username)')
+      .select('id, display_id, name, status, country, commission_percent, created_at, manager:manager_id(name, username)')
       .order('created_at', { ascending: false }).limit(1000).then(unwrap),
     supabase.from('host_profiles').select('agency_id').then(unwrap),
   ])
@@ -150,6 +151,7 @@ export async function listAgencies() {
   return (agencies || []).map((a) => ({
     id: a.id,
     idShort: shortId(a.id),
+    displayId: a.display_id,
     name: a.name,
     manager: a.manager?.name ?? 'Unassigned',
     country: a.country,
@@ -210,13 +212,14 @@ export async function deleteAgency(id) {
 /* ---------------------------------------------------------------- STAFF (admins / sub admins) */
 export async function listStaff(roles) {
   let q = supabase.from('staff_roles')
-    .select('user_id, role, agency_id, created_at, profiles(name, username, level), agencies(name)')
+    .select('user_id, role, agency_id, created_at, profiles(name, username, level, display_id), agencies(name)')
     .order('created_at', { ascending: false })
   if (roles?.length) q = q.in('role', roles)
   const rows = unwrap(await q)
   return rows.map((r) => ({
     id: r.user_id,
     idShort: shortId(r.user_id),
+    displayId: r.profiles?.display_id,
     name: r.profiles?.name ?? '—',
     username: r.profiles?.username,
     role: ROLE_LABEL[r.role] || r.role,

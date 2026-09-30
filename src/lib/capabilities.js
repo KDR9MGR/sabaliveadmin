@@ -34,6 +34,8 @@ export const ROLE_BASELINE = {
   admin: set('view_dashboards', 'manage_users', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data'),
   agency_manager: set('view_dashboards', 'manage_hosts', 'export_data'),
   sub_admin: set('view_dashboards', 'manage_hosts'),
+  country_admin: set('view_dashboards', 'manage_hosts'),
+  global_admin: set('view_dashboards', 'manage_hosts'),
 }
 
 export function roleBaseline(roleRaw) {
