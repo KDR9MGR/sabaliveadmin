@@ -46,7 +46,10 @@ const ADD_COUNTRY = '/global-admin/admin-management/country-admin/add'
 const ADD_SUB = '/global-admin/admin-management/sub-admin/add'
 const ADD_AGENCY = '/global-admin/admin-management/agency/add'
 
-export function GlobalCountryAdmins() {
+/* Shared with Master (master/admins.jsx), which sees the same whole tree
+   (is_global_scope() covers 'admin' too) but needs its own /admin/... add
+   path, hence the addPath prop instead of a hardcoded route. */
+export function CountryAdminsList({ addPath }) {
   const nav = useNavigate()
   const { data, loading, error, reload } = useAsyncData(countryScope, [])
   return (
@@ -54,7 +57,7 @@ export function GlobalCountryAdmins() {
       <PageHeader
         title="Country Admin"
         crumbs={[...ADMIN_CR, 'Country Admin']}
-        actions={<Button variant="primary" icon="userPlus" onClick={() => nav(ADD_COUNTRY)}>Add Country Admin</Button>}
+        actions={<Button variant="primary" icon="userPlus" onClick={() => nav(addPath)}>Add Country Admin</Button>}
       />
       {error ? <LoadError error={error} onRetry={reload} />
         : loading || !data ? <TableSkeleton />
@@ -80,6 +83,7 @@ export function GlobalCountryAdmins() {
     </>
   )
 }
+export const GlobalCountryAdmins = () => <CountryAdminsList addPath={ADD_COUNTRY} />
 export const GlobalSubAdmins = () => <CountrySubAdmins addPath={ADD_SUB} />
 export const GlobalAgencies = () => <CountryAgencies addPath={ADD_AGENCY} />
 

@@ -8,8 +8,15 @@ import { AgencyScopeProvider } from './lib/agencyScope.jsx'
 import AppLayout from './components/layout/AppLayout.jsx'
 
 import MasterDashboard from './pages/master/Dashboard.jsx'
-import { UsersList, HostsList, SubAdminsList, UserIds, AccountStatus, TransferRequests, UserProfile } from './pages/master/users.jsx'
-import { Admins, AddMasterAdmin, AdminSubAdmins, AgenciesAdmin, RolesPermissions } from './pages/master/admins.jsx'
+import {
+  UsersList, HostsList, SubAdminsList, UserIds, AccountStatus, TransferRequests, UserProfile,
+  MasterTransferHost, MasterTransferAgency, MasterTransferSubAdmin, MasterTransferCountry,
+} from './pages/master/users.jsx'
+import {
+  Admins, AddMasterAdmin, AdminSubAdmins, AgenciesAdmin, RolesPermissions,
+  GlobalAdminAccounts, AddGlobalAdmin, MasterCountryAdmins, MasterAddCountryAdmin,
+  MasterSubAdmins, MasterAddSubAdmin, MasterAgencies, MasterAddAgency,
+} from './pages/master/admins.jsx'
 import { AgencyList, AgencyRequests, CommissionPlans, AgencyDetail } from './pages/master/agencies.jsx'
 import { HostsMgmt, HostAssignment, HostApplications, HostDetail, KycReview } from './pages/master/hosts.jsx'
 import { HostCodes } from './pages/master/hostCodes.jsx'
@@ -85,6 +92,10 @@ export default function App() {
               <Route path="users/ids" element={<UserIds />} />
               <Route path="users/status" element={<AccountStatus />} />
               <Route path="users/transfers" element={<TransferRequests />} />
+              <Route path="users/transfer-host" element={<MasterTransferHost />} />
+              <Route path="users/transfer-agency" element={<MasterTransferAgency />} />
+              <Route path="users/transfer-sub-admin" element={<MasterTransferSubAdmin />} />
+              <Route path="users/transfer-country" element={<MasterTransferCountry />} />
               <Route path="users/:id" element={<UserProfile />} />
             </Route>
 
@@ -94,6 +105,14 @@ export default function App() {
               <Route path="admins/sub-admins" element={<AdminSubAdmins />} />
               <Route path="admins/agencies" element={<AgenciesAdmin />} />
               <Route path="admins/roles" element={<RolesPermissions />} />
+              <Route path="admins/global-admin" element={<GlobalAdminAccounts />} />
+              <Route path="admins/global-admin/add" element={<AddGlobalAdmin />} />
+              <Route path="admins/country-admin" element={<MasterCountryAdmins />} />
+              <Route path="admins/country-admin/add" element={<MasterAddCountryAdmin />} />
+              <Route path="admins/sub-admin" element={<MasterSubAdmins />} />
+              <Route path="admins/sub-admin/add" element={<MasterAddSubAdmin />} />
+              <Route path="admins/agency" element={<MasterAgencies />} />
+              <Route path="admins/agency/add" element={<MasterAddAgency />} />
             </Route>
 
             <Route element={<RequireCap cap="manage_agencies" />}>
