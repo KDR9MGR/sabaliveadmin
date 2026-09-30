@@ -301,15 +301,20 @@ function PermissionsDrawer({ account, onClose, onSaved }) {
   )
 }
 
+/* A Super Admin may only create/promote a Master (role 'admin') — enforced
+   server-side too (check_staff_creation + the staff_roles RLS/trigger in
+   migration 20261001100000). Master then cascades everything below it
+   (Global > Country > Sub > Agency — see master/admins.jsx). The list still
+   shows every platform-wide role for oversight; only Grant/Add are narrowed. */
 export function SuperAdmins() {
   return (
     <StaffAccountsPage
       roles={PLATFORM_ROLES}
-      grantRoleOpts={[{ value: 'admin', label: 'Admin' }, { value: 'super_admin', label: 'Super Admin' }, { value: 'global_admin', label: 'Global Admin' }, { value: 'country_admin', label: 'Country Admin' }]}
+      grantRoleOpts={[{ value: 'admin', label: 'Admin' }]}
       title="Admin Accounts"
       crumbLabel="Admins"
       addPath="/super/admins/add"
-      intro="Platform-wide roles. Admin and Super Admin see everything (is_admin_or_above); Global and Country Admin are scoped down the Global > Country > Sub > Agency ladder. Only a Super Admin can grant, change or revoke roles. New accounts must sign up through the app first — this screen grants a role to an existing user."
+      intro="Platform-wide roles. Admin and Super Admin see everything (is_admin_or_above); Global and Country Admin are scoped down the Global > Country > Sub > Agency ladder. A Super Admin may only create or promote a Master (Admin) account — Master creates everything below it. Revoking a role stays available at every level, as a safety backstop."
     />
   )
 }
@@ -333,7 +338,9 @@ export function AddAdminAccount() {
       title="Add Admin"
       crumbRoot={[...CR, 'Admins']}
       backTo="/super/admins"
-      roleOpts={[{ value: 'admin', label: 'Admin' }, { value: 'super_admin', label: 'Super Admin' }, { value: 'global_admin', label: 'Global Admin' }, { value: 'country_admin', label: 'Country Admin' }]}
+      roleOpts={[{ value: 'admin', label: 'Admin' }]}
+      showAgency={false}
+      countryAdminMode="none"
     />
   )
 }
