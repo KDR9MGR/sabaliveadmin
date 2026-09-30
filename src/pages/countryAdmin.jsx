@@ -7,12 +7,15 @@
    a Global Admin the scope is simply the whole tree.
    Account creation stays Super Admin only: nothing here creates a login. */
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PageHeader, Card, Button, Tag, StatusBadge, useToast } from '../components/ui.jsx'
-import { personCol, statusCol, numCol } from '../components/cells.jsx'
+import { personCol, statusCol, numCol, emailCol, roleCol, imageCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
 import { TableSkeleton, LoadError } from './_templates.jsx'
 import { Profile } from './shared.jsx'
+import { AddStaffForm } from './addStaff.jsx'
+import { AddAgencyForm } from './addAgency.jsx'
 import MasterDashboard from './master/Dashboard.jsx'
 import { LiveRequests, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary } from './master/platform.jsx'
 import { HostsBody } from './agency.jsx'
@@ -22,7 +25,7 @@ import { updateHost } from '../lib/admin.js'
 import { listTransferRequests } from '../lib/workflows.js'
 import {
   countryScope, listScopeHosts, scopeSubAdminOptions, scopeAgencyManagerOptions,
-  otherCountryAdminOptions, createCountryAgency, transferAgency, transferHost, transferSubAdmin,
+  otherCountryAdminOptions, transferAgency, transferHost, transferSubAdmin,
 } from '../lib/country.js'
 
 const CR = ['Home']
@@ -220,29 +223,39 @@ export function CountryTransferSubAdmin() {
 }
 
 /* ------------------------------------------------------------------ Admin Management */
-export function CountrySubAdmins() {
+/* `addPath` is where "Add Sub Admin" goes — Country Admin and Global Admin each have their own. */
+export function CountrySubAdmins({ addPath = '/country-admin/admin-management/sub-admin/add' }) {
+  const nav = useNavigate()
   return (
-    <Loaded title="Sub Admin" crumbs={[...ADMIN_CR, 'Sub Admin']} load={countryScope}>
+    <Loaded
+      title="Sub Admin"
+      crumbs={[...ADMIN_CR, 'Sub Admin']}
+      load={countryScope}
+      actions={() => <Button variant="primary" icon="userPlus" onClick={() => nav(addPath)}>Add Sub Admin</Button>}
+    >
       {({ subAdmins, seesAll }) => (
         <>
           <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
             {seesAll
-              ? 'Sub Admin accounts are created by a Super Admin, who places each one under a Country Admin.'
-              : 'Sub Admin accounts are created and assigned to you by a Super Admin.'}
+              ? 'Each sub admin belongs to one Country Admin. Adding a sub admin creates their login.'
+              : 'Sub admins you add belong to you, and so do the agencies they own. Adding a sub admin creates their login.'}
           </div></Card>
           <DataTable
             rows={subAdmins}
-            searchKeys={['name', 'username', 'displayId']}
+            searchKeys={['name', 'username', 'displayId', 'email']}
             columns={[
               personCol('name', 'username'),
+              emailCol(),
               { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+              roleCol(),
               ...(seesAll ? [{ key: 'countryAdmin', header: 'Country Admin', sortable: true }] : []),
-              statusCol('accountStatus', 'Account'),
+              statusCol('accountStatus', 'Status'),
+              imageCol(),
               numCol('agencies', 'Agencies'),
               numCol('hosts', 'Hosts'),
               { key: 'granted', header: 'Added', sortable: true },
             ]}
-            emptyText="You don't own any sub admins yet — a Super Admin assigns them to you."
+            emptyText="No sub admins yet — use “Add Sub Admin” to create one."
           />
         </>
       )}
@@ -250,24 +263,24 @@ export function CountrySubAdmins() {
   )
 }
 
-export function CountryAgencies() {
-  const [adding, setAdding] = useState(false)
+export function CountryAgencies({ addPath = '/country-admin/admin-management/agency/add' }) {
+  const nav = useNavigate()
   return (
     <Loaded
       title="Agency"
       crumbs={[...ADMIN_CR, 'Agency']}
       load={countryScope}
-      actions={() => <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Add Agency</Button>}
+      actions={() => <Button variant="primary" icon="plus" onClick={() => nav(addPath)}>Add Agency</Button>}
     >
-      {({ agencies, subAdmins }, reload) => (
+      {({ agencies }) => (
         <>
           <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-            New agencies start as <b>Pending</b> until a platform admin approves them and sets the commission.
-            Agency manager accounts are created by a Super Admin.
+            Adding an agency also creates its own login. New agencies start as <b>Pending</b> until a platform
+            admin approves them and sets the commission.
           </div></Card>
           <DataTable
             rows={agencies}
-            searchKeys={['name', 'subAdmin', 'manager', 'displayId', 'country']}
+            searchKeys={['name', 'subAdmin', 'manager', 'displayId', 'country', 'email']}
             tabs={[
               { label: 'All', value: 'all', filter: () => true },
               { label: 'Active', value: 'a', filter: (r) => r.status === 'Active' },
@@ -275,35 +288,45 @@ export function CountryAgencies() {
               { label: 'Inactive', value: 'i', filter: (r) => r.status === 'Inactive' },
             ]}
             columns={[
-              { key: 'name', header: 'Agency', sortable: true },
               { key: 'displayId', header: 'Agency ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+              { key: 'name', header: 'Name', sortable: true },
+              emailCol(),
+              roleCol(),
               { key: 'subAdmin', header: 'Sub Admin', sortable: true },
-              personCol('manager', 'managerUsername'),
+              { ...personCol('manager', 'managerUsername'), header: 'Manager' },
               numCol('hosts', 'Hosts'),
               { key: 'country', header: 'Region' },
               numCol('commission', 'Commission', { suffix: '%' }),
-              statusCol(),
+              statusCol('status', 'Status'),
+              imageCol(),
             ]}
             emptyText="No agencies under your sub admins yet."
           />
-          {adding && (
-            <EntityForm
-              title="Add agency" onClose={() => setAdding(false)} savedMessage="Agency added — pending approval"
-              initial={{ name: '', country: 'India', sub_admin: '' }}
-              onSubmit={async (v) => { await createCountryAgency({ name: v.name, country: v.country, subAdmin: v.sub_admin }); reload() }}
-              fields={[
-                { name: 'name', label: 'Agency name', required: true },
-                { name: 'country', label: 'Region' },
-                { name: 'sub_admin', label: 'Owned by sub admin', type: 'select', required: true,
-                  options: subAdmins.map((s) => ({ value: s.id, label: `${s.name} (@${s.username || '—'})` })) },
-              ]}
-            />
-          )}
         </>
       )}
     </Loaded>
   )
 }
+
+/* Add pages. A Country Admin's sub admins are always their own (the server forces
+   it), and an agency must be owned by one of their sub admins. */
+export const CountryAddSubAdmin = () => (
+  <AddStaffForm
+    title="Add Sub Admin"
+    crumbRoot={[...ADMIN_CR, 'Sub Admin']}
+    backTo="/country-admin/admin-management/sub-admin"
+    roleOpts={[{ value: 'sub_admin', label: 'Sub Admin' }]}
+    showAgency={false}
+    countryAdminMode="none"
+  />
+)
+export const CountryAddAgency = () => (
+  <AddAgencyForm
+    crumbRoot={[...ADMIN_CR, 'Agency']}
+    backTo="/country-admin/admin-management/agency"
+    owner={{ mode: 'pick', load: scopeSubAdminOptions }}
+  />
+)
 
 /* ------------------------------------------------------------------ Coin Management */
 export const CountryTransferCoins = () => (

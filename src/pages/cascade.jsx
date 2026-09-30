@@ -3,17 +3,17 @@
    Admin. Data comes from lib/cascade.js: wallets are the balances, and
    transfers are validated server-side by the transfer_coins_down RPC. */
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PageHeader, Card, Button, Tag, useToast } from '../components/ui.jsx'
-import { personCol, statusCol, numCol } from '../components/cells.jsx'
+import { personCol, statusCol, numCol, emailCol, roleCol, imageCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
-import EntityForm from '../components/EntityForm.jsx'
 import UserPicker from '../components/UserPicker.jsx'
 import { TableSkeleton, LoadError } from './_templates.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
 import { profileOptions } from '../lib/coins.js'
 import {
   myCoinBalance, transferCoinsDown, listCoinTransfers, listUserCoinHistory,
-  listOwnedAgencies, createSubAdminAgency, ownedAgencyManagerOptions,
+  listOwnedAgencies, ownedAgencyManagerOptions,
 } from '../lib/cascade.js'
 import { num } from '../data/index.js'
 
@@ -143,26 +143,25 @@ export function CoinHistoryPage({ title, crumbs, kind }) {
 }
 
 /* ------------------------------------------------------------------ Agencies I own */
-export function OwnedAgenciesPage({ crumbs }) {
-  const toast = useToast()
-  const [adding, setAdding] = useState(false)
+export function OwnedAgenciesPage({ crumbs, addPath }) {
+  const nav = useNavigate()
   const { data, loading, error, reload } = useAsyncData(listOwnedAgencies, [])
 
   return (
     <>
       <PageHeader title="Agency" crumbs={crumbs}
-        actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Add Agency</Button>} />
+        actions={<Button variant="primary" icon="plus" onClick={() => nav(addPath)}>Add Agency</Button>} />
       {error ? <LoadError error={error} onRetry={reload} />
         : loading || !data ? <TableSkeleton />
         : (
           <>
             <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-              New agencies start as <b>Pending</b> until a platform admin approves them and sets the commission.
-              Agency manager accounts are granted by a Super Admin.
+              Adding an agency also creates its own login. New agencies start as <b>Pending</b> until a platform
+              admin approves them and sets the commission.
             </div></Card>
             <DataTable
               rows={data}
-              searchKeys={['name', 'manager', 'displayId', 'country']}
+              searchKeys={['name', 'manager', 'displayId', 'country', 'email']}
               tabs={[
                 { label: 'All', value: 'all', filter: () => true },
                 { label: 'Active', value: 'a', filter: (r) => r.status === 'Active' },
@@ -170,28 +169,22 @@ export function OwnedAgenciesPage({ crumbs }) {
                 { label: 'Inactive', value: 'i', filter: (r) => r.status === 'Inactive' },
               ]}
               columns={[
-                { key: 'name', header: 'Agency', sortable: true },
                 { key: 'displayId', header: 'Agency ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
-                personCol('manager', 'managerUsername'),
+                { key: 'name', header: 'Name', sortable: true },
+                emailCol(),
+                roleCol(),
+                { ...personCol('manager', 'managerUsername'), header: 'Manager' },
                 numCol('hosts', 'Hosts'),
                 { key: 'country', header: 'Region' },
                 numCol('commission', 'Commission', { suffix: '%' }),
-                statusCol(),
+                statusCol('status', 'Status'),
+                imageCol(),
                 { key: 'created', header: 'Created', sortable: true },
               ]}
               emptyText="You don't own any agencies yet — add one to get started."
             />
           </>
         )}
-      {adding && (
-        <EntityForm title="Add agency" onClose={() => setAdding(false)} savedMessage="Agency added — pending approval"
-          onSubmit={async (v) => { await createSubAdminAgency({ name: v.name, country: v.country }); reload() }}
-          initial={{ name: '', country: 'India' }}
-          fields={[
-            { name: 'name', label: 'Agency name', required: true },
-            { name: 'country', label: 'Region' },
-          ]} />
-      )}
     </>
   )
 }

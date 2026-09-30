@@ -6,11 +6,14 @@
    server (migration 20260930160000).
    This is NOT the old Agency / Manager panel — that lives on as
    'agency-manager' (see config/nav.js). */
-import { PageHeader } from '../components/ui.jsx'
-import { personCol, statusCol, numCol } from '../components/cells.jsx'
+import { useNavigate } from 'react-router-dom'
+import { PageHeader, Button } from '../components/ui.jsx'
+import { personCol, statusCol, numCol, emailCol, roleCol, imageCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import { TableSkeleton, LoadError } from './_templates.jsx'
 import { Profile } from './shared.jsx'
+import { AddStaffForm } from './addStaff.jsx'
+import { AddAgencyForm } from './addAgency.jsx'
 import { TransferCoinsPage, CoinHistoryPage, USER_KIND } from './cascade.jsx'
 import {
   CountryAdminDashboard, CountryUsers, CountryHosts, CountryTransferHost, CountryTransferAgency,
@@ -36,34 +39,76 @@ export const GlobalTransferAgency = CountryTransferAgency
 export const GlobalTransferSubAdmin = CountryTransferSubAdmin
 
 /* Admin Management */
+const ADD_COUNTRY = '/global-admin/admin-management/country-admin/add'
+const ADD_SUB = '/global-admin/admin-management/sub-admin/add'
+const ADD_AGENCY = '/global-admin/admin-management/agency/add'
+
 export function GlobalCountryAdmins() {
+  const nav = useNavigate()
   const { data, loading, error, reload } = useAsyncData(countryScope, [])
   return (
     <>
-      <PageHeader title="Country Admin" crumbs={[...ADMIN_CR, 'Country Admin']} />
+      <PageHeader
+        title="Country Admin"
+        crumbs={[...ADMIN_CR, 'Country Admin']}
+        actions={<Button variant="primary" icon="userPlus" onClick={() => nav(ADD_COUNTRY)}>Add Country Admin</Button>}
+      />
       {error ? <LoadError error={error} onRetry={reload} />
         : loading || !data ? <TableSkeleton />
         : (
           <DataTable
             rows={data.countryAdmins}
-            searchKeys={['name', 'username', 'displayId']}
+            searchKeys={['name', 'username', 'displayId', 'email']}
             columns={[
               personCol('name', 'username'),
+              emailCol(),
               { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
-              statusCol('accountStatus', 'Account'),
+              roleCol(),
+              statusCol('accountStatus', 'Status'),
+              imageCol(),
               numCol('subAdmins', 'Sub Admins'),
               numCol('agencies', 'Agencies'),
               numCol('hosts', 'Hosts'),
               { key: 'granted', header: 'Added', sortable: true },
             ]}
-            emptyText="No country admins yet — a Super Admin creates them."
+            emptyText="No country admins yet — use “Add Country Admin” to create one."
           />
         )}
     </>
   )
 }
-export const GlobalSubAdmins = CountrySubAdmins
-export const GlobalAgencies = CountryAgencies
+export const GlobalSubAdmins = () => <CountrySubAdmins addPath={ADD_SUB} />
+export const GlobalAgencies = () => <CountryAgencies addPath={ADD_AGENCY} />
+
+/* Add pages. A Global Admin creates Country Admins, Sub Admins (each placed under a
+   Country Admin) and Agencies (each owned by a sub admin, with its own login). */
+export const GlobalAddCountryAdmin = () => (
+  <AddStaffForm
+    title="Add Country Admin"
+    crumbRoot={[...ADMIN_CR, 'Country Admin']}
+    backTo="/global-admin/admin-management/country-admin"
+    roleOpts={[{ value: 'country_admin', label: 'Country Admin' }]}
+    showAgency={false}
+    countryAdminMode="none"
+  />
+)
+export const GlobalAddSubAdmin = () => (
+  <AddStaffForm
+    title="Add Sub Admin"
+    crumbRoot={[...ADMIN_CR, 'Sub Admin']}
+    backTo="/global-admin/admin-management/sub-admin"
+    roleOpts={[{ value: 'sub_admin', label: 'Sub Admin' }]}
+    showAgency={false}
+    countryAdminMode="require"
+  />
+)
+export const GlobalAddAgency = () => (
+  <AddAgencyForm
+    crumbRoot={[...ADMIN_CR, 'Agency']}
+    backTo="/global-admin/admin-management/agency"
+    owner={{ mode: 'pick', load: scopeSubAdminOptions }}
+  />
+)
 
 /* Coin Management */
 export const GlobalTransferCoins = () => (

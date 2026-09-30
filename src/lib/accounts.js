@@ -66,8 +66,10 @@ export async function agencyOptions() {
 /* ---------------------------------------------------------------- mutations (all gated by is_super_admin() RLS) */
 function normalize(role, agencyId) {
   const r = String(role).toLowerCase()
-  const needsAgency = AGENCY_ROLES.includes(r)
-  return { role: r, agency_id: needsAgency ? (agencyId || null) : null, needsAgency }
+  // only an agency_manager is tied to exactly one agency; a sub_admin owns
+  // many, so an agency is optional for them (and just becomes the first one)
+  const needsAgency = r === 'agency_manager'
+  return { role: r, agency_id: AGENCY_ROLES.includes(r) ? (agencyId || null) : null, needsAgency }
 }
 
 export async function grantRole({ user_id, role, agency_id }) {

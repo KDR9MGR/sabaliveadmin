@@ -5,8 +5,8 @@
    agency_manager still lands you on the Agency panel, not "whichever page
    you happened to sign in from" — the quick-link buttons below the form
    are just navigation to a sibling panel's own login page, not a bypass.
-   The Agency login is a standalone, agency-specific entry: it links to
-   nothing else, and the admin logins don't link to it. */
+   The Agency panel keeps its own login page (/panel-agency/login) for agency
+   accounts, and every login page links to all the others. */
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth.jsx'
@@ -104,11 +104,11 @@ function PanelLoginPage({ panelKey, quickLinks = [] }) {
   )
 }
 
-/* The three admin logins link to each other, not just the ones below in the
+/* Every panel links to all the others, not just the ones below it in the
    hierarchy — the quick-links are cross-navigation between login pages, not a
-   reflection of who reports to whom. The Agency login is standalone. */
-const ADMIN_PANEL_KEYS = ['global-admin', 'country-admin', 'sub-admin']
-const otherPanels = (self) => ADMIN_PANEL_KEYS.filter((k) => k !== self).map((panelKey) => ({ panelKey }))
+   reflection of who reports to whom. */
+const ALL_PANEL_KEYS = ['global-admin', 'country-admin', 'sub-admin', 'panel-agency']
+const otherPanels = (self) => ALL_PANEL_KEYS.filter((k) => k !== self).map((panelKey) => ({ panelKey }))
 
 export const GlobalAdminLogin = () => (
   <PanelLoginPage panelKey="global-admin" quickLinks={otherPanels('global-admin')} />
@@ -120,5 +120,5 @@ export const SubAdminLogin = () => (
   <PanelLoginPage panelKey="sub-admin" quickLinks={otherPanels('sub-admin')} />
 )
 export const AgencyLogin = () => (
-  <PanelLoginPage panelKey="panel-agency" />
+  <PanelLoginPage panelKey="panel-agency" quickLinks={otherPanels('panel-agency')} />
 )

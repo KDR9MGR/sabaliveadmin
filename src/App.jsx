@@ -34,13 +34,13 @@ import { Profile, Login, NotFound } from './pages/shared.jsx'
 
 import {
   CountryAdminDashboard, CountryUsers, CountryHosts, CountryTransferHost, CountryTransferAgency,
-  CountryTransferSubAdmin, CountrySubAdmins, CountryAgencies,
+  CountryTransferSubAdmin, CountrySubAdmins, CountryAgencies, CountryAddSubAdmin, CountryAddAgency,
   CountryTransferCoins,
   CountryCoinHistorySubAdmin, CountryCoinHistoryAgency, CountryCoinHistoryUser, CountryBadges,
   CountryLeaderboard, CountryLiveRequest, CountrySalary, CountryProfileFrame, CountryProfile,
 } from './pages/countryAdmin.jsx'
 import {
-  SubAdminDashboard, SubAdminUsers, SubAdminHosts, SubAdminAgencies, SubAdminTransferCoins,
+  SubAdminDashboard, SubAdminUsers, SubAdminHosts, SubAdminAgencies, SubAdminAddAgency, SubAdminTransferCoins,
   SubAdminCoinHistoryAgency, SubAdminCoinHistoryUser, SubAdminSalary, SubAdminLiveRequests, SubAdminProfile,
 } from './pages/subAdmin.jsx'
 import {
@@ -50,6 +50,7 @@ import {
 import {
   GlobalAdminDashboard, GlobalUsers, GlobalHosts, GlobalTransferHost, GlobalTransferAgency, GlobalTransferSubAdmin,
   GlobalCountryAdmins, GlobalSubAdmins, GlobalAgencies, GlobalTransferCoins,
+  GlobalAddCountryAdmin, GlobalAddSubAdmin, GlobalAddAgency,
   GlobalCoinHistoryCountryAdmin, GlobalCoinHistorySubAdmin, GlobalCoinHistoryAgency, GlobalCoinHistoryUser,
   GlobalBadges, GlobalLeaderboard, GlobalLiveRequest, GlobalSalary, GlobalProfileFrame, GlobalProfile,
 } from './pages/globalAdmin.jsx'
@@ -151,8 +152,11 @@ export default function App() {
             <Route path="user-management/transfer-agency" element={<GlobalTransferAgency />} />
             <Route path="user-management/transfer-sub-admin" element={<GlobalTransferSubAdmin />} />
             <Route path="admin-management/country-admin" element={<GlobalCountryAdmins />} />
+            <Route path="admin-management/country-admin/add" element={<GlobalAddCountryAdmin />} />
             <Route path="admin-management/sub-admin" element={<GlobalSubAdmins />} />
+            <Route path="admin-management/sub-admin/add" element={<GlobalAddSubAdmin />} />
             <Route path="admin-management/agency" element={<GlobalAgencies />} />
+            <Route path="admin-management/agency/add" element={<GlobalAddAgency />} />
             <Route path="coin-management/transfer-coins" element={<GlobalTransferCoins />} />
             <Route path="coin-management/history-country-admin" element={<GlobalCoinHistoryCountryAdmin />} />
             <Route path="coin-management/history-sub-admin" element={<GlobalCoinHistorySubAdmin />} />
@@ -233,7 +237,9 @@ export default function App() {
             <Route path="user-management/transfer-agency" element={<CountryTransferAgency />} />
             <Route path="user-management/transfer-sub-admin" element={<CountryTransferSubAdmin />} />
             <Route path="admin-management/sub-admin" element={<CountrySubAdmins />} />
+            <Route path="admin-management/sub-admin/add" element={<CountryAddSubAdmin />} />
             <Route path="admin-management/agency" element={<CountryAgencies />} />
+            <Route path="admin-management/agency/add" element={<CountryAddAgency />} />
             <Route path="coin-management/transfer-coins" element={<CountryTransferCoins />} />
             <Route path="coin-management/history-sub-admin" element={<CountryCoinHistorySubAdmin />} />
             <Route path="coin-management/history-agency" element={<CountryCoinHistoryAgency />} />
@@ -254,6 +260,7 @@ export default function App() {
             <Route path="user-management/users" element={<SubAdminUsers />} />
             <Route path="user-management/hosts" element={<SubAdminHosts />} />
             <Route path="admin-management/agency" element={<SubAdminAgencies />} />
+            <Route path="admin-management/agency/add" element={<SubAdminAddAgency />} />
             <Route path="coin-management/transfer-coins" element={<SubAdminTransferCoins />} />
             <Route path="coin-management/history-agency" element={<SubAdminCoinHistoryAgency />} />
             <Route path="coin-management/history-user" element={<SubAdminCoinHistoryUser />} />

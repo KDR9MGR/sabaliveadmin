@@ -6,6 +6,7 @@
    User, and each direction has its own history. */
 import { Profile } from './shared.jsx'
 import { AgencyDashboard, AgencyHostProfiles, AgencyHosts, AgencySalary, AgencyLiveRequests } from './agency.jsx'
+import { AddAgencyForm } from './addAgency.jsx'
 import { TransferCoinsPage, CoinHistoryPage, OwnedAgenciesPage, OWNED_AGENCY_KIND, USER_KIND } from './cascade.jsx'
 
 const CR = ['Home']
@@ -15,7 +16,17 @@ export const SubAdminDashboard = () => <AgencyDashboard panel="sub-admin" />
 export const SubAdminUsers = AgencyHostProfiles
 export const SubAdminHosts = AgencyHosts
 
-export const SubAdminAgencies = () => <OwnedAgenciesPage crumbs={[...CR, 'Admin Management', 'Agency']} />
+export const SubAdminAgencies = () => (
+  <OwnedAgenciesPage crumbs={[...CR, 'Admin Management', 'Agency']} addPath="/sub-admin/admin-management/agency/add" />
+)
+/* A Sub Admin creates agencies they own, each with its own standalone login. */
+export const SubAdminAddAgency = () => (
+  <AddAgencyForm
+    crumbRoot={[...CR, 'Admin Management', 'Agency']}
+    backTo="/sub-admin/admin-management/agency"
+    owner={{ mode: 'self' }}
+  />
+)
 
 export const SubAdminTransferCoins = () => (
   <TransferCoinsPage

@@ -1,14 +1,20 @@
 /* Shared full-page "Add Admin" form — replaces the old slide-in drawer.
-   Used by Super Admin, Master/Admin and Country Admin, each supplying
-   which roles it may create and where to land afterwards. Calls the real
-   inviteStaff() -> invite-staff Edge Function; nothing here is mocked. */
+   Used by Super Admin, Global Admin and Country Admin, each supplying which
+   roles it may create and where to land afterwards. Calls the real
+   inviteStaff() -> invite-staff Edge Function; nothing here is mocked. Which
+   roles a caller may actually create is enforced server-side
+   (check_staff_creation), so the options passed in are only a convenience.
+     showAgency        — offer the agency field (Super's forms); Global/Country hide it
+     countryAdminMode  — for a sub admin's owner: 'pick' (optional), 'require', or
+                         'none' (a Country Admin's sub admins are always their own) */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader, Card, Button, EmptyState } from '../components/ui.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
-import { inviteStaff, agencyOptions, countryAdminOptions, AGENCY_ROLES } from '../lib/accounts.js'
+import { inviteStaff, agencyOptions, countryAdminOptions } from '../lib/accounts.js'
+import { countryList } from '../lib/countries.js'
 
-export function AddStaffForm({ title = 'Add Admin', crumbRoot, roleOpts, backTo }) {
+export function AddStaffForm({ title = 'Add Admin', crumbRoot, roleOpts, backTo, showAgency = true, countryAdminMode = 'pick' }) {
   const nav = useNavigate()
   const { data: agencies } = useAsyncData(agencyOptions)
   const { data: countryAdmins } = useAsyncData(countryAdminOptions)
@@ -21,12 +27,17 @@ export function AddStaffForm({ title = 'Add Admin', crumbRoot, roleOpts, backTo 
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const set = (k, val) => setV((s) => ({ ...s, [k]: val }))
-  const needsAgency = AGENCY_ROLES.includes(v.role)
+  const needsAgency = v.role === 'agency_manager'
+  const showAgencyField = showAgency && (needsAgency || v.role === 'sub_admin')
+  const showCountryField = countryAdminMode !== 'none' && v.role === 'sub_admin'
+  // a country is only meaningful for the country-level accounts (as in the reference forms)
+  const showCountryPick = !['sub_admin', 'agency_manager'].includes(v.role)
 
   const submit = async () => {
     setError('')
     if (!v.email || !v.email.includes('@')) return setError('A valid email is required')
     if (needsAgency && !v.agency_id) return setError('Agency is required for this role')
+    if (showCountryField && countryAdminMode === 'require' && !v.country_admin_id) return setError('Pick the Country Admin this sub admin will report to')
     if (v.password && v.password !== v.confirm_password) return setError('Passwords do not match')
     if (v.payment_pin && v.payment_pin !== v.confirm_payment_pin) return setError('Payment PINs do not match')
     setBusy(true)
@@ -97,28 +108,33 @@ export function AddStaffForm({ title = 'Add Admin', crumbRoot, roleOpts, backTo 
               {roleOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
-          {needsAgency && (
+          {showAgencyField && (
             <div className="field">
-              <label>Agency <span className="req">*</span></label>
+              <label>Agency {needsAgency && <span className="req">*</span>}</label>
               <select className="select" value={v.agency_id} onChange={(e) => set('agency_id', e.target.value)}>
-                <option value="">Select…</option>
+                <option value="">{needsAgency ? 'Select…' : 'None yet'}</option>
                 {(agencies || []).map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
               </select>
             </div>
           )}
-          {v.role === 'sub_admin' && (
+          {showCountryField && (
             <div className="field">
-              <label>Country Admin</label>
+              <label>Country Admin {countryAdminMode === 'require' && <span className="req">*</span>}</label>
               <select className="select" value={v.country_admin_id} onChange={(e) => set('country_admin_id', e.target.value)}>
-                <option value="">None yet</option>
+                <option value="">{countryAdminMode === 'require' ? 'Select…' : 'None yet'}</option>
                 {(countryAdmins || []).map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
               </select>
             </div>
           )}
-          <div className="field">
-            <label>Country</label>
-            <input className="input" value={v.location} onChange={(e) => set('location', e.target.value)} placeholder="India" />
-          </div>
+          {showCountryPick && (
+            <div className="field">
+              <label>Country</label>
+              <select className="select" value={v.location} onChange={(e) => set('location', e.target.value)}>
+                <option value="">Select country…</option>
+                {countryList().map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          )}
           <div className="field">
             <label>Password</label>
             <input className="input" type="password" value={v.password} onChange={(e) => set('password', e.target.value)} placeholder="Leave blank to auto-generate" />

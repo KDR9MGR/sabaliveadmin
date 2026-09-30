@@ -15,6 +15,19 @@ const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUppe
 const myId = async () => (await supabase.auth.getSession()).data.session?.user?.id
 const rpc = async (fn, args) => { const { data, error } = await supabase.rpc(fn, args); if (error) throw error; return data }
 
+/* Emails live only in auth.users; staff_emails() returns them just for accounts
+   the caller may see (migration 20260930180000). Never blocks a list: if the
+   lookup fails the Email column simply shows a dash. */
+export async function staffEmails(ids) {
+  const list = [...new Set((ids || []).filter(Boolean))]
+  if (!list.length) return {}
+  try {
+    const { data, error } = await supabase.rpc('staff_emails', { p_user_ids: list })
+    if (error) return {}
+    return Object.fromEntries((data || []).map((r) => [r.user_id, r.email]))
+  } catch { return {} }
+}
+
 /* ---------------------------------------------------------------- scope */
 export async function countryScope() {
   const me = await myId()
@@ -24,14 +37,14 @@ export async function countryScope() {
   // Global view also needs the country admins, to label who owns each sub admin.
   const countryRows = seesAll
     ? unwrap(await supabase.from('staff_roles')
-        .select('user_id, created_at, profiles(name, username, status, display_id)')
+        .select('user_id, created_at, profiles(name, username, status, display_id, avatar_url)')
         .eq('role', 'country_admin')
         .order('created_at', { ascending: false }))
     : []
   const countryName = Object.fromEntries(countryRows.map((c) => [c.user_id, c.profiles?.name || shortId(c.user_id)]))
 
   let q = supabase.from('staff_roles')
-    .select('user_id, created_at, country_admin_id, profiles(name, username, status, display_id)')
+    .select('user_id, created_at, country_admin_id, profiles(name, username, status, display_id, avatar_url)')
     .eq('role', 'sub_admin')
     .order('created_at', { ascending: false })
   if (!seesAll) q = q.eq('country_admin_id', me)
@@ -39,10 +52,16 @@ export async function countryScope() {
   const subIds = subRows.map((s) => s.user_id)
 
   let aq = supabase.from('agencies')
-    .select('id, display_id, name, country, status, commission_percent, sub_admin_id, created_at, manager:manager_id(name, username), host_profiles(count)')
+    .select('id, display_id, name, country, status, commission_percent, sub_admin_id, manager_id, created_at, manager:manager_id(name, username, avatar_url), host_profiles(count)')
     .order('created_at', { ascending: false })
   if (!seesAll) aq = subIds.length ? aq.in('sub_admin_id', subIds) : null
   const agencyRows = aq ? unwrap(await aq) : []
+
+  const emails = await staffEmails([
+    ...countryRows.map((c) => c.user_id),
+    ...subRows.map((s) => s.user_id),
+    ...agencyRows.map((a) => a.manager_id),
+  ])
 
   const subName = Object.fromEntries(subRows.map((s) => [s.user_id, s.profiles?.name || shortId(s.user_id)]))
   const agencies = agencyRows.map((a) => ({
@@ -54,6 +73,9 @@ export async function countryScope() {
     subAdmin: subName[a.sub_admin_id] || 'Unassigned',
     manager: a.manager?.name || 'Unassigned',
     managerUsername: a.manager?.username,
+    email: emails[a.manager_id] || '',
+    avatar: a.manager?.avatar_url || null,
+    role: 'Agency',
     country: a.country,
     commission: Number(a.commission_percent),
     hosts: a.host_profiles?.[0]?.count ?? 0,
@@ -67,6 +89,9 @@ export async function countryScope() {
     name: s.profiles?.name || '—',
     username: s.profiles?.username,
     accountStatus: s.profiles?.status,
+    email: emails[s.user_id] || '',
+    avatar: s.profiles?.avatar_url || null,
+    role: 'Sub Admin',
     countryAdminId: s.country_admin_id,
     countryAdmin: countryName[s.country_admin_id] || (seesAll ? 'Unassigned' : '—'),
     agencies: agencies.filter((a) => a.subAdminId === s.user_id).length,
@@ -82,6 +107,9 @@ export async function countryScope() {
       name: c.profiles?.name || '—',
       username: c.profiles?.username,
       accountStatus: c.profiles?.status,
+      email: emails[c.user_id] || '',
+      avatar: c.profiles?.avatar_url || null,
+      role: 'Country Admin',
       subAdmins: subs.length,
       agencies: subs.reduce((n, s) => n + s.agencies, 0),
       hosts: subs.reduce((n, s) => n + s.hosts, 0),

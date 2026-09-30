@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
 import { myCoinGrants } from './treasury.js'
+import { staffEmails } from './country.js'
 
 /* Data layer for the staff hierarchy (Sub Admin now; Country Admin builds on
    the same calls). Coin balances are wallets.coins at every level; a transfer
@@ -71,9 +72,10 @@ export async function listUserCoinHistory() {
 export async function listOwnedAgencies() {
   const me = await myId()
   const rows = unwrap(await supabase.from('agencies')
-    .select('id, display_id, name, country, status, commission_percent, created_at, manager:manager_id(name, username), host_profiles(count)')
+    .select('id, display_id, name, country, status, commission_percent, created_at, manager_id, manager:manager_id(name, username, avatar_url), host_profiles(count)')
     .eq('sub_admin_id', me)
     .order('created_at', { ascending: false }))
+  const emails = await staffEmails(rows.map((a) => a.manager_id))
   return rows.map((a) => ({
     id: a.id,
     idShort: shortId(a.id),
@@ -81,6 +83,9 @@ export async function listOwnedAgencies() {
     name: a.name,
     manager: a.manager?.name || 'Unassigned',
     managerUsername: a.manager?.username,
+    email: emails[a.manager_id] || '',
+    avatar: a.manager?.avatar_url || null,
+    role: 'Agency',
     country: a.country,
     commission: Number(a.commission_percent),
     hosts: a.host_profiles?.[0]?.count ?? 0,

@@ -21,4 +21,17 @@ export const numCol = (key, header, opts = {}) => ({
   render: (r) => <span className="mono">{opts.prefix || ''}{num(r[key])}{opts.suffix || ''}</span>,
 })
 
+/* Profile picture, as in the reference lists. */
+export const imageCol = (key = 'avatar', header = 'Image') => ({
+  key, header, sortable: false,
+  render: (r) => (r[key]
+    ? <img src={r[key]} alt="" width={40} height={40} style={{ borderRadius: 8, objectFit: 'cover' }} />
+    : <span className="muted">—</span>),
+})
+
+export const emailCol = (key = 'email', header = 'Email') => ({
+  key, header, sortable: true,
+  render: (r) => (r[key] ? r[key] : <span className="muted">—</span>),
+})
+
 export const textCol = (key, header, opts = {}) => ({ key, header, sortable: opts.sortable ?? true, ...opts })
