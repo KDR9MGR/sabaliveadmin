@@ -21,6 +21,9 @@ import {
   profileOptions,
   BADGE_STATUSES, FRAME_STATUSES, FRAME_UNLOCK_TYPES, LBF_SCOPES, LBF_PERIODS, LBF_STATUSES,
 } from '../../lib/gamification.js'
+import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory } from '../../lib/luckyBox.js'
+import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
+import MediaPreview from '../../components/MediaPreview.jsx'
 
 const gOpt = (v) => ({ value: v, label: v.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') })
 
@@ -142,7 +145,9 @@ export function BadgeManagement() {
 
   const fields = [
     { name: 'name', label: 'Badge name', required: true },
-    { name: 'emoji', label: 'Icon / emoji', placeholder: '🏅' },
+    { name: 'emoji', label: 'Icon / emoji (fallback if no file is uploaded)', placeholder: '🏅' },
+    { name: 'icon_url', label: 'Icon / animation file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
+      onUpload: (file) => uploadMedia('gift-assets', 'badges', file), hint: 'SVGA, WebP, MP4 or PNG' },
     { name: 'criteria', label: 'Unlock criteria', full: true },
     { name: 'sort_order', label: 'Sort order', type: 'number' },
     { name: 'status', label: 'Status', type: 'select', options: BADGE_STATUSES.map(gOpt) },
@@ -159,7 +164,7 @@ export function BadgeManagement() {
         <div className="gallery" style={{ marginBottom: 20 }}>
           {(rows || []).map((b) => (
             <div className="gallery__item" key={b.id}>
-              <div className="gallery__preview">{b.emoji}</div>
+              <div className="gallery__preview"><MediaPreview url={b.iconUrl} emoji={b.emoji} size={22} /></div>
               <div className="gallery__meta">
                 <div>
                   <div className="n">{b.name}</div>
@@ -175,7 +180,7 @@ export function BadgeManagement() {
           searchKeys={['name', 'criteria', 'idShort']}
           filters={[{ label: 'Status', options: ['Active', 'Inactive'], get: (r) => r.status }]}
           columns={[
-            { key: 'name', header: 'Badge', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 20 }}>{r.emoji}</span><b>{r.name}</b></span> },
+            { key: 'name', header: 'Badge', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.iconUrl} emoji={r.emoji} size={20} /><b>{r.name}</b></span> },
             { key: 'criteria', header: 'Unlock criteria' },
             numCol('holders', 'Holders'),
             statusCol(),
@@ -198,7 +203,7 @@ export function BadgeManagement() {
       {editing && (
         <EntityForm title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} savedMessage="Badge updated"
           onSubmit={async (v) => { await updateBadge(editing.id, v); reload() }}
-          initial={{ name: editing.name, emoji: editing.emoji, criteria: editing.criteria === '—' ? '' : editing.criteria, sort_order: editing.sortOrder, status: editing.status.toLowerCase() }}
+          initial={{ name: editing.name, emoji: editing.emoji, icon_url: editing.iconUrl || '', criteria: editing.criteria === '—' ? '' : editing.criteria, sort_order: editing.sortOrder, status: editing.status.toLowerCase() }}
           fields={fields} />
       )}
       {granting && (
@@ -219,7 +224,9 @@ export function LeaderboardFrame() {
 
   const fields = [
     { name: 'name', label: 'Frame name', required: true },
-    { name: 'emoji', label: 'Preview emoji', placeholder: '🏆' },
+    { name: 'emoji', label: 'Preview emoji (fallback if no file is uploaded)', placeholder: '🏆' },
+    { name: 'icon_url', label: 'Preview file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
+      onUpload: (file) => uploadMedia('gift-assets', 'leaderboard-frames', file), hint: 'SVGA, WebP, MP4 or PNG' },
     { name: 'scope', label: 'Scope', type: 'select', options: LBF_SCOPES.map(gOpt), required: true },
     { name: 'period', label: 'Period', type: 'select', options: LBF_PERIODS.map(gOpt), required: true },
     { name: 'status', label: 'Status', type: 'select', options: LBF_STATUSES.map(gOpt) },
@@ -236,7 +243,7 @@ export function LeaderboardFrame() {
         <div className="gallery" style={{ marginBottom: 20 }}>
           {(rows || []).map((f) => (
             <div className="gallery__item" key={f.id}>
-              <div className="gallery__preview">{f.emoji}</div>
+              <div className="gallery__preview"><MediaPreview url={f.iconUrl} emoji={f.emoji} size={20} /></div>
               <div className="gallery__meta">
                 <div><div className="n">{f.name}</div><div className="muted" style={{ fontSize: 11 }}>{f.scope} · {f.period}</div></div>
                 <StatusBadge value={f.status} />
@@ -252,7 +259,7 @@ export function LeaderboardFrame() {
             { label: 'Period', options: ['Weekly', 'Monthly', 'Season'], get: (r) => r.period },
           ]}
           columns={[
-            { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>{r.emoji}</span><b>{r.name}</b></span> },
+            { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.iconUrl} emoji={r.emoji} size={18} /><b>{r.name}</b></span> },
             { key: 'scope', header: 'Scope', render: (r) => <Tag>{r.scope}</Tag> },
             { key: 'period', header: 'Period' },
             statusCol(),
@@ -274,7 +281,7 @@ export function LeaderboardFrame() {
       {editing && (
         <EntityForm title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} savedMessage="Frame updated"
           onSubmit={async (v) => { await updateLeaderboardFrame(editing.id, v); reload() }}
-          initial={{ name: editing.name, emoji: editing.emoji, scope: editing.scope.toLowerCase(), period: editing.period.toLowerCase(), status: editing.status.toLowerCase() }}
+          initial={{ name: editing.name, emoji: editing.emoji, icon_url: editing.iconUrl || '', scope: editing.scope.toLowerCase(), period: editing.period.toLowerCase(), status: editing.status.toLowerCase() }}
           fields={fields} />
       )}
     </>
@@ -290,7 +297,9 @@ export function ProfileFrame() {
 
   const fields = [
     { name: 'name', label: 'Frame name', required: true },
-    { name: 'emoji', label: 'Preview emoji', placeholder: '💫' },
+    { name: 'emoji', label: 'Preview emoji (fallback if no file is uploaded)', placeholder: '💫' },
+    { name: 'icon_url', label: 'Preview file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
+      onUpload: (file) => uploadMedia('gift-assets', 'frames', file), hint: 'SVGA, WebP, MP4 or PNG' },
     { name: 'unlock_type', label: 'Unlock type', type: 'select', options: FRAME_UNLOCK_TYPES.map(gOpt), required: true },
     { name: 'unlock_value', label: 'Unlock value (level / coins)', type: 'number' },
     { name: 'price_coins', label: 'Price (coins)', type: 'number' },
@@ -309,7 +318,7 @@ export function ProfileFrame() {
         <div className="gallery" style={{ marginBottom: 20 }}>
           {(rows || []).map((f) => (
             <div className="gallery__item" key={f.id}>
-              <div className="gallery__preview">{f.emoji}</div>
+              <div className="gallery__preview"><MediaPreview url={f.iconUrl} emoji={f.emoji} size={20} /></div>
               <div className="gallery__meta">
                 <div><div className="n">{f.name}</div><div className="muted" style={{ fontSize: 11 }}>{f.unlock} · {num(f.owners)} owners</div></div>
                 <StatusBadge value={f.status} />
@@ -322,7 +331,7 @@ export function ProfileFrame() {
           searchKeys={['name', 'unlock', 'idShort']}
           filters={[{ label: 'Unlock', options: [...new Set((rows || []).map((f) => f.unlock))], get: (r) => r.unlock }]}
           columns={[
-            { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>{r.emoji}</span><b>{r.name}</b></span> },
+            { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.iconUrl} emoji={r.emoji} size={18} /><b>{r.name}</b></span> },
             { key: 'unlock', header: 'Unlock', render: (r) => <Tag>{r.unlock}</Tag> },
             numCol('price', 'Price (coins)'),
             numCol('owners', 'Owners'),
@@ -345,9 +354,73 @@ export function ProfileFrame() {
       {editing && (
         <EntityForm title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} savedMessage="Frame updated"
           onSubmit={async (v) => { await updateFrame(editing.id, v); reload() }}
-          initial={{ name: editing.name, emoji: editing.emoji, unlock_type: editing.unlockType.toLowerCase(), unlock_value: editing.unlockValue, price_coins: editing.price, sort_order: editing.sortOrder, status: editing.status.toLowerCase() }}
+          initial={{ name: editing.name, emoji: editing.emoji, icon_url: editing.iconUrl || '', unlock_type: editing.unlockType.toLowerCase(), unlock_value: editing.unlockValue, price_coins: editing.price, sort_order: editing.sortOrder, status: editing.status.toLowerCase() }}
           fields={fields} />
       )}
+    </>
+  )
+}
+
+/* ------------------------------------------------------------------ Lucky Box (real: lucky_box_config + wallet_ledger) */
+export function LuckyBox() {
+  const toast = useToast()
+  const { data: config, loading: configLoading, error: configError, reload: reloadConfig } = useAsyncData(getLuckyBoxConfig)
+  const { data: history, loading: historyLoading, error: historyError, reload: reloadHistory } = useAsyncData(listLuckyBoxHistory)
+  const [form, setForm] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const v = form || config || {}
+  const set = (k, val) => setForm({ ...(form || config), [k]: val })
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      await updateLuckyBoxConfig({ duration_minutes: v.duration_minutes, reward_coins: v.reward_coins })
+      toast('Lucky Box settings saved')
+      setForm(null)
+      reloadConfig()
+    } catch (e) {
+      toast(e.message || 'Could not save')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <PageHeader title="Lucky Box" crumbs={['Home', 'Platform', 'Lucky Box']} />
+      <Card title="Reward settings" sub="A host who stays continuously live for this long in one stream gets a one-time coin reward — checked automatically every minute." className="mb-16">
+        <AsyncView loading={configLoading} error={configError} reload={reloadConfig}>
+          <div className="form-grid">
+            <div className="field">
+              <label>Duration required (minutes)</label>
+              <input className="input" type="number" min="1" value={v.duration_minutes ?? ''} onChange={(e) => set('duration_minutes', e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Reward (coins)</label>
+              <input className="input" type="number" min="1" value={v.reward_coins ?? ''} onChange={(e) => set('reward_coins', e.target.value)} />
+            </div>
+          </div>
+          <div className="hstack" style={{ marginTop: 14 }}>
+            <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</Button>
+          </div>
+        </AsyncView>
+      </Card>
+      <Card title="Reward history" sub="Every Lucky Box win so far.">
+        <AsyncView loading={historyLoading} error={historyError} reload={reloadHistory}>
+          <DataTable
+            rows={history || []}
+            searchKeys={['user', 'username', 'displayId']}
+            columns={[
+              personCol('user', 'username'),
+              { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+              numCol('coins', 'Coins'),
+              { key: 'streamIdShort', header: 'Stream', render: (r) => <span className="mono muted">{r.streamIdShort}</span> },
+              { key: 'date', header: 'Won', sortable: true },
+            ]}
+            emptyText="No Lucky Box rewards granted yet."
+          />
+        </AsyncView>
+      </Card>
     </>
   )
 }

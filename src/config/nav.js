@@ -99,6 +99,7 @@ export const NAV = {
     ]},
     { section: 'Platform', items: [
       { label: 'Live Requests', icon: 'radio', to: '/admin/live' },
+      { label: 'Lucky Box', icon: 'gift', to: '/admin/lucky-box' },
       { label: 'Badge Management', icon: 'award', to: '/admin/badges' },
       { label: 'Leaderboard Frame', icon: 'trophy', to: '/admin/leaderboard' },
       { label: 'Profile Frame', icon: 'frame', to: '/admin/frames' },
@@ -126,6 +127,7 @@ export const NAV = {
         { label: 'Transfer Host', to: '/global-admin/user-management/transfer-host' },
         { label: 'Transfer Agency', to: '/global-admin/user-management/transfer-agency' },
         { label: 'Transfer Sub Admin', to: '/global-admin/user-management/transfer-sub-admin' },
+        { label: 'Transfer Country', to: '/global-admin/user-management/transfer-country' },
       ]},
       { label: 'Admin Management', icon: 'shieldUser', children: [
         { label: 'Country Admin', to: '/global-admin/admin-management/country-admin' },
@@ -181,6 +183,9 @@ export const NAV = {
   super: [
     { section: 'Overview', items: [
       { label: 'Dashboard', icon: 'dashboard', to: '/super' },
+    ]},
+    { section: 'User Management', items: [
+      { label: 'Users', icon: 'users', to: '/super/users' },
     ]},
     { section: 'Administration', items: [
       { label: 'Admin Management', icon: 'shield', cap: 'manage_admins', children: [

@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js'
-import { shortId, fmtDate } from './admin.js'
+import { shortId, fmtDate, ROLE_LABEL } from './admin.js'
 import { relativeTime } from './format.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
@@ -24,11 +24,11 @@ export async function profileOptions() {
 /* ---------------------------------------------------------------- gifts */
 export async function listGifts() {
   const rows = unwrap(await supabase.from('gifts')
-    .select('id, name, emoji, price_coins, category, has_effect, status, sort_order')
+    .select('id, name, emoji, icon_url, price_coins, category, has_effect, status, sort_order')
     .order('sort_order').order('price_coins'))
   return rows.map((g) => ({
     id: g.id, idShort: shortId(g.id),
-    name: g.name, emoji: g.emoji,
+    name: g.name, emoji: g.emoji, iconUrl: g.icon_url,
     price: g.price_coins,
     category: titleCase(g.category),
     hasEffect: g.has_effect,
@@ -37,7 +37,7 @@ export async function listGifts() {
 }
 export async function createGift(v) {
   return unwrap(await supabase.from('gifts').insert({
-    name: v.name, emoji: v.emoji || '🎁',
+    name: v.name, emoji: v.emoji || '🎁', icon_url: v.icon_url || null,
     price_coins: num(v.price_coins),
     category: (v.category || 'basic').toLowerCase(),
     has_effect: !!v.has_effect,
@@ -46,6 +46,7 @@ export async function createGift(v) {
 }
 export async function updateGift(id, v) {
   const p = lc({ name: v.name, emoji: v.emoji, category: v.category, status: v.status }, ['category', 'status'])
+  if (v.icon_url !== undefined) p.icon_url = v.icon_url || null
   if (v.price_coins != null) p.price_coins = num(v.price_coins)
   if (v.has_effect != null) p.has_effect = !!v.has_effect
   return unwrap(await supabase.from('gifts').update(p).eq('id', id).select().single())
@@ -127,15 +128,24 @@ export async function createCoinGrant({ granted_to, coins, note }) {
 }
 export async function listCoinGrants() {
   const rows = unwrap(await supabase.from('coin_grants')
-    .select('id, coins, note, created_at, recipient:granted_to(name, username), granter:granted_by(name)')
+    .select('id, coins, note, created_at, recipient:granted_to(name, username, staff_roles!user_id(role)), granter:granted_by(name)')
     .order('created_at', { ascending: false }).limit(500))
   return rows.map((r) => ({
     id: r.id, idShort: shortId(r.id),
     recipient: r.recipient?.name || '—',
     username: r.recipient?.username,
+    recipientType: r.recipient?.staff_roles?.role ? (ROLE_LABEL[r.recipient.staff_roles.role] || r.recipient.staff_roles.role) : 'User',
     coins: r.coins,
     by: r.granter?.name || '—',
     note: r.note || '—',
     date: fmtDate(r.created_at),
   }))
+}
+
+/* Reverses a coin_grants-sourced credit (a direct grant or one row of a
+   distribute_coins batch) — deducts from the recipient's current balance,
+   fails if they've already spent below what was granted. */
+export async function pullBackCoinGrant(id) {
+  const { error } = await supabase.rpc('pull_back_coin_grant', { p_grant_id: id })
+  if (error) throw error
 }

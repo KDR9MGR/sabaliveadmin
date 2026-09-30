@@ -16,7 +16,7 @@ import { HostCodes } from './pages/master/hostCodes.jsx'
 import { GiftSettings, CoinPackages, Transactions, GiftHistory, TransferCoins, TransferHistory } from './pages/master/coins.jsx'
 import { Banners, LegalPages, Announcements } from './pages/master/content.jsx'
 import ApplicationConfig from './pages/master/config.jsx'
-import { LiveRequests, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary, Reports, SystemManagement } from './pages/master/platform.jsx'
+import { LiveRequests, LuckyBox, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary, Reports, SystemManagement } from './pages/master/platform.jsx'
 import { Withdrawals } from './pages/master/withdrawals.jsx'
 
 import {
@@ -26,7 +26,7 @@ import {
 } from './pages/agency.jsx'
 
 import {
-  SuperDashboard, SuperAdmins, MasterAccounts, AddAdminAccount, AddAgencyStaffAccount,
+  SuperDashboard, SuperUsers, SuperAdmins, MasterAccounts, AddAdminAccount, AddAgencyStaffAccount,
   AccessControl, AuditLogs, SuperSecurity,
   SystemOverview, Infrastructure, Integrations, Backups, CoinTreasury,
 } from './pages/super.jsx'
@@ -49,7 +49,7 @@ import {
   PanelAgencyCoinHistoryUser, PanelAgencyLiveRequest, PanelAgencyProfile,
 } from './pages/panelAgency.jsx'
 import {
-  GlobalAdminDashboard, GlobalUsers, GlobalHosts, GlobalTransferHost, GlobalTransferAgency, GlobalTransferSubAdmin,
+  GlobalAdminDashboard, GlobalUsers, GlobalHosts, GlobalTransferHost, GlobalTransferAgency, GlobalTransferSubAdmin, GlobalTransferCountry,
   GlobalCountryAdmins, GlobalSubAdmins, GlobalAgencies, GlobalTransferCoins,
   GlobalAddCountryAdmin, GlobalAddSubAdmin, GlobalAddAgency,
   GlobalCoinHistoryCountryAdmin, GlobalCoinHistorySubAdmin, GlobalCoinHistoryAgency, GlobalCoinHistoryUser,
@@ -128,6 +128,7 @@ export default function App() {
 
             <Route path="reports" element={<Reports />} />
             <Route path="live" element={<LiveRequests />} />
+            <Route path="lucky-box" element={<LuckyBox />} />
             <Route path="badges" element={<BadgeManagement />} />
             <Route path="leaderboard" element={<LeaderboardFrame />} />
             <Route path="frames" element={<ProfileFrame />} />
@@ -153,6 +154,7 @@ export default function App() {
             <Route path="user-management/transfer-host" element={<GlobalTransferHost />} />
             <Route path="user-management/transfer-agency" element={<GlobalTransferAgency />} />
             <Route path="user-management/transfer-sub-admin" element={<GlobalTransferSubAdmin />} />
+            <Route path="user-management/transfer-country" element={<GlobalTransferCountry />} />
             <Route path="admin-management/country-admin" element={<GlobalCountryAdmins />} />
             <Route path="admin-management/country-admin/add" element={<GlobalAddCountryAdmin />} />
             <Route path="admin-management/sub-admin" element={<GlobalSubAdmins />} />
@@ -196,6 +198,7 @@ export default function App() {
             <RequireAuth><RequirePanel panel="super"><AppLayout panel="super" /></RequirePanel></RequireAuth>
           }>
             <Route index element={<SuperDashboard />} />
+            <Route path="users" element={<SuperUsers />} />
 
             <Route element={<RequireCap cap="manage_admins" />}>
               <Route path="admins" element={<SuperAdmins />} />

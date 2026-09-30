@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
+import { uploadMedia } from './storage.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -12,6 +13,8 @@ export const ANNOUNCE_AUDIENCES = ['all', 'hosts', 'agencies', 'sub_admins']
 export const ANNOUNCE_CHANNELS = ['in_app', 'push', 'email']
 
 /* ---------------------------------------------------------------- banners */
+export const uploadBannerImage = (file) => uploadMedia('banners', 'banners', file)
+
 export async function listBanners() {
   const rows = unwrap(await supabase.from('banners')
     .select('id, title, image_url, placement, starts_at, ends_at, status')

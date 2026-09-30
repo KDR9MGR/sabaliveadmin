@@ -180,6 +180,9 @@ export const createCountryAgency = ({ name, country, subAdmin }) =>
 export const transferAgency = ({ agencyId, toSubAdmin }) =>
   rpc('country_transfer_agency', { p_agency_id: agencyId, p_to_sub_admin: toSubAdmin })
 
+export const transferAgencyCountry = ({ agencyId, country }) =>
+  rpc('country_transfer_agency_country', { p_agency_id: agencyId, p_country: country })
+
 export const transferHost = ({ hostId, toAgency, reason }) =>
   rpc('country_transfer_host', { p_host_id: hostId, p_to_agency: toAgency, p_reason: reason || null })
 

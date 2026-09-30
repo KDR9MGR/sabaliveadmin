@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AsyncView } from '../_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, useToast, EmptyState } from '../../components/ui.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, PillTabs, useToast, EmptyState } from '../../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
@@ -9,10 +9,13 @@ import {
   listGifts, createGift, updateGift, deleteGift,
   listCoinPackages, createCoinPackage, updateCoinPackage, deleteCoinPackage,
   listWalletLedger, listGiftTransactions,
-  createCoinGrant, listCoinGrants, profileOptions,
+  createCoinGrant, listCoinGrants, pullBackCoinGrant, profileOptions,
   GIFT_CATEGORIES, PLATFORMS,
 } from '../../lib/coins.js'
+import { distributeCoins } from '../../lib/treasury.js'
+import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
 import UserPicker from '../../components/UserPicker.jsx'
+import MediaPreview from '../../components/MediaPreview.jsx'
 
 const CRUMBS = ['Home', 'Coin & Gift Management']
 const opt = (v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })
@@ -35,7 +38,9 @@ export function GiftSettings() {
 
   const giftFields = [
     { name: 'name', label: 'Gift name', required: true },
-    { name: 'emoji', label: 'Icon / emoji', placeholder: '🎁' },
+    { name: 'emoji', label: 'Icon / emoji (fallback if no file is uploaded)', placeholder: '🎁' },
+    { name: 'icon_url', label: 'Icon / animation file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
+      onUpload: (file) => uploadMedia('gift-assets', 'gifts', file), hint: 'SVGA, WebP, MP4 or PNG' },
     { name: 'price_coins', label: 'Price (coins)', type: 'number', required: true, hint: 'Must be greater than 0' },
     { name: 'category', label: 'Category', type: 'select', options: CAT_OPTS, required: true },
     { name: 'status', label: 'Status', type: 'select', options: STATUS_OPTS },
@@ -54,7 +59,7 @@ export function GiftSettings() {
           <div className="gallery" style={{ marginBottom: 20 }}>
             {list.map((g) => (
               <div className="gallery__item" key={g.id}>
-                <div className="gallery__preview">{g.emoji}</div>
+                <div className="gallery__preview"><MediaPreview url={g.iconUrl} emoji={g.emoji} size={22} /></div>
                 <div className="gallery__meta">
                   <div>
                     <div className="n">{g.name}</div>
@@ -74,7 +79,7 @@ export function GiftSettings() {
             { label: 'Status', options: ['Active', 'Inactive'], get: (r) => r.status },
           ]}
           columns={[
-            { key: 'name', header: 'Gift', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><span style={{ fontSize: 20 }}>{r.emoji}</span><b>{r.name}</b></span> },
+            { key: 'name', header: 'Gift', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.iconUrl} emoji={r.emoji} size={20} /><b>{r.name}</b></span> },
             numCol('price', 'Price (coins)'),
             { key: 'category', header: 'Category', render: (r) => <Tag>{r.category}</Tag> },
             { key: 'hasEffect', header: 'Animation', render: (r) => r.hasEffect ? <StatusBadge value="Yes" /> : <span className="muted">No</span> },
@@ -99,7 +104,7 @@ export function GiftSettings() {
         <EntityForm title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} savedMessage="Gift updated"
           onSubmit={async (v) => { await updateGift(editing.id, v); reload() }}
           initial={{
-            name: editing.name, emoji: editing.emoji, price_coins: editing.price,
+            name: editing.name, emoji: editing.emoji, icon_url: editing.iconUrl || '', price_coins: editing.price,
             category: editing.category.toLowerCase(), status: editing.status.toLowerCase(), has_effect: editing.hasEffect,
           }}
           fields={giftFields} />
@@ -242,14 +247,25 @@ export function GiftHistory() {
   )
 }
 
-/* ------------------------------------------------------------------ Transfer Coins (real: coin_grants insert) */
+/* ------------------------------------------------------------------ Transfer Coins (real: coin_grants insert / distribute_coins RPC) */
+const DISTRIBUTE_LEVELS = [
+  { value: 'global_admin', label: 'All Global Admins' },
+  { value: 'country_admin', label: 'All Country Admins' },
+  { value: 'sub_admin', label: 'All Sub Admins' },
+  { value: 'agency', label: 'All Agencies' },
+  { value: 'all', label: 'All Users (platform-wide)' },
+]
+
 export function TransferCoins() {
   const toast = useToast()
   const { data: opts } = useAsyncData(profileOptions)
   const { data: recent, reload } = useAsyncData(listCoinGrants)
+  const [mode, setMode] = useState('To a user')
   const [busy, setBusy] = useState(false)
   const [values, setValues] = useState({ granted_to: '', coins: '', note: '' })
+  const [dist, setDist] = useState({ level: '', coins: '', note: '' })
   const set = (k, v) => setValues((s) => ({ ...s, [k]: v }))
+  const setD = (k, v) => setDist((s) => ({ ...s, [k]: v }))
 
   const submit = async () => {
     if (!values.granted_to || !values.coins) { toast('Pick a recipient and an amount'); return }
@@ -264,32 +280,82 @@ export function TransferCoins() {
     } finally { setBusy(false) }
   }
 
+  const submitDistribute = async () => {
+    if (!dist.level || !dist.coins) { toast('Pick a level and an amount'); return }
+    setBusy(true)
+    try {
+      const result = await distributeCoins({
+        perRecipient: dist.coins,
+        audience: dist.level === 'all' ? 'all' : 'role',
+        role: dist.level === 'all' ? null : dist.level,
+        note: dist.note,
+      })
+      toast(`Sent ${dist.coins} coins each to ${result.recipients} recipient${result.recipients === 1 ? '' : 's'}`)
+      setDist({ level: '', coins: '', note: '' })
+      reload()
+    } catch (e) {
+      toast(e.message || 'Distribution failed')
+    } finally { setBusy(false) }
+  }
+
   return (
     <>
-      <PageHeader title="Transfer Coins" crumbs={[...CRUMBS, 'Transfer Coins']} />
+      <PageHeader
+        title="Transfer Coins"
+        crumbs={[...CRUMBS, 'Transfer Coins']}
+        actions={<PillTabs tabs={['To a user', 'Distribute to a level']} value={mode} onChange={setMode} />}
+      />
       <div className="grid dash">
-        <Card title="New coin grant" sub="Credits the recipient's wallet immediately (via the coin_grants trigger)">
-          <div className="form-grid">
-            <div className="field full">
-              <label>Recipient <span className="req">*</span></label>
-              <UserPicker options={opts || []} value={values.granted_to} onChange={(v) => set('granted_to', v)} />
+        {mode === 'To a user' ? (
+          <Card title="New coin grant" sub="Credits the recipient's wallet immediately (via the coin_grants trigger)">
+            <div className="form-grid">
+              <div className="field full">
+                <label>Recipient <span className="req">*</span></label>
+                <UserPicker options={opts || []} value={values.granted_to} onChange={(v) => set('granted_to', v)} />
+              </div>
+              <div className="field">
+                <label>Amount (coins) <span className="req">*</span></label>
+                <input className="input" type="number" placeholder="e.g. 5000" value={values.coins} onChange={(e) => set('coins', e.target.value)} />
+              </div>
+              <div className="field full">
+                <label>Note</label>
+                <textarea className="textarea" placeholder="Reason for the grant (shown in Transfer History and the wallet ledger)" value={values.note} onChange={(e) => set('note', e.target.value)} />
+              </div>
             </div>
-            <div className="field">
-              <label>Amount (coins) <span className="req">*</span></label>
-              <input className="input" type="number" placeholder="e.g. 5000" value={values.coins} onChange={(e) => set('coins', e.target.value)} />
+            <div className="hstack mt-16" style={{ justifyContent: 'flex-end', gap: 10 }}>
+              <Button onClick={() => setValues({ granted_to: '', coins: '', note: '' })}>Clear</Button>
+              <Button variant="primary" icon={busy ? 'refresh' : 'coins'} disabled={busy} onClick={submit}>
+                {busy ? 'Granting…' : 'Grant Coins'}
+              </Button>
             </div>
-            <div className="field full">
-              <label>Note</label>
-              <textarea className="textarea" placeholder="Reason for the grant (shown in Transfer History and the wallet ledger)" value={values.note} onChange={(e) => set('note', e.target.value)} />
+          </Card>
+        ) : (
+          <Card title="Distribute to a level" sub="Sends the same amount to every account at the level you pick, from the coin treasury — same mechanism as Super Admin's Coin Treasury.">
+            <div className="form-grid">
+              <div className="field full">
+                <label>Level <span className="req">*</span></label>
+                <select className="select" value={dist.level} onChange={(e) => setD('level', e.target.value)}>
+                  <option value="">Select…</option>
+                  {DISTRIBUTE_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label>Amount per recipient (coins) <span className="req">*</span></label>
+                <input className="input" type="number" placeholder="e.g. 500" value={dist.coins} onChange={(e) => setD('coins', e.target.value)} />
+              </div>
+              <div className="field full">
+                <label>Note</label>
+                <textarea className="textarea" placeholder="Reason for the distribution" value={dist.note} onChange={(e) => setD('note', e.target.value)} />
+              </div>
             </div>
-          </div>
-          <div className="hstack mt-16" style={{ justifyContent: 'flex-end', gap: 10 }}>
-            <Button onClick={() => setValues({ granted_to: '', coins: '', note: '' })}>Clear</Button>
-            <Button variant="primary" icon={busy ? 'refresh' : 'coins'} disabled={busy} onClick={submit}>
-              {busy ? 'Granting…' : 'Grant Coins'}
-            </Button>
-          </div>
-        </Card>
+            <div className="hstack mt-16" style={{ justifyContent: 'flex-end', gap: 10 }}>
+              <Button onClick={() => setDist({ level: '', coins: '', note: '' })}>Clear</Button>
+              <Button variant="primary" icon={busy ? 'refresh' : 'coins'} disabled={busy} onClick={submitDistribute}>
+                {busy ? 'Distributing…' : 'Distribute Coins'}
+              </Button>
+            </div>
+          </Card>
+        )}
         <Card title="Recent grants">
           {(recent || []).length ? (
             <div className="feed">
@@ -297,7 +363,7 @@ export function TransferCoins() {
                 <div className="feed__item" key={g.id}>
                   <span className="feed__dot"><span style={{ fontSize: 13 }}>🪙</span></span>
                   <div>
-                    <div className="feed__text"><b>{Number(g.coins).toLocaleString()}</b> → {g.recipient}</div>
+                    <div className="feed__text"><b>{Number(g.coins).toLocaleString()}</b> → {g.recipient} <span className="muted">({g.recipientType})</span></div>
                     <div className="feed__time">{g.date} · {g.note}</div>
                   </div>
                 </div>
@@ -312,7 +378,23 @@ export function TransferCoins() {
 
 /* ------------------------------------------------------------------ Transfer History (real: coin_grants list) */
 export function TransferHistory() {
+  const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listCoinGrants)
+  const [busy, setBusy] = useState(null)
+
+  const pullBack = async (r) => {
+    setBusy(r.id)
+    try {
+      await pullBackCoinGrant(r.id)
+      toast(`Pulled back ${r.coins} coins from ${r.recipient}`)
+      reload()
+    } catch (e) {
+      toast(e.message || 'Could not pull back')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <>
       <PageHeader title="Coin Transfer History" crumbs={[...CRUMBS, 'Transfer History']}
@@ -322,13 +404,18 @@ export function TransferHistory() {
           rows={rows || []}
           pageSize={12}
           searchKeys={['recipient', 'username', 'by', 'note', 'idShort']}
+          filters={[{ label: 'Recipient type', options: [...new Set((rows || []).map((r) => r.recipientType))], get: (r) => r.recipientType }]}
           columns={[
             { key: 'idShort', header: 'Ref', render: (r) => <span className="mono muted">{r.idShort}</span> },
             personCol('recipient', 'username'),
+            { key: 'recipientType', header: 'Type', render: (r) => <Tag>{r.recipientType}</Tag> },
             numCol('coins', 'Coins'),
             { key: 'by', header: 'Granted by' },
             { key: 'note', header: 'Note' },
             { key: 'date', header: 'Date', sortable: true },
+          ]}
+          rowActions={(r) => [
+            { label: busy === r.id ? 'Working…' : 'Pull back', icon: 'lock', onClick: () => pullBack(r) },
           ]}
           emptyText="No coin grants recorded yet."
         />

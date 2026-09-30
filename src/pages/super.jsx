@@ -15,6 +15,7 @@ import {
 } from '../lib/accounts.js'
 import { CAPABILITIES, roleBaseline, effectivePermissions } from '../lib/capabilities.js'
 import { AddStaffForm } from './addStaff.jsx'
+import { UsersList } from './master/users.jsx'
 import { superDashboard, listAuditLogs, securityOverview, systemPulse } from '../lib/superAdmin.js'
 import {
   getTreasury, listTreasuryEvents, mintCoins, distributeCoins,
@@ -24,6 +25,11 @@ import {
 import { infrastructure, integrations, backups, num } from '../data/index.js'
 
 const CR = ['Home', 'Super Admin']
+
+/* ------------------------------------------------------------------ User Management */
+/* Every user on the platform, same list Master/Global/Country/Sub Admin see —
+   read-only here too (set_profile_status is admin-only in the database). */
+export const SuperUsers = () => <UsersList readOnly crumbs={[...CR, 'User Management', 'Users']} />
 
 /* ------------------------------------------------------------------ Dashboard (real) */
 function auditTone(sev) {

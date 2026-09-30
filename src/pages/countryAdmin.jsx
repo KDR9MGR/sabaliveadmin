@@ -25,8 +25,9 @@ import { useAsyncData } from '../lib/useAsync.js'
 import { listTransferRequests } from '../lib/workflows.js'
 import {
   countryScope, listScopeHosts, scopeSubAdminOptions, scopeAgencyManagerOptions,
-  otherCountryAdminOptions, transferAgency, transferHost, transferSubAdmin,
+  otherCountryAdminOptions, transferAgency, transferAgencyCountry, transferHost, transferSubAdmin,
 } from '../lib/country.js'
+import { countryList } from '../lib/countries.js'
 
 const CR = ['Home']
 const USER_CR = [...CR, 'User Management']
@@ -183,6 +184,43 @@ export function CountryTransferSubAdmin() {
               title={`Transfer sub admin — ${moving.name}`} onClose={() => setMoving(null)} savedMessage="Sub admin transferred"
               onSubmit={async (v) => { await transferSubAdmin({ subAdminId: moving.id, toCountryAdmin: v.country_admin }); reload() }}
               fields={[{ name: 'country_admin', label: 'New country admin', type: 'select', required: true, options: countryAdmins }]}
+            />
+          )}
+        </>
+      )}
+    </Loaded>
+  )
+}
+
+/* Transfer Country — reassign which country/region an agency in my tree is counted under. */
+export function CountryTransferCountry() {
+  const [moving, setMoving] = useState(null)
+  return (
+    <Loaded title="Transfer Country" crumbs={[...USER_CR, 'Transfer Country']} load={countryScope}>
+      {({ agencies }, reload) => (
+        <>
+          <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+            Moves an agency to a different country / region. This only relabels which region the agency is counted under — it doesn't change who owns it.
+          </div></Card>
+          <DataTable
+            rows={agencies}
+            searchKeys={['name', 'subAdmin', 'country', 'displayId']}
+            columns={[
+              { key: 'name', header: 'Agency', sortable: true },
+              { key: 'displayId', header: 'Agency ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+              { key: 'subAdmin', header: 'Sub Admin', sortable: true },
+              { key: 'country', header: 'Region', sortable: true },
+              numCol('hosts', 'Hosts'),
+            ]}
+            rowActions={(r) => [{ label: 'Transfer to another country', icon: 'globe', onClick: () => setMoving(r) }]}
+            emptyText="No agencies under your sub admins yet."
+          />
+          {moving && (
+            <EntityForm
+              title={`Transfer country — ${moving.name}`} onClose={() => setMoving(null)} savedMessage="Agency moved"
+              onSubmit={async (v) => { await transferAgencyCountry({ agencyId: moving.id, country: v.country }); reload() }}
+              initial={{ country: moving.country }}
+              fields={[{ name: 'country', label: 'New country', type: 'select', required: true, options: countryList() }]}
             />
           )}
         </>

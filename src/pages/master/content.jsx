@@ -5,8 +5,9 @@ import { statusCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
+import { UPLOAD_ACCEPT, mediaKind } from '../../lib/storage.js'
 import {
-  listBanners, createBanner, updateBanner, setBannerStatus,
+  listBanners, createBanner, updateBanner, setBannerStatus, uploadBannerImage,
   listLegalPages, createLegalPage, updateLegalPage, setLegalStatus,
   listAnnouncements, createAnnouncement, updateAnnouncement, markAnnouncementSent, broadcastAnnouncement,
   BANNER_PLACEMENTS, BANNER_STATUSES, LEGAL_STATUSES, ANNOUNCE_AUDIENCES, ANNOUNCE_CHANNELS,
@@ -29,10 +30,10 @@ export function Banners() {
 
   const fields = [
     { name: 'title', label: 'Title', required: true },
-    { name: 'image_url', label: 'Image URL' },
+    { name: 'image_url', label: 'Image', type: 'image', accept: UPLOAD_ACCEPT, onUpload: uploadBannerImage, hint: 'SVGA, WebP, MP4 or PNG', full: true },
     { name: 'placement', label: 'Placement', type: 'select', options: PLACEMENT_OPTS, required: true },
     { name: 'starts_at', label: 'Starts (YYYY-MM-DD)', placeholder: '2026-09-10' },
-    { name: 'ends_at', label: 'Ends (YYYY-MM-DD)', placeholder: '2026-09-20' },
+    { name: 'ends_at', label: 'Ends (YYYY-MM-DD)', placeholder: '2026-09-20', hint: 'Leave blank to run with no expiry' },
     { name: 'status', label: 'Status', type: 'select', options: BANNER_STATUS_OPTS },
   ]
 
@@ -49,12 +50,18 @@ export function Banners() {
             { label: 'Status', options: ['Active', 'Scheduled', 'Expired'], get: (r) => r.status },
           ]}
           columns={[
-            { key: 'title', header: 'Banner', sortable: true, render: (r) => (
-              <span className="hstack" style={{ gap: 10 }}>
-                <span style={{ width: 44, height: 28, borderRadius: 6, background: r.imageUrl ? `center/cover url(${r.imageUrl})` : 'linear-gradient(135deg,#7c3aed,#ec4899)' }} />
-                <b>{r.title}</b>
-              </span>
-            ) },
+            { key: 'title', header: 'Banner', sortable: true, render: (r) => {
+              const box = { width: 44, height: 28, borderRadius: 6, objectFit: 'cover' }
+              const kind = mediaKind(r.imageUrl)
+              return (
+                <span className="hstack" style={{ gap: 10 }}>
+                  {kind === 'video' ? <video src={r.imageUrl} autoPlay loop muted playsInline style={box} />
+                    : kind === 'image' ? <img src={r.imageUrl} alt="" style={box} />
+                    : <span style={{ ...box, display: 'block', background: 'linear-gradient(135deg,#7c3aed,#ec4899)' }} />}
+                  <b>{r.title}</b>
+                </span>
+              )
+            } },
             { key: 'placement', header: 'Placement', render: (r) => <Tag>{r.placement}</Tag> },
             { key: 'starts', header: 'Starts', sortable: true },
             { key: 'ends', header: 'Ends' },
@@ -166,7 +173,7 @@ export function Announcements() {
       <PageHeader title="Announcements" crumbs={[...CRUMBS, 'Announcements']}
         actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>New Announcement</Button>} />
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-        “Broadcast to users” fans the message out to an in-app notification for every profile in the chosen audience, then marks it sent.
+        “Broadcast to users” sends a real push notification (and in-app notification) to every device registered for a profile in the chosen audience, then marks it sent.
       </div></Card>
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable

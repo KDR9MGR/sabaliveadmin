@@ -1,8 +1,52 @@
 import { useState } from 'react'
 import { Drawer, Button, useToast } from './ui.jsx'
+import { mediaKind } from '../lib/storage.js'
+
+/* type: 'image' field — uploads immediately on file pick via f.onUpload(file) =>
+   url, then stores the returned URL as the field's value (same as any other
+   field). Shows an image/video preview once a value exists; f.accept sets the
+   file picker filter (defaults to plain images). */
+function ImageUploadField({ value, onChange, onUpload, accept = 'image/*' }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const pick = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBusy(true)
+    setError('')
+    try {
+      onChange(await onUpload(file))
+    } catch (err) {
+      setError(err?.message || 'Upload failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const kind = mediaKind(value)
+  return (
+    <div className="vstack" style={{ gap: 8 }}>
+      {value && kind === 'video' && (
+        <video src={value} autoPlay loop muted playsInline style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 8 }} />
+      )}
+      {value && kind === 'image' && (
+        <img src={value} alt="" style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 8 }} />
+      )}
+      {value && kind === 'other' && (
+        <div className="muted" style={{ fontSize: 12.5 }}>File uploaded (no in-browser preview for this format).</div>
+      )}
+      <label className="btn" style={{ cursor: busy ? 'default' : 'pointer', textAlign: 'center' }}>
+        {busy ? 'Uploading…' : value ? 'Replace file' : 'Upload file'}
+        <input type="file" accept={accept} onChange={pick} disabled={busy} style={{ display: 'none' }} />
+      </label>
+      {error && <span style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</span>}
+    </div>
+  )
+}
 
 /* Schema-driven form rendered inside a Drawer.
-   fields: [{ name, label, type: text|email|number|select|textarea|toggle, options?, required?, hint?, full?, placeholder? }]
+   fields: [{ name, label, type: text|email|number|select|textarea|toggle|image, options?, required?, hint?, full?, placeholder?, onUpload? }]
+   type: 'image' needs onUpload: (file) => Promise<url>.
    onSubmit(values): optional async persister. If given, its result drives success/error;
    without it the form just toasts (used by screens still on mock data). */
 export default function EntityForm({ title, fields, initial = {}, onClose, onSubmit, onChange, submitLabel = 'Save', savedMessage }) {
@@ -57,7 +101,9 @@ export default function EntityForm({ title, fields, initial = {}, onClose, onSub
             {f.type !== 'toggle' && (
               <label>{f.label} {f.required && <span className="req">*</span>}</label>
             )}
-            {f.type === 'select' ? (
+            {f.type === 'image' ? (
+              <ImageUploadField value={values[f.name]} onChange={(url) => set(f.name, url)} onUpload={f.onUpload} accept={f.accept} />
+            ) : f.type === 'select' ? (
               <select className="select" value={values[f.name]} onChange={(e) => set(f.name, e.target.value)}>
                 <option value="">Select…</option>
                 {f.options.map((o) => {

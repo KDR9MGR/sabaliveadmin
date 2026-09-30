@@ -5,7 +5,8 @@
    shared cascade pages: coins move wallet-to-wallet, Sub Admin -> Agency ->
    User, and each direction has its own history. */
 import { Profile } from './shared.jsx'
-import { AgencyDashboard, AgencyHostProfiles, AgencyHosts, AgencySalary, AgencyLiveRequests } from './agency.jsx'
+import { AgencyDashboard, AgencyHosts, AgencySalary, AgencyLiveRequests } from './agency.jsx'
+import { UsersList } from './master/users.jsx'
 import { AddAgencyForm } from './addAgency.jsx'
 import { TransferCoinsPage, CoinHistoryPage, OwnedAgenciesPage, OWNED_AGENCY_KIND, USER_KIND } from './cascade.jsx'
 
@@ -13,7 +14,11 @@ const CR = ['Home']
 const COIN_CR = [...CR, 'Coin Management']
 
 export const SubAdminDashboard = () => <AgencyDashboard panel="sub-admin" />
-export const SubAdminUsers = AgencyHostProfiles
+/* Users is every user on the platform, same as Master / Global Admin / Country
+   Admin (read-only — set_profile_status is admin-only in the database). Only
+   the Agency panel stays scoped to its own hosts; a Sub Admin can own several
+   agencies, so "just my hosts" was never a coherent scope here anyway. */
+export const SubAdminUsers = () => <UsersList readOnly crumbs={[...CR, 'User Management', 'Users']} />
 export const SubAdminHosts = AgencyHosts
 
 export const SubAdminAgencies = () => (
