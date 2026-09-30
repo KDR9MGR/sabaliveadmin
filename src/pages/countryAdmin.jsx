@@ -8,7 +8,7 @@
    Account creation stays Super Admin only: nothing here creates a login. */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PageHeader, Card, Button, Tag, StatusBadge, useToast } from '../components/ui.jsx'
+import { PageHeader, Card, Button, Tag } from '../components/ui.jsx'
 import { personCol, statusCol, numCol, emailCol, roleCol, imageCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
@@ -19,9 +19,9 @@ import { AddAgencyForm } from './addAgency.jsx'
 import MasterDashboard from './master/Dashboard.jsx'
 import { LiveRequests, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary } from './master/platform.jsx'
 import { HostsBody } from './agency.jsx'
+import { UsersList } from './master/users.jsx'
 import { TransferCoinsPage, CoinHistoryPage, USER_KIND } from './cascade.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
-import { updateHost } from '../lib/admin.js'
 import { listTransferRequests } from '../lib/workflows.js'
 import {
   countryScope, listScopeHosts, scopeSubAdminOptions, scopeAgencyManagerOptions,
@@ -55,42 +55,11 @@ const hostExtraColumns = [
 export const CountryAdminDashboard = MasterDashboard
 
 /* ------------------------------------------------------------------ User Management */
-export function CountryUsers() {
-  const toast = useToast()
-  return (
-    <Loaded title="Users" crumbs={[...USER_CR, 'Users']} load={listScopeHosts}>
-      {(rows, reload) => {
-        const changeStatus = async (r, status) => {
-          try { await updateHost(r.id, { status }); toast(`${r.name} → ${status}`); reload() }
-          catch (e) { toast(e.message || 'Could not update status') }
-        }
-        return (
-          <DataTable
-            rows={rows}
-            searchKeys={['name', 'username', 'displayId', 'agencyName', 'subAdmin']}
-            columns={[
-              personCol('name', 'username'),
-              { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
-              numCol('coins', 'Coins'),
-              ...hostExtraColumns,
-              statusCol('status', 'User Status'),
-              { key: 'isLive', header: 'Live Status', render: (r) => (r.isLive ? <StatusBadge value="Live" /> : <span className="muted">Offline</span>) },
-              {
-                key: 'liveAction', header: 'Live Action', render: (r) => (
-                  <div className="hstack" style={{ gap: 6 }}>
-                    <Button size="sm" variant="primary" disabled={r.status !== 'Banned'} onClick={() => changeStatus(r, 'active')}>Yes</Button>
-                    <Button size="sm" variant="danger" disabled={r.status === 'Banned'} onClick={() => changeStatus(r, 'banned')}>No</Button>
-                  </div>
-                ),
-              },
-            ]}
-            emptyText="No hosts under your sub admins yet."
-          />
-        )
-      }}
-    </Loaded>
-  )
-}
+/* Users is every user on the platform, same as Master and Global Admin (and
+   for the same reason: set_profile_status is admin-only in the database, so
+   this is read-only here too). Hosts, below, stays scoped to this admin's
+   own tree — that's the list they can actually act on (ban/unban). */
+export const CountryUsers = () => <UsersList readOnly crumbs={[...USER_CR, 'Users']} />
 
 export function CountryHosts() {
   return (

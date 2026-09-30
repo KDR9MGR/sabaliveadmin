@@ -105,7 +105,7 @@ export async function ownedAgencyManagerOptions() {
   if (!agencies.length) return []
   const names = Object.fromEntries(agencies.map((a) => [a.id, a.name]))
   const rows = unwrap(await supabase.from('staff_roles')
-    .select('user_id, agency_id, profiles(name, username, display_id)')
+    .select('user_id, agency_id, profiles!user_id(name, username, display_id)')
     .eq('role', 'agency_manager')
     .in('agency_id', agencies.map((a) => a.id)))
   return rows.map((r) => ({

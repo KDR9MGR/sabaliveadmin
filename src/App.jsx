@@ -1,8 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ToastProvider } from './components/ui.jsx'
 import { SettingsProvider } from './config/settings.jsx'
 import { AuthProvider } from './lib/auth.jsx'
 import { RequireAuth, RequirePanel, RequireCap, RootRedirect } from './components/guards.jsx'
+import { DEFAULT_LOGIN_PATH } from './config/nav.js'
 import { AgencyScopeProvider } from './lib/agencyScope.jsx'
 import AppLayout from './components/layout/AppLayout.jsx'
 
@@ -30,7 +31,7 @@ import {
   SystemOverview, Infrastructure, Integrations, Backups, CoinTreasury,
 } from './pages/super.jsx'
 
-import { Profile, Login, NotFound } from './pages/shared.jsx'
+import { Profile, NotFound } from './pages/shared.jsx'
 
 import {
   CountryAdminDashboard, CountryUsers, CountryHosts, CountryTransferHost, CountryTransferAgency,
@@ -64,7 +65,8 @@ export default function App() {
       <ToastProvider>
         <Routes>
           <Route path="/" element={<RootRedirect />} />
-          <Route path="/login" element={<Login />} />
+          {/* the old generic /login now forwards to the default login (old links keep working) */}
+          <Route path="/login" element={<Navigate to={DEFAULT_LOGIN_PATH} replace />} />
           <Route path="/global-admin/login" element={<GlobalAdminLogin />} />
           <Route path="/country-admin/login" element={<CountryAdminLogin />} />
           <Route path="/sub-admin/login" element={<SubAdminLogin />} />

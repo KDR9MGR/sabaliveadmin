@@ -114,7 +114,7 @@ export async function removeCoinMinter(profileId) {
 // so they're excluded from the picker)
 export async function minterCandidates() {
   const [staff, minters] = await Promise.all([
-    supabase.from('staff_roles').select('user_id, role, profiles(name, username)'),
+    supabase.from('staff_roles').select('user_id, role, profiles!user_id(name, username)'),
     supabase.from('coin_minters').select('profile_id'),
   ])
   if (staff.error) throw staff.error

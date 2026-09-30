@@ -1,5 +1,11 @@
 /* Sidebar structure for each panel. `to` is an absolute route path. */
 
+/* Where anyone who isn't signed in lands by default (/, /login, Master and Super
+   Admin, and after signing out). Every login page signs in the same way and then
+   sends the person to the panel their ROLE belongs to, so the Global Admin page
+   works as the front door for all roles. */
+export const DEFAULT_LOGIN_PATH = '/global-admin/login'
+
 export const PANELS = {
   super: {
     key: 'super', label: 'Super Admin', short: 'Super Admin', base: '/super',

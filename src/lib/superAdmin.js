@@ -86,7 +86,7 @@ export async function listAuditLogs() {
 export async function securityOverview() {
   const [staff, criticalAudit, weekAuditCount] = await Promise.all([
     supabase.from('staff_roles')
-      .select('user_id, role, agency_id, created_at, profiles(name, username, status), agencies(name)')
+      .select('user_id, role, agency_id, created_at, profiles!user_id(name, username, status), agencies(name)')
       .order('created_at', { ascending: false }).then(unwrap),
     supabase.from('audit_logs')
       .select('id, action, target, severity, created_at, profiles(name)')

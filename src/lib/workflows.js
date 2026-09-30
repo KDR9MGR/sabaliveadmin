@@ -15,7 +15,7 @@ export async function hostOptions() {
   return rows.map((h) => ({ value: h.profile_id, label: h.profiles?.name || shortId(h.profile_id), agency_id: h.agency_id }))
 }
 export async function subAdminOptions() {
-  const rows = unwrap(await supabase.from('staff_roles').select('user_id, agency_id, profiles(name)').eq('role', 'sub_admin'))
+  const rows = unwrap(await supabase.from('staff_roles').select('user_id, agency_id, profiles!user_id(name)').eq('role', 'sub_admin'))
   return rows.map((s) => ({ value: s.user_id, label: s.profiles?.name || shortId(s.user_id), agency_id: s.agency_id }))
 }
 

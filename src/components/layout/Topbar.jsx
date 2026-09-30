@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../Icon.jsx'
-import { PANELS } from '../../config/nav.js'
+import { PANELS, DEFAULT_LOGIN_PATH } from '../../config/nav.js'
 import { useAuth } from '../../lib/auth.jsx'
 
 const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', global_admin: 'Global Admin', country_admin: 'Country Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
@@ -110,7 +110,7 @@ function UserMenu({ panel, onNav }) {
   const logout = async () => {
     setOpen(false)
     await signOut()
-    onNav('/login')
+    onNav(DEFAULT_LOGIN_PATH)
   }
 
   return (

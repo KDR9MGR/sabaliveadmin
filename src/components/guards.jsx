@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/auth.jsx'
-import { PANELS } from '../config/nav.js'
+import { PANELS, DEFAULT_LOGIN_PATH } from '../config/nav.js'
 import { panelFromHostname } from '../lib/panelHost.js'
 import { Button } from './ui.jsx'
 import Icon from './Icon.jsx'
@@ -12,7 +12,7 @@ export function landingPath(panel, staffRole) {
   const wanted = panelFromHostname()
   const canBrowseAll = staffRole?.role === 'super_admin'
   const target = wanted && (canBrowseAll || wanted === panel) ? wanted : panel
-  return PANELS[target]?.base ?? '/login'
+  return PANELS[target]?.base ?? DEFAULT_LOGIN_PATH
 }
 
 export function FullscreenLoader() {
@@ -47,8 +47,8 @@ function NoAccessScreen({ onSignOut }) {
 
 /* Gate: must be signed in AND have a staff_roles row. `loginPath` lets a
    panel send an unauthenticated visitor to its own branded login page
-   (e.g. /sub-admin/login) instead of the generic /login. */
-export function RequireAuth({ children, loginPath = '/login' }) {
+   (e.g. /sub-admin/login) instead of the default login. */
+export function RequireAuth({ children, loginPath = DEFAULT_LOGIN_PATH }) {
   const { loading, user, isStaff, signOut } = useAuth()
   if (loading) return <FullscreenLoader />
   if (!user) return <Navigate to={loginPath} replace />
@@ -63,7 +63,7 @@ export function RequireAuth({ children, loginPath = '/login' }) {
 export function RequirePanel({ panel, children }) {
   const { panel: myPanel, staffRole } = useAuth()
   const canBrowseAll = staffRole?.role === 'super_admin'
-  if (myPanel !== panel && !canBrowseAll) return <Navigate to={PANELS[myPanel]?.base ?? '/login'} replace />
+  if (myPanel !== panel && !canBrowseAll) return <Navigate to={PANELS[myPanel]?.base ?? DEFAULT_LOGIN_PATH} replace />
   return children
 }
 
@@ -72,14 +72,14 @@ export function RequirePanel({ panel, children }) {
    deep-linking / stale tabs. Super Admins pass everything. */
 export function RequireCap({ cap, children }) {
   const { can, panel } = useAuth()
-  if (cap && !can(cap)) return <Navigate to={PANELS[panel]?.base ?? '/login'} replace />
+  if (cap && !can(cap)) return <Navigate to={PANELS[panel]?.base ?? DEFAULT_LOGIN_PATH} replace />
   return children ?? <Outlet />
 }
 
-/* "/" — send a resolved staffer straight to their panel, everyone else to /login. */
+/* "/" — send a resolved staffer straight to their panel, everyone else to the default login. */
 export function RootRedirect() {
   const { loading, isStaff, panel, staffRole } = useAuth()
   if (loading) return <FullscreenLoader />
   if (isStaff) return <Navigate to={landingPath(panel, staffRole)} replace />
-  return <Navigate to="/login" replace />
+  return <Navigate to={DEFAULT_LOGIN_PATH} replace />
 }

@@ -37,14 +37,14 @@ export async function countryScope() {
   // Global view also needs the country admins, to label who owns each sub admin.
   const countryRows = seesAll
     ? unwrap(await supabase.from('staff_roles')
-        .select('user_id, created_at, profiles(name, username, status, display_id, avatar_url)')
+        .select('user_id, created_at, profiles!user_id(name, username, status, display_id, avatar_url)')
         .eq('role', 'country_admin')
         .order('created_at', { ascending: false }))
     : []
   const countryName = Object.fromEntries(countryRows.map((c) => [c.user_id, c.profiles?.name || shortId(c.user_id)]))
 
   let q = supabase.from('staff_roles')
-    .select('user_id, created_at, country_admin_id, profiles(name, username, status, display_id, avatar_url)')
+    .select('user_id, created_at, country_admin_id, profiles!user_id(name, username, status, display_id, avatar_url)')
     .eq('role', 'sub_admin')
     .order('created_at', { ascending: false })
   if (!seesAll) q = q.eq('country_admin_id', me)
@@ -153,7 +153,7 @@ export async function scopeAgencyManagerOptions() {
   if (!agencies.length) return []
   const names = Object.fromEntries(agencies.map((a) => [a.id, a.name]))
   const rows = unwrap(await supabase.from('staff_roles')
-    .select('user_id, agency_id, profiles(name, username, display_id)')
+    .select('user_id, agency_id, profiles!user_id(name, username, display_id)')
     .eq('role', 'agency_manager')
     .in('agency_id', agencies.map((a) => a.id)))
   return rows.map((r) => ({
@@ -167,7 +167,7 @@ export async function scopeAgencyManagerOptions() {
 export async function otherCountryAdminOptions() {
   const me = await myId()
   const rows = unwrap(await supabase.from('staff_roles')
-    .select('user_id, profiles(name, username)').eq('role', 'country_admin'))
+    .select('user_id, profiles!user_id(name, username)').eq('role', 'country_admin'))
   return rows
     .filter((r) => r.user_id !== me)
     .map((r) => ({ value: r.user_id, label: `${r.profiles?.name || shortId(r.user_id)} (@${r.profiles?.username || '—'})` }))

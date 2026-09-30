@@ -19,7 +19,7 @@ function deriveRole(row) {
 export async function listUsers() {
   const rows = unwrap(await supabase
     .from('profiles')
-    .select('id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name)), staff_roles(role, agency_id, agencies(name))')
+    .select('id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name)), staff_roles!user_id(role, agency_id, agencies(name))')
     .order('created_at', { ascending: false })
     .limit(1000))
   return rows.map((r) => ({
@@ -48,7 +48,7 @@ export async function listUsers() {
 export async function getUserDetail(id) {
   const [profile, gifts, streams, badges, frames, following, followers] = await Promise.all([
     supabase.from('profiles')
-      .select('*, wallets(coins, diamonds), host_profiles(*, agencies(name)), staff_roles(role, agency_id, agencies(name)), kyc_verifications!profile_id(status, document_type, created_at)')
+      .select('*, wallets(coins, diamonds), host_profiles(*, agencies(name)), staff_roles!user_id(role, agency_id, agencies(name)), kyc_verifications!profile_id(status, document_type, created_at)')
       .eq('id', id).maybeSingle().then(unwrap),
     supabase.from('gift_transactions')
       .select('coins, created_at, sender:sender_id(name), receiver:receiver_id(name)')
@@ -212,7 +212,7 @@ export async function deleteAgency(id) {
 /* ---------------------------------------------------------------- STAFF (admins / sub admins) */
 export async function listStaff(roles) {
   let q = supabase.from('staff_roles')
-    .select('user_id, role, agency_id, created_at, profiles(name, username, level, display_id), agencies(name)')
+    .select('user_id, role, agency_id, created_at, profiles!user_id(name, username, level, display_id), agencies(name)')
     .order('created_at', { ascending: false })
   if (roles?.length) q = q.in('role', roles)
   const rows = unwrap(await q)

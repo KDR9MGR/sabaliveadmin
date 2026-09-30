@@ -10,7 +10,7 @@ export const ROLE_OPTS = Object.entries(ROLE_LABEL).map(([value, label]) => ({ v
 /* ---------------------------------------------------------------- list */
 export async function listStaffAccounts(roles) {
   let q = supabase.from('staff_roles')
-    .select('user_id, role, agency_id, permissions, created_at, profiles(name, username, status, verified, display_id), agencies(name)')
+    .select('user_id, role, agency_id, permissions, created_at, profiles!user_id(name, username, status, verified, display_id), agencies(name)')
     .order('created_at', { ascending: false })
   if (roles?.length) q = q.in('role', roles)
   const rows = unwrap(await q)
@@ -54,7 +54,7 @@ export async function grantableProfiles() {
 /* Country admins a new sub admin can be placed under (optional at creation). */
 export async function countryAdminOptions() {
   const rows = unwrap(await supabase.from('staff_roles')
-    .select('user_id, profiles(name, username)').eq('role', 'country_admin'))
+    .select('user_id, profiles!user_id(name, username)').eq('role', 'country_admin'))
   return rows.map((r) => ({ value: r.user_id, label: `${r.profiles?.name || shortId(r.user_id)} (@${r.profiles?.username || '—'})` }))
 }
 

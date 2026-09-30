@@ -176,7 +176,7 @@ export async function listAgencySalary(agencyId) {
 /* ---------------------------------------------------------------- sub-admins in this agency (read-only for managers) */
 export async function listAgencySubAdmins(agencyId) {
   const rows = unwrap(await supabase.from('staff_roles')
-    .select('user_id, created_at, profiles(name, username, status, display_id)')
+    .select('user_id, created_at, profiles!user_id(name, username, status, display_id)')
     .eq('role', 'sub_admin').eq('agency_id', agencyId)
     .order('created_at', { ascending: false }))
   return rows.map((r) => ({
