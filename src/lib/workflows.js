@@ -149,7 +149,7 @@ export async function decideWithdrawal(id, approve) {
 export async function listLiveRequests() {
   const rows = unwrap(await supabase
     .from('live_requests')
-    .select('id, type, priority, status, notes, created_at, reviewed_at, host:host_id(name, username, display_id, host_profiles(agency_id, agencies(name, display_id))), reviewer:reviewed_by(name)')
+    .select('id, type, priority, status, notes, created_at, reviewed_at, agency_id, agency:agency_id(name, display_id), host:host_id(name, username, display_id, host_profiles(agency_id, agencies(name, display_id))), reviewer:reviewed_by(name)')
     .order('created_at', { ascending: false })
     .limit(500))
   return rows.map((r) => ({
@@ -158,8 +158,11 @@ export async function listLiveRequests() {
     host: r.host?.name || '—',
     username: r.host?.username,
     userDisplayId: r.host?.display_id,
-    agency: r.host?.host_profiles?.agencies?.name || '—',
-    agencyDisplayId: r.host?.host_profiles?.agencies?.display_id ?? null,
+    // a first-time applicant has no host_profiles row yet, so the agency comes
+    // from the request itself (live_requests.agency_id); older rows fall back to the host's agency
+    agency: r.agency?.name || r.host?.host_profiles?.agencies?.name || '—',
+    agencyDisplayId: r.agency?.display_id ?? r.host?.host_profiles?.agencies?.display_id ?? null,
+    agencyId: r.agency_id || r.host?.host_profiles?.agency_id || null,
     type: titleCase(r.type),
     priority: titleCase(r.priority),
     notes: r.notes || '—',
@@ -170,15 +173,11 @@ export async function listLiveRequests() {
   }))
 }
 
+/* Goes through decide_live_request (not a bare UPDATE): approving a go-live
+   request must also make the applicant a host of that agency. It re-checks
+   server-side that the caller manages the request's agency. */
 export async function decideLiveRequest(id, approve) {
-  const reviewed_by = await myId()
-  return unwrap(await supabase.from('live_requests')
-    .update({
-      status: approve ? 'approved' : 'rejected',
-      reviewed_by,
-      reviewed_at: new Date().toISOString(),
-    })
-    .eq('id', id).select().single())
+  return unwrap(await supabase.rpc('decide_live_request', { p_id: id, p_approve: approve }))
 }
 
 /* ------------------------------------------------------------ KYC verifications */

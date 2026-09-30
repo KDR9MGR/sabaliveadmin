@@ -126,12 +126,14 @@ export async function listAgencyAssignments(agencyId) {
 
 /* ---------------------------------------------------------------- go-live requests filed by this agency's hosts */
 export async function listAgencyLiveRequests(agencyId) {
+  // Requests addressed to this agency (a new applicant typed its Agency ID and has no
+  // host_profiles row yet) plus any filed by hosts it already has.
   const hostRows = unwrap(await supabase.from('host_profiles').select('profile_id').eq('agency_id', agencyId))
   const ids = hostRows.map((h) => h.profile_id)
-  if (!ids.length) return []
+  const filter = [`agency_id.eq.${agencyId}`, ids.length ? `host_id.in.(${ids.join(',')})` : null].filter(Boolean).join(',')
   const rows = unwrap(await supabase.from('live_requests')
     .select('id, type, priority, status, notes, created_at, reviewed_at, host:host_id(name, username, display_id), reviewer:reviewed_by(name)')
-    .in('host_id', ids)
+    .or(filter)
     .order('created_at', { ascending: false }))
   return rows.map((r) => ({
     id: r.id,

@@ -20,7 +20,10 @@ const CRUMBS = ['Home', 'User Management']
 const STATUS_OPTS = ['active', 'inactive', 'suspended']
 
 /* ------------------------------------------------------------------ All Users */
-export function UsersList() {
+/* readOnly: browse-only (a Global Admin sees every user but can't change their
+   status — set_profile_status is admin-only in the database — and has no
+   profile page of its own), so no row click, no Live Action, no row actions. */
+export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
   const nav = useNavigate()
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listUsers)
@@ -39,13 +42,13 @@ export function UsersList() {
     <>
       <PageHeader
         title="User Management"
-        crumbs={[...CRUMBS, 'Users']}
-        actions={<Button icon="download" onClick={() => toast('Export coming soon')}>Export</Button>}
+        crumbs={crumbs}
+        actions={readOnly ? null : <Button icon="download" onClick={() => toast('Export coming soon')}>Export</Button>}
       />
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
-          onRowClick={(r) => nav(`/admin/users/${r.id}`)}
+          onRowClick={readOnly ? undefined : (r) => nav(`/admin/users/${r.id}`)}
           searchKeys={['name', 'username', 'displayId', 'location']}
           searchPlaceholder="Search by name, username or user ID…"
           tabs={[
@@ -65,19 +68,19 @@ export function UsersList() {
             { key: 'agency', header: 'Agency', render: (r) => r.agency === '—' ? <span className="muted">—</span> : <Tag>{r.agency}</Tag> },
             { key: 'status', header: 'User Status', render: (r) => <StatusBadge value={r.status} /> },
             { key: 'isLive', header: 'Live Status', render: (r) => r.isLive ? <StatusBadge value="Live" /> : <span className="muted">Offline</span> },
-            {
+            ...(readOnly ? [] : [{
               key: 'liveAction', header: 'Live Action', render: (r) => (
                 <div className="hstack" style={{ gap: 6 }}>
                   <Button size="sm" variant="primary" disabled={r.status !== 'Suspended'} onClick={() => changeStatus(r, 'active')}>Yes</Button>
                   <Button size="sm" variant="danger" disabled={r.status === 'Suspended'} onClick={() => changeStatus(r, 'suspended')}>No</Button>
                 </div>
               ),
-            },
+            }]),
             { key: 'avatar', header: 'Image', render: (r) => r.avatar
               ? <img src={r.avatar} alt="" width={40} height={40} style={{ borderRadius: 8, objectFit: 'cover' }} />
               : <span className="muted">—</span> },
           ]}
-          rowActions={(r) => [
+          rowActions={readOnly ? undefined : (r) => [
             { label: 'View profile', icon: 'eye', onClick: () => nav(`/admin/users/${r.id}`) },
             r.status === 'Suspended'
               ? { label: 'Reactivate', icon: 'check', onClick: () => changeStatus(r, 'active') }
