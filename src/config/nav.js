@@ -138,7 +138,6 @@ export const NAV = {
       { label: 'Admin Management', icon: 'shieldUser', children: [
         { label: 'Country Admin', to: '/global-admin/admin-management/country-admin' },
         { label: 'Sub Admin', to: '/global-admin/admin-management/sub-admin' },
-        { label: 'Agency', to: '/global-admin/admin-management/agency' },
       ]},
       { label: 'Coin Management', icon: 'coins', children: [
         { label: 'Transfer Coins', to: '/global-admin/coin-management/transfer-coins' },
@@ -233,7 +232,6 @@ export const NAV = {
       ]},
       { label: 'Admin Management', icon: 'shieldUser', children: [
         { label: 'Sub Admin', to: '/country-admin/admin-management/sub-admin' },
-        { label: 'Agency', to: '/country-admin/admin-management/agency' },
       ]},
       { label: 'Coin Management', icon: 'coins', children: [
         { label: 'Transfer Coins', to: '/country-admin/coin-management/transfer-coins' },
