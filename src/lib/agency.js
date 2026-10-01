@@ -145,7 +145,9 @@ export async function listAgencyLiveRequests(agencyId) {
     priority: titleCase(r.priority),
     notes: r.notes || '—',
     status: titleCase(r.status),
-    reviewedBy: r.reviewer?.name || '—',
+    // reviewed_at with no reviewer means the system decided it (e.g. the
+    // go-live lockdown auto-rejecting), not that the "by" data is missing.
+    reviewedBy: r.reviewer?.name || (r.reviewed_at ? 'Auto-rejected' : '—'),
     submitted: fmtDate(r.created_at),
     reviewed: r.reviewed_at ? fmtDate(r.reviewed_at) : '—',
   }))
