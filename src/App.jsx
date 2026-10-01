@@ -33,7 +33,7 @@ import {
 } from './pages/agency.jsx'
 
 import {
-  SuperDashboard, SuperUsers, SuperAdmins, MasterAccounts, AddAdminAccount, AddAgencyStaffAccount,
+  SuperDashboard, SuperUsers, SuperAdmins, AddAdminAccount,
   AccessControl, AuditLogs, SuperSecurity,
   SystemOverview, Infrastructure, Integrations, Backups, CoinTreasury,
 } from './pages/super.jsx'
@@ -222,8 +222,6 @@ export default function App() {
             <Route element={<RequireCap cap="manage_admins" />}>
               <Route path="admins" element={<SuperAdmins />} />
               <Route path="admins/add" element={<AddAdminAccount />} />
-              <Route path="masters" element={<MasterAccounts />} />
-              <Route path="masters/add" element={<AddAgencyStaffAccount />} />
               <Route path="access" element={<AccessControl />} />
             </Route>
 

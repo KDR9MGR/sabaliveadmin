@@ -12,7 +12,7 @@ import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
 import {
   listStaffAccounts, grantableProfiles, agencyOptions, grantRole, changeRole, revokeRole, superAdminCount,
-  setStaffPermissions, masterAccountOptions, PLATFORM_ROLES, AGENCY_ROLES,
+  setStaffPermissions, masterAccountOptions,
 } from '../lib/accounts.js'
 import { CAPABILITIES, roleBaseline, effectivePermissions } from '../lib/capabilities.js'
 import { AddStaffForm } from './addStaff.jsx'
@@ -301,33 +301,19 @@ function PermissionsDrawer({ account, onClose, onSaved }) {
   )
 }
 
-/* A Super Admin may only create/promote a Master (role 'admin') — enforced
-   server-side too (check_staff_creation + the staff_roles RLS/trigger in
-   migration 20261001100000). Master then cascades everything below it
-   (Global > Country > Sub > Agency — see master/admins.jsx). The list still
-   shows every platform-wide role for oversight; only Grant/Add are narrowed. */
+/* A Super Admin may only create/promote/see a Master (role 'admin') —
+   enforced server-side too (check_staff_creation + the staff_roles
+   RLS/trigger in migration 20261001100000). Master then cascades everything
+   below it (Global > Country > Sub > Agency — see master/admins.jsx). */
 export function SuperAdmins() {
   return (
     <StaffAccountsPage
-      roles={PLATFORM_ROLES}
+      roles={['admin']}
       grantRoleOpts={[{ value: 'admin', label: 'Admin' }]}
-      title="Admin Accounts"
-      crumbLabel="Admins"
+      title="Master"
+      crumbLabel="Master"
       addPath="/super/admins/add"
-      intro="Platform-wide roles. Admin and Super Admin see everything (is_admin_or_above); Global and Country Admin are scoped down the Global > Country > Sub > Agency ladder. A Super Admin may only create or promote a Master (Admin) account — Master creates everything below it. Revoking a role stays available at every level, as a safety backstop."
-    />
-  )
-}
-
-export function MasterAccounts() {
-  return (
-    <StaffAccountsPage
-      roles={AGENCY_ROLES}
-      grantRoleOpts={[{ value: 'agency_manager', label: 'Agency Manager' }, { value: 'sub_admin', label: 'Sub Admin' }]}
-      title="Agency Staff"
-      crumbLabel="Agency Staff"
-      addPath="/super/masters/add"
-      intro="Agency-scoped roles. An Agency Manager or Sub Admin can only act within the agency they're assigned to (manages_agency)."
+      intro="A Super Admin may only create or promote a Master (Admin) account — Master creates and manages everything below it (Global Admin, Country Admin, Sub Admin, Agency). Revoking a role stays available here as a safety backstop."
     />
   )
 }
@@ -335,23 +321,12 @@ export function MasterAccounts() {
 export function AddAdminAccount() {
   return (
     <AddStaffForm
-      title="Add Admin"
-      crumbRoot={[...CR, 'Admins']}
+      title="Add Master"
+      crumbRoot={[...CR, 'Master']}
       backTo="/super/admins"
       roleOpts={[{ value: 'admin', label: 'Admin' }]}
       showAgency={false}
       countryAdminMode="none"
-    />
-  )
-}
-
-export function AddAgencyStaffAccount() {
-  return (
-    <AddStaffForm
-      title="Add Agency Staff"
-      crumbRoot={[...CR, 'Agency Staff']}
-      backTo="/super/masters"
-      roleOpts={[{ value: 'agency_manager', label: 'Agency Manager' }, { value: 'sub_admin', label: 'Sub Admin' }]}
     />
   )
 }

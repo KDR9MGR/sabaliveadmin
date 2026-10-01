@@ -195,7 +195,7 @@ export const NAV = {
     ]},
     { section: 'Administration', items: [
       { label: 'Admin Management', icon: 'shield', cap: 'manage_admins', children: [
-        { label: 'Admin Accounts', to: '/super/admins' },
+        { label: 'Master', to: '/super/admins' },
         { label: 'Access Control', to: '/super/access' },
       ]},
       { label: 'Audit Logs', icon: 'fileText', cap: 'view_audit', to: '/super/audit' },
