@@ -34,6 +34,11 @@ export function AgencyScopeProvider({ children }) {
     let q = supabase.from('agencies').select('id, name').order('name')
     if (isSub) {
       q = q.or(`sub_admin_id.eq.${user.id}${staffRole.agency_id ? `,id.eq.${staffRole.agency_id}` : ''}`)
+    } else {
+      // super_admin/admin browsing the panel — only agencies a platform admin
+      // has actually approved are real places to "be"; a pending one isn't
+      // live yet, so it shouldn't be pickable (or silently auto-picked) here.
+      q = q.eq('status', 'active')
     }
     q.then(({ data }) => {
       const list = data || []

@@ -30,15 +30,16 @@ const ASSIGN_STATUS_OPTS = ['on_track', 'behind', 'exceeded'].map(opt)
 const SALARY_ROLE_OPTS = SALARY_ROLES.map(opt)
 
 /* Common shell: async fork, scoped to whichever single agency the signed-in
-   account resolves to. Only a sub admin (who owns several agencies) gets a
-   switcher, and only among the agencies they own. */
+   account resolves to. An agency_manager is pinned to their own agency; a
+   sub admin (who owns several) or a Super Admin previewing this panel both
+   get the picker, so it's always visible which agency is in scope rather
+   than silently defaulting to one. */
 function AgencyPage({ title, actions, load, children }) {
-  const { agencyId, isSub } = useAgencyScope()
+  const { agencyId, canPick } = useAgencyScope()
   return (
     <>
       <PageHeader title={title} crumbs={[...CR, title]} actions={agencyId ? actions : null} />
-      {/* A sub admin owns several agencies, so they pick which one to work in. */}
-      {isSub && <AgencyScopeBar />}
+      {canPick && <AgencyScopeBar />}
       {agencyId
         ? <ScopedBody agencyId={agencyId} load={load}>{children}</ScopedBody>
         : null}

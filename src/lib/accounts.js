@@ -70,8 +70,10 @@ export async function masterAccountOptions() {
   }))
 }
 
+/* Only 'active' agencies — one still 'pending' platform approval isn't a
+   valid target for a new/changed staff account yet. */
 export async function agencyOptions() {
-  const rows = unwrap(await supabase.from('agencies').select('id, name').order('name'))
+  const rows = unwrap(await supabase.from('agencies').select('id, name').eq('status', 'active').order('name'))
   return rows.map((a) => ({ value: a.id, label: a.name }))
 }
 
