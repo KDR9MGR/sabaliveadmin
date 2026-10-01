@@ -392,7 +392,7 @@ export function LuckyBox() {
   const save = async () => {
     setBusy(true)
     try {
-      await updateLuckyBoxConfig({ duration_minutes: v.duration_minutes, reward_coins: v.reward_coins })
+      await updateLuckyBoxConfig({ duration_minutes: v.duration_minutes, reward_diamonds: v.reward_diamonds })
       toast('Lucky Box settings saved')
       setForm(null)
       reloadConfig()
@@ -406,7 +406,7 @@ export function LuckyBox() {
   return (
     <>
       <PageHeader title="Lucky Box" crumbs={['Home', 'Platform', 'Lucky Box']} />
-      <Card title="Reward settings" sub="A host who stays continuously live for this long in one stream gets a one-time coin reward — checked automatically every minute." className="mb-16">
+      <Card title="Reward settings" sub="A host who stays continuously live for this long in one stream gets a one-time diamond reward — checked automatically every minute." className="mb-16">
         <AsyncView loading={configLoading} error={configError} reload={reloadConfig}>
           <div className="form-grid">
             <div className="field">
@@ -414,8 +414,8 @@ export function LuckyBox() {
               <input className="input" type="number" min="1" value={v.duration_minutes ?? ''} onChange={(e) => set('duration_minutes', e.target.value)} />
             </div>
             <div className="field">
-              <label>Reward (coins)</label>
-              <input className="input" type="number" min="1" value={v.reward_coins ?? ''} onChange={(e) => set('reward_coins', e.target.value)} />
+              <label>Reward (diamonds)</label>
+              <input className="input" type="number" min="1" value={v.reward_diamonds ?? ''} onChange={(e) => set('reward_diamonds', e.target.value)} />
             </div>
           </div>
           <div className="hstack" style={{ marginTop: 14 }}>
@@ -431,7 +431,7 @@ export function LuckyBox() {
             columns={[
               personCol('user', 'username'),
               { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
-              numCol('coins', 'Coins'),
+              numCol('diamonds', 'Diamonds'),
               { key: 'streamIdShort', header: 'Stream', render: (r) => <span className="mono muted">{r.streamIdShort}</span> },
               { key: 'date', header: 'Won', sortable: true },
             ]}

@@ -9,13 +9,13 @@ const unwrap = ({ data, error }) => { if (error) throw error; return data }
    A cron job grants the reward automatically; this is just the two knobs. */
 export async function getLuckyBoxConfig() {
   return unwrap(await supabase.from('lucky_box_config')
-    .select('duration_minutes, reward_coins, updated_at')
+    .select('duration_minutes, reward_diamonds, updated_at')
     .eq('id', true).single())
 }
 
-export async function updateLuckyBoxConfig({ duration_minutes, reward_coins }) {
+export async function updateLuckyBoxConfig({ duration_minutes, reward_diamonds }) {
   return unwrap(await supabase.from('lucky_box_config')
-    .update({ duration_minutes: Number(duration_minutes), reward_coins: Number(reward_coins) })
+    .update({ duration_minutes: Number(duration_minutes), reward_diamonds: Number(reward_diamonds) })
     .eq('id', true).select().single())
 }
 
@@ -32,7 +32,7 @@ export async function listLuckyBoxHistory() {
     user: r.profiles?.name || '—',
     username: r.profiles?.username,
     displayId: r.profiles?.display_id,
-    coins: r.amount,
+    diamonds: r.amount,
     streamId: r.reference_id,
     streamIdShort: shortId(r.reference_id),
     date: fmtDate(r.created_at),
