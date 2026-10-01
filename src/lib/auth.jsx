@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from './supabase.js'
 import { can as canCap } from './capabilities.js'
+import { ROLE_LABEL } from './admin.js'
 
 /* Which panel a staff_roles.role lands in. super_admin/admin get their own
    panel; global_admin, country_admin, sub_admin and agency_manager are scoped
@@ -15,6 +16,8 @@ export const PANEL_FOR_ROLE = {
   sub_admin: 'sub-admin',
   agency_manager: 'panel-agency',
 }
+
+export { ROLE_LABEL }
 
 const Ctx = createContext(null)
 export const useAuth = () => useContext(Ctx)
@@ -64,13 +67,43 @@ export function AuthProvider({ children }) {
     setStaffRole(null)
   }, [])
 
+  const updateProfile = useCallback(async (updates) => {
+    const user = session?.user
+    if (!user) return { error: new Error('Not signed in') }
+    const payload = {}
+    if ('name' in updates) payload.name = updates.name
+    if ('phone' in updates) payload.phone = updates.phone
+    if ('bio' in updates) payload.bio = updates.bio
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(payload)
+      .eq('id', user.id)
+      .select()
+      .maybeSingle()
+    if (error) return { error }
+    if (data) setProfile(data)
+    return { data: data ?? null, error: null }
+  }, [session])
+
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    const user = session?.user
+    if (!user) return { error: new Error('Not signed in') }
+    const email = user.email
+    if (!email) return { error: new Error('No email on account') }
+    const { error: verifyErr } = await supabase.auth.signInWithPassword({ email, password: currentPassword })
+    if (verifyErr) return { error: verifyErr }
+    const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword })
+    if (updateErr) return { error: updateErr }
+    return { error: null }
+  }, [session])
+
   const panel = staffRole ? PANEL_FOR_ROLE[staffRole.role] : null
   const can = useCallback((key) => canCap(staffRole, key), [staffRole])
 
   return (
     <Ctx.Provider value={{
       session, user: session?.user ?? null, profile, staffRole, panel, can,
-      isStaff: !!staffRole, loading, signIn, signOut,
+      isStaff: !!staffRole, loading, signIn, signOut, updateProfile, changePassword,
     }}>
       {children}
     </Ctx.Provider>
