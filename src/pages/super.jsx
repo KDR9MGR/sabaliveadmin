@@ -6,12 +6,13 @@ import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
 import Icon from '../components/Icon.jsx'
 import PanelChip from '../components/PanelChip.jsx'
+import UserPicker from '../components/UserPicker.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
 import {
   listStaffAccounts, grantableProfiles, agencyOptions, grantRole, changeRole, revokeRole, superAdminCount,
-  setStaffPermissions, PLATFORM_ROLES, AGENCY_ROLES,
+  setStaffPermissions, masterAccountOptions, PLATFORM_ROLES, AGENCY_ROLES,
 } from '../lib/accounts.js'
 import { CAPABILITIES, roleBaseline, effectivePermissions } from '../lib/capabilities.js'
 import { AddStaffForm } from './addStaff.jsx'
@@ -19,8 +20,7 @@ import { UsersList } from './master/users.jsx'
 import { superDashboard, listAuditLogs, securityOverview, systemPulse } from '../lib/superAdmin.js'
 import {
   getTreasury, listTreasuryEvents, mintCoins, distributeCoins,
-  listCoinMinters, addCoinMinter, removeCoinMinter, minterCandidates, profilePickList,
-  DISTRIBUTION_ROLES,
+  listCoinMinters, addCoinMinter, removeCoinMinter, minterCandidates,
 } from '../lib/treasury.js'
 import { infrastructure, integrations, backups, num } from '../data/index.js'
 
@@ -359,27 +359,34 @@ export function AddAgencyStaffAccount() {
 /* ------------------------------------------------------------------ Access Control */
 const BASELINE_ROLES = [
   { key: 'super_admin', label: 'Super Admin' },
-  { key: 'admin', label: 'Admin' },
-  { key: 'agency_manager', label: 'Agency Manager' },
+  { key: 'admin', label: 'Master' },
+  { key: 'global_admin', label: 'Global Admin' },
+  { key: 'country_admin', label: 'Country Admin' },
   { key: 'sub_admin', label: 'Sub Admin' },
+  { key: 'agency_manager', label: 'Agency' },
 ]
+/* Which panel's accounts to browse in the picker below — every role except
+   super_admin, which is always full-access and isn't editable. */
+const ACCESS_PANELS = BASELINE_ROLES.filter((r) => r.key !== 'super_admin')
 const Mark = ({ on }) => (
   <Icon name={on ? 'check' : 'x'} size={14} style={{ color: on ? 'var(--success)' : 'var(--text-muted)' }} />
 )
 
+/* Feature + role based, not panel based: pick a panel purely to narrow the
+   account list down to a manageable size, then a specific user, then turn
+   individual capabilities on or off for just that account. */
 export function AccessControl() {
-  const { data: accounts, loading, error, reload } = useAsyncData(
-    () => listStaffAccounts([...PLATFORM_ROLES, ...AGENCY_ROLES]), [])
+  const [panel, setPanel] = useState(ACCESS_PANELS[0].key)
+  const { data: accounts, loading, error, reload } = useAsyncData(() => listStaffAccounts([panel]), [panel])
   const [perms, setPerms] = useState(null)
 
   return (
     <>
       <PageHeader title="Access Control" crumbs={[...CR, 'Access Control']} />
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-        Each staff account starts from its <b>role baseline</b> below. A Super Admin can then override individual
-        capabilities per account from <b>Admin Accounts</b> / <b>Agency Staff</b> (or the Edit action here).
-        Turning a capability off is enforced in the UI <i>and</i> the privileged RPCs; turning one on beyond the
-        role only changes what the account sees.
+        Each staff account starts from its <b>role baseline</b> below. Pick a panel, then a user in it, to turn
+        individual features on or off for just that account. Turning a capability off is enforced in the UI
+        <i> and</i> the privileged RPCs; turning one on beyond the role only changes what the account sees.
       </div></Card>
 
       <Card flush title="Role baseline" sub="The starting point for every account with that role" className="mb-16" action={<span />}>
@@ -402,43 +409,36 @@ export function AccessControl() {
         </div>
       </Card>
 
-      <Card flush title="Per-account permissions" sub="Effective capabilities after any overrides" action={<span />}>
-        <AsyncView loading={loading} error={error} reload={reload}>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th style={{ minWidth: 180 }}>Account</th>
-                  {CAPABILITIES.map((c) => <th key={c.key} className="center" title={c.label} style={{ fontSize: 11 }}>{c.label}</th>)}
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {(accounts || []).map((a) => {
-                  const eff = effectivePermissions({ role: a.roleRaw, permissions: a.permissions })
-                  const base = roleBaseline(a.roleRaw)
-                  return (
-                    <tr key={a.id}>
-                      <td><Person name={a.name} meta={a.role} size="sm" /></td>
-                      {CAPABILITIES.map((c) => {
-                        const overridden = a.roleRaw !== 'super_admin' && !!eff[c.key] !== !!base[c.key]
-                        return (
-                          <td key={c.key} className="center" style={overridden ? { background: 'var(--warning-bg)' } : undefined}>
-                            <Mark on={!!eff[c.key]} />
-                          </td>
-                        )
-                      })}
-                      <td className="center">
-                        {a.roleRaw === 'super_admin'
-                          ? <span className="muted" style={{ fontSize: 11 }}>full</span>
-                          : <Button size="sm" icon="sliders" onClick={() => setPerms(a)}>Edit</Button>}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+      <Card flush title="Per-account permissions" sub="Pick a panel, then a user, to edit their feature access" action={<span />}>
+        <div style={{ padding: '14px 16px 0' }}>
+          <div className="hstack wrap" style={{ gap: 8 }}>
+            {ACCESS_PANELS.map((p) => (
+              <Button key={p.key} size="sm" variant={panel === p.key ? 'primary' : undefined} onClick={() => setPanel(p.key)}>
+                {p.label}
+              </Button>
+            ))}
           </div>
+        </div>
+        <AsyncView loading={loading} error={error} reload={reload}>
+          <DataTable
+            rows={accounts || []}
+            searchKeys={['name', 'username', 'displayId']}
+            columns={[
+              personCol('name', 'username'),
+              { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+              statusCol('accountStatus', 'Status'),
+              {
+                key: 'caps', header: 'Access', render: (r) => {
+                  const base = roleBaseline(r.roleRaw)
+                  const eff = effectivePermissions({ role: r.roleRaw, permissions: r.permissions })
+                  const n = CAPABILITIES.filter((c) => !!eff[c.key] !== !!base[c.key]).length
+                  return n ? <span className="badge badge--warning">{n} feature{n === 1 ? '' : 's'} overridden</span> : <span className="muted">Role default</span>
+                },
+              },
+            ]}
+            rowActions={(r) => [{ label: 'Features & access', icon: 'sliders', onClick: () => setPerms(r) }]}
+            emptyText="No accounts at this level yet."
+          />
         </AsyncView>
       </Card>
 
@@ -450,20 +450,20 @@ export function AccessControl() {
 }
 
 /* ------------------------------------------------------------------ Coin Treasury (Super Admin) */
-const ROLE_LABEL_D = { host: 'Hosts', agency: 'Agency managers', sub_admin: 'Sub admins', staff: 'All staff' }
-
 export function CoinTreasury() {
   const toast = useToast()
   const { staffRole } = useAuth()
   const isSuper = staffRole?.role === 'super_admin'
   const { data: t, loading, error, reload } = useAsyncData(getTreasury)
   const { data: events, reload: reloadEvents } = useAsyncData(listTreasuryEvents)
-  const { data: people } = useAsyncData(profilePickList)
+  const { data: masterOpts } = useAsyncData(masterAccountOptions)
 
   const [mint, setMint] = useState({ coins: '', note: '' })
   const [mintBusy, setMintBusy] = useState(false)
-  const [dist, setDist] = useState({ perRecipient: '', audience: 'all', role: 'host', recipientIds: [], note: '' })
+  const [dist, setDist] = useState({ perRecipient: '', note: '' })
   const [distBusy, setDistBusy] = useState(false)
+  const [distTarget, setDistTarget] = useState('all') // 'all' | 'one'
+  const [distUserId, setDistUserId] = useState(null)
 
   const refreshAll = () => { reload(); reloadEvents() }
 
@@ -479,15 +479,17 @@ export function CoinTreasury() {
     finally { setMintBusy(false) }
   }
 
-  const targetCount = dist.audience === 'users' ? dist.recipientIds.length : null
   const doDistribute = async () => {
     if (!Number(dist.perRecipient)) { toast('Enter an amount per recipient'); return }
-    if (dist.audience === 'users' && !dist.recipientIds.length) { toast('Pick at least one recipient'); return }
+    if (distTarget === 'one' && !distUserId) { toast('Search for and pick a Master account'); return }
     setDistBusy(true)
     try {
-      const res = await distributeCoins(dist)
-      toast(`Sent ${num(Number(res.total))} coins to ${res.recipients} — balance ${num(Number(res.balance))}`)
-      setDist({ perRecipient: '', audience: 'all', role: 'host', recipientIds: [], note: '' })
+      const res = distTarget === 'one'
+        ? await distributeCoins({ perRecipient: dist.perRecipient, audience: 'users', recipientIds: [distUserId], note: dist.note })
+        : await distributeCoins({ perRecipient: dist.perRecipient, audience: 'role', role: 'admin', note: dist.note })
+      toast(`Sent ${num(Number(res.total))} coins to ${res.recipients} Master account${res.recipients === 1 ? '' : 's'} — balance ${num(Number(res.balance))}`)
+      setDist({ perRecipient: '', note: '' })
+      setDistUserId(null)
       refreshAll()
     } catch (e) { toast(e.message || 'Could not distribute coins') }
     finally { setDistBusy(false) }
@@ -540,38 +542,26 @@ export function CoinTreasury() {
                 </div>
               </Card>
 
-              <Card title="Distribute" sub="Credits wallets from the treasury balance">
+              <Card title="Distribute" sub="Credits a Master account's wallet from the treasury balance — a Super Admin may only fund Master accounts; Master cascades it down from there.">
+                <div className="hstack" style={{ gap: 8, marginBottom: 12 }}>
+                  <Button size="sm" variant={distTarget === 'all' ? 'primary' : 'ghost'}
+                    onClick={() => setDistTarget('all')}>Every Master account</Button>
+                  <Button size="sm" variant={distTarget === 'one' ? 'primary' : 'ghost'}
+                    onClick={() => setDistTarget('one')}>Specific Master (search)</Button>
+                </div>
                 <div className="form-grid">
+                  {distTarget === 'one' && (
+                    <div className="field full">
+                      <label>Master account <span className="req">*</span></label>
+                      <UserPicker options={masterOpts || []} value={distUserId} onChange={setDistUserId}
+                        placeholder="Search by name, username or ID…" />
+                    </div>
+                  )}
                   <div className="field">
-                    <label>Coins per recipient <span className="req">*</span></label>
+                    <label>Coins {distTarget === 'one' ? '' : 'per Master account'} <span className="req">*</span></label>
                     <input className="input" type="number" min="1" placeholder="e.g. 500"
                       value={dist.perRecipient} onChange={(e) => setDist((d) => ({ ...d, perRecipient: e.target.value }))} />
                   </div>
-                  <div className="field">
-                    <label>Audience</label>
-                    <select className="select" value={dist.audience} onChange={(e) => setDist((d) => ({ ...d, audience: e.target.value }))}>
-                      <option value="all">All users</option>
-                      <option value="role">By role</option>
-                      <option value="users">Specific users</option>
-                    </select>
-                  </div>
-                  {dist.audience === 'role' && (
-                    <div className="field">
-                      <label>Role</label>
-                      <select className="select" value={dist.role} onChange={(e) => setDist((d) => ({ ...d, role: e.target.value }))}>
-                        {DISTRIBUTION_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL_D[r]}</option>)}
-                      </select>
-                    </div>
-                  )}
-                  {dist.audience === 'users' && (
-                    <div className="field full">
-                      <label>Recipients ({dist.recipientIds.length} selected)</label>
-                      <select className="select" multiple size={5} value={dist.recipientIds}
-                        onChange={(e) => setDist((d) => ({ ...d, recipientIds: [...e.target.selectedOptions].map((o) => o.value) }))}>
-                        {(people || []).map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                      </select>
-                    </div>
-                  )}
                   <div className="field full">
                     <label>Note</label>
                     <input className="input" placeholder="Shown in each recipient's wallet ledger"
@@ -580,11 +570,11 @@ export function CoinTreasury() {
                 </div>
                 <div className="hstack spread mt-16">
                   <span className="muted" style={{ fontSize: 12 }}>
-                    {Number(dist.perRecipient) > 0 && targetCount != null
-                      ? `${num(targetCount)} × ${num(Number(dist.perRecipient))} = ${num(targetCount * Number(dist.perRecipient))} coins`
-                      : Number(dist.perRecipient) > 0
-                        ? `${num(Number(dist.perRecipient))} coins each`
-                        : ''}
+                    {Number(dist.perRecipient) > 0
+                      ? (distTarget === 'one'
+                        ? `${num(Number(dist.perRecipient))} coins to the selected Master account`
+                        : `${num(Number(dist.perRecipient))} coins to every Master account`)
+                      : ''}
                   </span>
                   <Button variant="primary" icon={distBusy ? 'refresh' : 'arrowUpRight'} disabled={distBusy} onClick={doDistribute}>
                     {distBusy ? 'Sending…' : 'Distribute'}

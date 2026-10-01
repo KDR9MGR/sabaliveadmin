@@ -138,6 +138,18 @@ export async function scopeSubAdminOptions() {
   }))
 }
 
+/* Every global admin — recipients for Master's Distribute Coins. */
+export async function globalAdminOptions() {
+  const rows = unwrap(await supabase.from('staff_roles')
+    .select('user_id, profiles!user_id(name, username, display_id)')
+    .eq('role', 'global_admin'))
+  return rows.map((r) => ({
+    value: r.user_id,
+    label: `${r.profiles?.name || '—'} (@${r.profiles?.username || '—'}) · ID ${r.profiles?.display_id}`,
+    search: `${r.profiles?.name} ${r.profiles?.username} ${r.profiles?.display_id}`.toLowerCase(),
+  }))
+}
+
 /* Every country admin — recipients for a Global Admin's Transfer Coins. */
 export async function scopeCountryAdminOptions() {
   const { countryAdmins } = await countryScope()

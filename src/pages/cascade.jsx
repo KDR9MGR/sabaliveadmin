@@ -26,7 +26,7 @@ export const USER_KIND = { value: 'user', label: 'User', load: profileOptions }
 export const OWNED_AGENCY_KIND = { value: 'agency', label: 'Agency', load: ownedAgencyManagerOptions }
 const EMPTY = { to: '', coins: '', note: '' }
 
-export function TransferCoinsPage({ crumbs, kinds }) {
+export function TransferCoinsPage({ crumbs, kinds, hideHeader = false }) {
   const toast = useToast()
   const [kind, setKind] = useState(kinds[0].value)
   const [values, setValues] = useState(EMPTY)
@@ -53,7 +53,7 @@ export function TransferCoinsPage({ crumbs, kinds }) {
 
   return (
     <>
-      <PageHeader title="Transfer Coins" crumbs={crumbs} />
+      {!hideHeader && <PageHeader title="Transfer Coins" crumbs={crumbs} />}
       {error ? <LoadError error={error} onRetry={reload} />
         : loading || !data ? <TableSkeleton rows={4} />
         : (

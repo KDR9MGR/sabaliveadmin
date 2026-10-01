@@ -12,8 +12,11 @@ import {
   createCoinGrant, listCoinGrants, pullBackCoinGrant, profileOptions,
   GIFT_CATEGORIES, PLATFORMS,
 } from '../../lib/coins.js'
-import { distributeCoins } from '../../lib/treasury.js'
 import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
+import {
+  globalAdminOptions, scopeCountryAdminOptions, scopeSubAdminOptions, scopeAgencyManagerOptions,
+} from '../../lib/country.js'
+import { TransferCoinsPage, USER_KIND } from '../cascade.jsx'
 import UserPicker from '../../components/UserPicker.jsx'
 import MediaPreview from '../../components/MediaPreview.jsx'
 
@@ -38,7 +41,6 @@ export function GiftSettings() {
 
   const giftFields = [
     { name: 'name', label: 'Gift name', required: true },
-    { name: 'emoji', label: 'Icon / emoji (fallback if no file is uploaded)', placeholder: '🎁' },
     { name: 'icon_url', label: 'Icon / animation file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
       onUpload: (file) => uploadMedia('gift-assets', 'gifts', file), hint: 'SVGA, WebP, MP4 or PNG' },
     { name: 'price_coins', label: 'Price (coins)', type: 'number', required: true, hint: 'Must be greater than 0' },
@@ -247,13 +249,18 @@ export function GiftHistory() {
   )
 }
 
-/* ------------------------------------------------------------------ Transfer Coins (real: coin_grants insert / distribute_coins RPC) */
-const DISTRIBUTE_LEVELS = [
-  { value: 'global_admin', label: 'All Global Admins' },
-  { value: 'country_admin', label: 'All Country Admins' },
-  { value: 'sub_admin', label: 'All Sub Admins' },
-  { value: 'agency', label: 'All Agencies' },
-  { value: 'all', label: 'All Users (platform-wide)' },
+/* ------------------------------------------------------------------ Transfer Coins */
+/* "To a user" is a treasury-style mint-credit (coin_grants, no debit anywhere —
+   bonuses/corrections). "Distribute to a level" is the SAME wallet-to-wallet
+   cascade Global Admin's own Transfer Coins already uses one level down
+   (transfer_coins_down — deducts from Master's own wallet), just with
+   Global Admin added as a reachable kind. */
+const DISTRIBUTE_KINDS = [
+  { value: 'global_admin', label: 'Global Admin', load: globalAdminOptions },
+  { value: 'country_admin', label: 'Country Admin', load: scopeCountryAdminOptions },
+  { value: 'sub_admin', label: 'Sub Admin', load: scopeSubAdminOptions },
+  { value: 'agency', label: 'Agency', load: scopeAgencyManagerOptions },
+  USER_KIND,
 ]
 
 export function TransferCoins() {
@@ -263,9 +270,7 @@ export function TransferCoins() {
   const [mode, setMode] = useState('To a user')
   const [busy, setBusy] = useState(false)
   const [values, setValues] = useState({ granted_to: '', coins: '', note: '' })
-  const [dist, setDist] = useState({ level: '', coins: '', note: '' })
   const set = (k, v) => setValues((s) => ({ ...s, [k]: v }))
-  const setD = (k, v) => setDist((s) => ({ ...s, [k]: v }))
 
   const submit = async () => {
     if (!values.granted_to || !values.coins) { toast('Pick a recipient and an amount'); return }
@@ -280,24 +285,6 @@ export function TransferCoins() {
     } finally { setBusy(false) }
   }
 
-  const submitDistribute = async () => {
-    if (!dist.level || !dist.coins) { toast('Pick a level and an amount'); return }
-    setBusy(true)
-    try {
-      const result = await distributeCoins({
-        perRecipient: dist.coins,
-        audience: dist.level === 'all' ? 'all' : 'role',
-        role: dist.level === 'all' ? null : dist.level,
-        note: dist.note,
-      })
-      toast(`Sent ${dist.coins} coins each to ${result.recipients} recipient${result.recipients === 1 ? '' : 's'}`)
-      setDist({ level: '', coins: '', note: '' })
-      reload()
-    } catch (e) {
-      toast(e.message || 'Distribution failed')
-    } finally { setBusy(false) }
-  }
-
   return (
     <>
       <PageHeader
@@ -305,8 +292,8 @@ export function TransferCoins() {
         crumbs={[...CRUMBS, 'Transfer Coins']}
         actions={<PillTabs tabs={['To a user', 'Distribute to a level']} value={mode} onChange={setMode} />}
       />
-      <div className="grid dash">
-        {mode === 'To a user' ? (
+      {mode === 'To a user' ? (
+        <div className="grid dash">
           <Card title="New coin grant" sub="Credits the recipient's wallet immediately (via the coin_grants trigger)">
             <div className="form-grid">
               <div className="field full">
@@ -329,49 +316,25 @@ export function TransferCoins() {
               </Button>
             </div>
           </Card>
-        ) : (
-          <Card title="Distribute to a level" sub="Sends the same amount to every account at the level you pick, from the coin treasury — same mechanism as Super Admin's Coin Treasury.">
-            <div className="form-grid">
-              <div className="field full">
-                <label>Level <span className="req">*</span></label>
-                <select className="select" value={dist.level} onChange={(e) => setD('level', e.target.value)}>
-                  <option value="">Select…</option>
-                  {DISTRIBUTE_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-                </select>
-              </div>
-              <div className="field">
-                <label>Amount per recipient (coins) <span className="req">*</span></label>
-                <input className="input" type="number" placeholder="e.g. 500" value={dist.coins} onChange={(e) => setD('coins', e.target.value)} />
-              </div>
-              <div className="field full">
-                <label>Note</label>
-                <textarea className="textarea" placeholder="Reason for the distribution" value={dist.note} onChange={(e) => setD('note', e.target.value)} />
-              </div>
-            </div>
-            <div className="hstack mt-16" style={{ justifyContent: 'flex-end', gap: 10 }}>
-              <Button onClick={() => setDist({ level: '', coins: '', note: '' })}>Clear</Button>
-              <Button variant="primary" icon={busy ? 'refresh' : 'coins'} disabled={busy} onClick={submitDistribute}>
-                {busy ? 'Distributing…' : 'Distribute Coins'}
-              </Button>
-            </div>
-          </Card>
-        )}
-        <Card title="Recent grants">
-          {(recent || []).length ? (
-            <div className="feed">
-              {(recent || []).slice(0, 6).map((g) => (
-                <div className="feed__item" key={g.id}>
-                  <span className="feed__dot"><span style={{ fontSize: 13 }}>🪙</span></span>
-                  <div>
-                    <div className="feed__text"><b>{Number(g.coins).toLocaleString()}</b> → {g.recipient} <span className="muted">({g.recipientType})</span></div>
-                    <div className="feed__time">{g.date} · {g.note}</div>
+          <Card title="Recent grants">
+            {(recent || []).length ? (
+              <div className="feed">
+                {(recent || []).slice(0, 6).map((g) => (
+                  <div className="feed__item" key={g.id}>
+                    <span className="feed__dot"><span style={{ fontSize: 13 }}>🪙</span></span>
+                    <div>
+                      <div className="feed__text"><b>{Number(g.coins).toLocaleString()}</b> → {g.recipient} <span className="muted">({g.recipientType})</span></div>
+                      <div className="feed__time">{g.date} · {g.note}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : <EmptyState icon="coins" title="No grants yet" />}
-        </Card>
-      </div>
+                ))}
+              </div>
+            ) : <EmptyState icon="coins" title="No grants yet" />}
+          </Card>
+        </div>
+      ) : (
+        <TransferCoinsPage crumbs={[...CRUMBS, 'Transfer Coins']} kinds={DISTRIBUTE_KINDS} hideHeader />
+      )}
     </>
   )
 }

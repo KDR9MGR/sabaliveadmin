@@ -58,6 +58,18 @@ export async function countryAdminOptions() {
   return rows.map((r) => ({ value: r.user_id, label: `${r.profiles?.name || shortId(r.user_id)} (@${r.profiles?.username || '—'})` }))
 }
 
+/* Master accounts, for Super Admin's "specific Master" coin-distribution lookup. */
+export async function masterAccountOptions() {
+  const rows = unwrap(await supabase.from('staff_roles')
+    .select('user_id, profiles!user_id(name, username, display_id)')
+    .eq('role', 'admin'))
+  return rows.map((r) => ({
+    value: r.user_id,
+    label: `${r.profiles?.name || '—'} (@${r.profiles?.username || '—'}) · ID ${r.profiles?.display_id}`,
+    search: `${r.profiles?.name} ${r.profiles?.username} ${r.profiles?.display_id}`.toLowerCase(),
+  }))
+}
+
 export async function agencyOptions() {
   const rows = unwrap(await supabase.from('agencies').select('id, name').order('name'))
   return rows.map((a) => ({ value: a.id, label: a.name }))
@@ -78,14 +90,21 @@ export async function grantRole({ user_id, role, agency_id }) {
   return unwrap(await supabase.from('staff_roles').insert({ user_id, role: r, agency_id: aid }).select().single())
 }
 
-export async function changeRole(user_id, { role, agency_id }) {
+/* Goes through update_staff_role (not a direct table write) — that RPC is
+   what actually lets Master/Global/Country/Sub Admin touch an account in
+   their own tree; the staff_roles RLS itself still only admits super_admin,
+   same as it always has. */
+export async function changeRole(user_id, { role, agency_id, country_admin_id }) {
   const { role: r, agency_id: aid, needsAgency } = normalize(role, agency_id)
   if (needsAgency && !aid) throw new Error('Agency-scoped roles need an agency selected')
-  return unwrap(await supabase.from('staff_roles').update({ role: r, agency_id: aid }).eq('user_id', user_id).select().single())
+  const { error } = await supabase.rpc('update_staff_role', {
+    p_user_id: user_id, p_role: r, p_agency_id: aid, p_country_admin_id: country_admin_id || null,
+  })
+  if (error) throw error
 }
 
 export async function revokeRole(user_id) {
-  const { error } = await supabase.from('staff_roles').delete().eq('user_id', user_id)
+  const { error } = await supabase.rpc('revoke_staff_role', { p_user_id: user_id })
   if (error) throw error
 }
 

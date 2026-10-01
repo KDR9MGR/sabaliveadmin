@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { StatGrid, TableSkeleton, LoadError } from './_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, EmptyState } from '../components/ui.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, EmptyState, ConfirmDialog } from '../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
@@ -272,43 +272,64 @@ export function AgencyApplications() {
 /* --------------------------------------------------- Live Requests (go-live requests from this agency's hosts only) */
 export function AgencyLiveRequests() {
   const toast = useToast()
-  const [busy, setBusy] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(null) // { row, approve }
   return (
     <AgencyPage title="Live Request" load={listAgencyLiveRequests}>
       {(rows, reload) => {
-        const decide = async (r, approve) => {
-          setBusy(r.id)
-          try { await decideLiveRequest(r.id, approve); toast(`${r.host} — ${approve ? 'accepted' : 'rejected'}`); reload() }
-          catch (e) { toast(e.message || 'Could not update request') }
-          finally { setBusy(null) }
+        const decide = async () => {
+          const { row: r, approve } = confirming
+          setBusy(true)
+          try {
+            await decideLiveRequest(r.id, approve)
+            toast(`${r.host} — ${approve ? 'accepted' : 'rejected'}`)
+            setConfirming(null)
+            reload()
+          } catch (e) { toast(e.message || 'Could not update request') }
+          finally { setBusy(false) }
         }
         return (
-          <DataTable
-            rows={rows}
-            searchKeys={['host', 'username', 'userDisplayId', 'type']}
-            tabs={[
-              { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
-              { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
-              { label: 'Rejected', value: 'r', filter: (r) => r.status === 'Rejected' },
-              { label: 'All', value: 'all', filter: () => true },
-            ]}
-            columns={[
-              personCol('host', 'username'),
-              { key: 'userDisplayId', header: 'User ID', render: (r) => <span className="mono muted">{r.userDisplayId}</span> },
-              { key: 'type', header: 'Type', render: (r) => <Tag>{r.type}</Tag> },
-              { key: 'submitted', header: 'Submitted', sortable: true },
-              statusCol(),
-              {
-                key: 'actions', header: 'Actions', render: (r) => r.status === 'Pending' ? (
-                  <div className="hstack" style={{ gap: 6 }}>
-                    <Button size="sm" variant="primary" disabled={busy === r.id} onClick={() => decide(r, true)}>Accept</Button>
-                    <Button size="sm" variant="danger" disabled={busy === r.id} onClick={() => decide(r, false)}>Reject</Button>
-                  </div>
-                ) : <span className="muted" style={{ fontSize: 12 }}>By {r.reviewedBy}</span>,
-              },
-            ]}
-            emptyText="No live requests from this agency's hosts."
-          />
+          <>
+            <DataTable
+              rows={rows}
+              searchKeys={['host', 'username', 'userDisplayId', 'type']}
+              tabs={[
+                { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
+                { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
+                { label: 'Rejected', value: 'r', filter: (r) => r.status === 'Rejected' },
+                { label: 'All', value: 'all', filter: () => true },
+              ]}
+              columns={[
+                personCol('host', 'username'),
+                { key: 'userDisplayId', header: 'User ID', render: (r) => <span className="mono muted">{r.userDisplayId}</span> },
+                { key: 'type', header: 'Type', render: (r) => <Tag>{r.type}</Tag> },
+                { key: 'submitted', header: 'Submitted', sortable: true },
+                statusCol(),
+                {
+                  key: 'actions', header: 'Actions', render: (r) => r.status === 'Pending' ? (
+                    <div className="hstack" style={{ gap: 6 }}>
+                      <Button size="sm" variant="primary" onClick={() => setConfirming({ row: r, approve: true })}>Accept</Button>
+                      <Button size="sm" variant="danger" onClick={() => setConfirming({ row: r, approve: false })}>Reject</Button>
+                    </div>
+                  ) : <span className="muted" style={{ fontSize: 12 }}>By {r.reviewedBy}</span>,
+                },
+              ]}
+              emptyText="No live requests from this agency's hosts."
+            />
+            {confirming && (
+              <ConfirmDialog
+                title={confirming.approve ? 'Approve this go-live request?' : 'Reject this go-live request?'}
+                danger={!confirming.approve}
+                busy={busy}
+                confirmLabel={confirming.approve ? 'Approve' : 'Reject'}
+                message={confirming.approve
+                  ? `${confirming.row.host} (@${confirming.row.username || '—'}) will become a host of your agency and can start going live immediately.`
+                  : `${confirming.row.host} (@${confirming.row.username || '—'})'s request will be rejected.`}
+                onConfirm={decide}
+                onClose={() => setConfirming(null)}
+              />
+            )}
+          </>
         )
       }}
     </AgencyPage>

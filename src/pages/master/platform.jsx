@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ListPage, StatGrid, AsyncView } from '../_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, PillTabs, KV, useToast } from '../../components/ui.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, PillTabs, KV, useToast, ConfirmDialog } from '../../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
@@ -45,18 +45,26 @@ export function LiveRequests() {
 function RequestsTable() {
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listLiveRequests)
-  const [busy, setBusy] = useState(null)
+  const [busy, setBusy] = useState(false)
+  /* A single misclick here makes a real user a host of whatever agency the
+     row happens to belong to — this view spans every agency platform-wide,
+     test agencies included, with nothing distinguishing them. Requiring an
+     explicit confirmation that names both the user and the agency is the
+     fix for that, not removing the oversight capability itself. */
+  const [confirming, setConfirming] = useState(null) // { row, approve }
 
-  const decide = async (r, approve) => {
-    setBusy(r.id)
+  const decide = async () => {
+    const { row: r, approve } = confirming
+    setBusy(true)
     try {
       await decideLiveRequest(r.id, approve)
-      toast(`${r.idShort} ${approve ? 'approved' : 'rejected'}`)
+      toast(`${r.host} — ${approve ? 'approved' : 'rejected'}`)
+      setConfirming(null)
       reload()
     } catch (e) {
       toast(e.message || 'Could not update request')
     } finally {
-      setBusy(null)
+      setBusy(false)
     }
   }
 
@@ -87,14 +95,27 @@ function RequestsTable() {
           {
             key: 'actions', header: 'Actions', render: (r) => r.status === 'Pending' ? (
               <div className="hstack" style={{ gap: 6 }}>
-                <Button size="sm" variant="primary" disabled={busy === r.id} onClick={() => decide(r, true)}>Accept</Button>
-                <Button size="sm" variant="danger" disabled={busy === r.id} onClick={() => decide(r, false)}>Reject</Button>
+                <Button size="sm" variant="primary" onClick={() => setConfirming({ row: r, approve: true })}>Accept</Button>
+                <Button size="sm" variant="danger" onClick={() => setConfirming({ row: r, approve: false })}>Reject</Button>
               </div>
             ) : <span className="muted" style={{ fontSize: 12 }}>By {r.reviewedBy}</span>,
           },
         ]}
         emptyText="No live requests."
       />
+      {confirming && (
+        <ConfirmDialog
+          title={confirming.approve ? 'Approve this go-live request?' : 'Reject this go-live request?'}
+          danger={!confirming.approve}
+          busy={busy}
+          confirmLabel={confirming.approve ? 'Approve' : 'Reject'}
+          message={confirming.approve
+            ? `${confirming.row.host} (@${confirming.row.username || '—'}) will become a host of ${confirming.row.agency === '—' ? 'no agency on file' : confirming.row.agency} (Agency ID ${confirming.row.agencyDisplayId ?? '—'}) and can start going live immediately. Make sure this is the agency they actually meant to join.`
+            : `${confirming.row.host} (@${confirming.row.username || '—'})'s request to join ${confirming.row.agency === '—' ? 'no agency on file' : confirming.row.agency} will be rejected.`}
+          onConfirm={decide}
+          onClose={() => setConfirming(null)}
+        />
+      )}
     </AsyncView>
   )
 }
@@ -145,7 +166,6 @@ export function BadgeManagement() {
 
   const fields = [
     { name: 'name', label: 'Badge name', required: true },
-    { name: 'emoji', label: 'Icon / emoji (fallback if no file is uploaded)', placeholder: '🏅' },
     { name: 'icon_url', label: 'Icon / animation file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
       onUpload: (file) => uploadMedia('gift-assets', 'badges', file), hint: 'SVGA, WebP, MP4 or PNG' },
     { name: 'criteria', label: 'Unlock criteria', full: true },
@@ -224,7 +244,6 @@ export function LeaderboardFrame() {
 
   const fields = [
     { name: 'name', label: 'Frame name', required: true },
-    { name: 'emoji', label: 'Preview emoji (fallback if no file is uploaded)', placeholder: '🏆' },
     { name: 'icon_url', label: 'Preview file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
       onUpload: (file) => uploadMedia('gift-assets', 'leaderboard-frames', file), hint: 'SVGA, WebP, MP4 or PNG' },
     { name: 'scope', label: 'Scope', type: 'select', options: LBF_SCOPES.map(gOpt), required: true },
@@ -297,7 +316,6 @@ export function ProfileFrame() {
 
   const fields = [
     { name: 'name', label: 'Frame name', required: true },
-    { name: 'emoji', label: 'Preview emoji (fallback if no file is uploaded)', placeholder: '💫' },
     { name: 'icon_url', label: 'Preview file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
       onUpload: (file) => uploadMedia('gift-assets', 'frames', file), hint: 'SVGA, WebP, MP4 or PNG' },
     { name: 'unlock_type', label: 'Unlock type', type: 'select', options: FRAME_UNLOCK_TYPES.map(gOpt), required: true },
