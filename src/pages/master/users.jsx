@@ -65,11 +65,10 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
           tabs={[
             { label: 'All', value: 'all', filter: () => true },
             { label: 'Hosts', value: 'h', filter: (r) => r.isHost },
-            { label: 'Staff', value: 's', filter: (r) => r.isStaff },
             { label: 'Suspended', value: 'x', filter: (r) => r.status === 'Suspended' },
           ]}
           filters={[
-            { label: 'Role', options: ['User', 'Host', ...Object.values(ROLE_LABEL)], get: (r) => r.role },
+            { label: 'Role', options: ['User', 'Host'], get: (r) => r.role },
             { label: 'Status', options: ['Active', 'Inactive', 'Suspended'], get: (r) => r.status },
           ]}
           columns={[

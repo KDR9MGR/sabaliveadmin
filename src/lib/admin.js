@@ -9,19 +9,19 @@ const titleCase = (s) =>
   s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s
 export const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', global_admin: 'Global Admin', country_admin: 'Country Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
 
-function deriveRole(row) {
-  if (row.staff_roles?.role) return ROLE_LABEL[row.staff_roles.role] || row.staff_roles.role
-  if (row.host_profiles) return 'Host'
-  return 'User'
-}
-
 /* ---------------------------------------------------------------- USERS */
+/* Staff/panel accounts have a profiles row too but aren't app users —
+   excluded here so "All Users" only ever lists real app users, not just
+   filterable down to them. */
 export async function listUsers() {
-  const rows = unwrap(await supabase
+  const staffIds = unwrap(await supabase.from('staff_roles').select('user_id')).map((s) => s.user_id)
+  let q = supabase
     .from('profiles')
-    .select('id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name)), staff_roles!user_id(role, agency_id, agencies(name))')
+    .select('id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name))')
     .order('created_at', { ascending: false })
-    .limit(1000))
+    .limit(1000)
+  if (staffIds.length) q = q.not('id', 'in', `(${staffIds.join(',')})`)
+  const rows = unwrap(await q)
   return rows.map((r) => ({
     id: r.id,
     idShort: shortId(r.id),
@@ -36,10 +36,9 @@ export async function listUsers() {
     status: titleCase(r.status),
     isLive: !!r.is_live,
     kyc: r.host_profiles ? titleCase(r.host_profiles.kyc_status) : '—',
-    role: deriveRole(r),
+    role: r.host_profiles ? 'Host' : 'User',
     isHost: !!r.host_profiles,
-    isStaff: !!r.staff_roles,
-    agency: r.host_profiles?.agencies?.name || r.staff_roles?.agencies?.name || '—',
+    agency: r.host_profiles?.agencies?.name || '—',
     coins: r.wallets?.coins ?? 0,
     joined: fmtDate(r.created_at),
   }))
