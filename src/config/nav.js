@@ -74,7 +74,6 @@ export const NAV = {
         { label: 'Global Admin', to: '/admin/admins/global-admin' },
         { label: 'Country Admin', to: '/admin/admins/country-admin' },
         { label: 'Sub Admin', to: '/admin/admins/sub-admin' },
-        { label: 'Agency', to: '/admin/admins/agency' },
         { label: 'Roles & Permissions', to: '/admin/admins/roles' },
       ]},
       { label: 'Agency Management', icon: 'building', cap: 'manage_agencies', children: [
