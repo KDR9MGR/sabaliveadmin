@@ -47,7 +47,7 @@ export async function fetchMasterDashboard() {
     count('staff_roles', (q) => q.in('role', ['admin', 'super_admin', 'agency_manager'])),
     supabase.from('profiles').select('id, name, created_at').order('created_at', { ascending: false }).limit(5),
     supabase.from('host_profiles').select('created_at, profiles(name), agencies(name)').order('created_at', { ascending: false }).limit(5),
-    supabase.from('live_streams').select('title, started_at, profiles(name)').order('started_at', { ascending: false }).limit(5),
+    supabase.from('live_streams').select('title, started_at, profiles!host_id(name)').order('started_at', { ascending: false }).limit(5),
     supabase.from('gift_transactions').select('coins, created_at, sender:sender_id(name), receiver:receiver_id(name)').order('created_at', { ascending: false }).limit(5),
     supabase.from('agencies').select('id, name, created_at').order('created_at', { ascending: false }).limit(5),
     supabase.from('agencies').select('id, name, commission_percent, status'),

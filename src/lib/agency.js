@@ -55,7 +55,7 @@ export async function agencyDashboard(agencyId) {
       ? supabase.from('gift_transactions').select('coins, created_at').in('receiver_id', hostIds).gte('created_at', daysAgoISO(30))
       : Promise.resolve({ data: [] }),
     hostIds.length
-      ? supabase.from('live_streams').select('title, started_at, status, profiles(name)').in('host_id', hostIds).order('started_at', { ascending: false }).limit(6)
+      ? supabase.from('live_streams').select('title, started_at, status, profiles!host_id(name)').in('host_id', hostIds).order('started_at', { ascending: false }).limit(6)
       : Promise.resolve({ data: [] }),
   ])
 
