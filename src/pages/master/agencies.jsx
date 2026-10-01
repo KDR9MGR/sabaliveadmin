@@ -37,7 +37,13 @@ export function AgencyList({ crumbLabel = 'Agencies', crumbRoot = CRUMBS } = {})
   }
   const remove = async (r) => {
     try { await deleteAgency(r.id); toast(`${r.name} deleted`); reload() }
-    catch (e) { toast(e.message?.includes('violates foreign key') ? 'Cannot delete — the agency still has hosts assigned' : (e.message || 'Delete failed')) }
+    catch (e) {
+      // Report whichever table is actually blocking the delete, rather than
+      // assuming it's always hosts — a rejected live_requests row, a salary
+      // payment, etc. can just as easily be the real reason.
+      const blocker = /on table "(\w+)"/.exec(e.message || '')?.[1]
+      toast(blocker ? `Cannot delete — it still has ${blocker.replace(/_/g, ' ')} records` : (e.message || 'Delete failed'))
+    }
   }
   const toggleStatus = async (r) => {
     const next = r.status === 'Active' ? 'inactive' : 'active'
