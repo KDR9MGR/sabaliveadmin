@@ -29,6 +29,7 @@ export function GlobalAdminAccounts() {
       crumbLabel="Global Admin"
       crumbRoot={CRUMBS}
       addPath="/admin/admins/global-admin/add"
+      allowGrant={false}
       intro="The top of the Global > Country > Sub > Agency ladder. A Global Admin sees and moves coins through the whole tree below it."
     />
   )
@@ -94,7 +95,8 @@ export function Admins() {
       crumbLabel="Admins"
       crumbRoot={CRUMBS}
       addPath="/admin/admins/add"
-      intro="Admin, Sub Admin and Agency accounts. Sub Admin and Agency need an agency selected — only a Super Admin can invite, grant, change or revoke a role."
+      allowGrant={false}
+      intro="Admin, Sub Admin and Agency accounts. Sub Admin and Agency need an agency selected."
     />
   )
 }

@@ -107,7 +107,7 @@ export function SuperDashboard() {
 
 /* ------------------------------------------------------------------ Admins */
 /* Shared staff-account management — grant / change / revoke staff_roles rows. */
-export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro, crumbRoot, addPath }) {
+export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro, crumbRoot, addPath, allowGrant = true }) {
   const toast = useToast()
   const nav = useNavigate()
   const { user } = useAuth()
@@ -153,7 +153,7 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
         crumbs={[...(crumbRoot || CR), crumbLabel]}
         actions={<>
           <Button icon="userPlus" onClick={() => nav(addPath)}>Add Admin</Button>
-          <Button variant="primary" icon="shieldUser" onClick={() => setGranting(true)}>Grant Role</Button>
+          {allowGrant && <Button variant="primary" icon="shieldUser" onClick={() => setGranting(true)}>Grant Role</Button>}
         </>}
       />
       {intro && <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{intro}</div></Card>}
@@ -180,11 +180,11 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
               ? { label: "Can't revoke yourself", icon: 'lock', onClick: () => {} }
               : { label: 'Revoke role', icon: 'trash', onClick: () => setRevoking(r) },
           ]}
-          emptyText="No accounts with these roles yet. Use “Grant Role” to add one."
+          emptyText={allowGrant ? 'No accounts with these roles yet. Use “Grant Role” to add one.' : 'No accounts with these roles yet. Use “Add Admin” to add one.'}
         />
       </AsyncView>
 
-      {granting && (
+      {allowGrant && granting && (
         <EntityForm
           title="Grant Staff Role"
           onClose={() => setGranting(false)}
