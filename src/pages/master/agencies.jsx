@@ -92,7 +92,7 @@ export function AgencyList({ crumbLabel = 'Agencies', crumbRoot = CRUMBS } = {})
       {adding && (
         <EntityForm
           title="Add Agency" onClose={() => setAdding(false)} onSubmit={create} savedMessage="Agency created"
-          initial={{ status: 'pending', country: 'India', commission_percent: 10 }}
+          initial={{ status: 'active', country: 'India', commission_percent: 10 }}
           fields={[
             { name: 'name', label: 'Agency name', required: true },
             { name: 'commission_percent', label: 'Commission %', type: 'number' },

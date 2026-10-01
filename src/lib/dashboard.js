@@ -33,7 +33,7 @@ export async function fetchMasterDashboard() {
   const [
     totalUsers, totalHosts, totalAgencies, activeLive,
     giftRows, liveStartRows,
-    subAdminsCount, staffCount,
+    subAdminsCount, staffCount, allStaffCount,
     recentProfiles, recentHosts, recentLive, recentGifts, recentAgencies,
     topAgenciesRaw, recentAudit,
   ] = await Promise.all([
@@ -45,6 +45,7 @@ export async function fetchMasterDashboard() {
     supabase.from('live_streams').select('started_at').gte('started_at', daysAgoISO(30)),
     count('staff_roles', (q) => q.eq('role', 'sub_admin')),
     count('staff_roles', (q) => q.in('role', ['admin', 'super_admin', 'agency_manager'])),
+    count('staff_roles'),
     supabase.from('profiles').select('id, name, created_at').order('created_at', { ascending: false }).limit(5),
     supabase.from('host_profiles').select('created_at, profiles(name), agencies(name)').order('created_at', { ascending: false }).limit(5),
     supabase.from('live_streams').select('title, started_at, profiles!host_id(name)').order('started_at', { ascending: false }).limit(5),
@@ -123,7 +124,8 @@ export async function fetchMasterDashboard() {
 
   return {
     stats: [
-      { key: 'Total Users', value: totalUsers.total.toLocaleString(), delta: totalUsers.delta, dir: totalUsers.dir, icon: 'users', tile: 'tile-purple' },
+      // staff/panel accounts have a profiles row too but aren't app users — excluded here (all roles, not just the 3 the breakdown chart below buckets separately).
+      { key: 'Total Users', value: Math.max(0, totalUsers.total - allStaffCount).toLocaleString(), delta: totalUsers.delta, dir: totalUsers.dir, icon: 'users', tile: 'tile-purple' },
       { key: 'Total Hosts', value: totalHosts.total.toLocaleString(), delta: totalHosts.delta, dir: totalHosts.dir, icon: 'video', tile: 'tile-green' },
       { key: 'Total Agencies', value: totalAgencies.total.toLocaleString(), delta: totalAgencies.delta, dir: totalAgencies.dir, icon: 'building', tile: 'tile-orange' },
       { key: 'Coins Gifted (This Month)', value: giftsThisMonth.toLocaleString(), icon: 'gift', tile: 'tile-blue' },

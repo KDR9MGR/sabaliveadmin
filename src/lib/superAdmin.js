@@ -39,7 +39,9 @@ export async function superDashboard() {
 
   return {
     stats: [
-      { key: 'Total Users', value: users.toLocaleString(), icon: 'users', tile: 'tile-purple' },
+      // staff/panel accounts have a profiles row too but aren't app users —
+      // excluded here; they get their own "Staff Accounts" tile below.
+      { key: 'Total Users', value: Math.max(0, users - staff).toLocaleString(), icon: 'users', tile: 'tile-purple' },
       { key: 'Hosts', value: hosts.toLocaleString(), icon: 'video', tile: 'tile-green' },
       { key: 'Agencies', value: agencies.toLocaleString(), icon: 'building', tile: 'tile-orange' },
       { key: 'Staff Accounts', value: staff.toLocaleString(), icon: 'shield', tile: 'tile-blue' },
