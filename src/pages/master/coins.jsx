@@ -9,7 +9,7 @@ import {
   listGifts, createGift, updateGift, deleteGift,
   listCoinPackages, createCoinPackage, updateCoinPackage, deleteCoinPackage,
   listWalletLedger, listGiftTransactions,
-  createCoinGrant, listCoinGrants, pullBackCoinGrant, profileOptions,
+  createCoinGrant, listMyCoinHistory, pullBackCoinGrant, profileOptions,
   GIFT_CATEGORIES, PLATFORMS,
 } from '../../lib/coins.js'
 import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
@@ -266,7 +266,7 @@ const DISTRIBUTE_KINDS = [
 export function TransferCoins() {
   const toast = useToast()
   const { data: opts } = useAsyncData(profileOptions)
-  const { data: recent, reload } = useAsyncData(listCoinGrants)
+  const { data: recent, reload } = useAsyncData(async () => (await listMyCoinHistory()).filter((r) => r.direction === 'Sent'))
   const [mode, setMode] = useState('To a user')
   const [busy, setBusy] = useState(false)
   const [values, setValues] = useState({ granted_to: '', coins: '', note: '' })
@@ -342,13 +342,13 @@ export function TransferCoins() {
 /* ------------------------------------------------------------------ Transfer History (real: coin_grants list) */
 export function TransferHistory() {
   const toast = useToast()
-  const { data: rows, loading, error, reload } = useAsyncData(listCoinGrants)
+  const { data: rows, loading, error, reload } = useAsyncData(listMyCoinHistory)
   const [busy, setBusy] = useState(null)
 
   const pullBack = async (r) => {
     setBusy(r.id)
     try {
-      await pullBackCoinGrant(r.id)
+      await pullBackCoinGrant(r.grantId)
       toast(`Pulled back ${r.coins} coins from ${r.recipient}`)
       reload()
     } catch (e) {
@@ -373,14 +373,17 @@ export function TransferHistory() {
             personCol('recipient', 'username'),
             { key: 'recipientType', header: 'Type', render: (r) => <Tag>{r.recipientType}</Tag> },
             numCol('coins', 'Coins'),
-            { key: 'by', header: 'Granted by' },
+            { key: 'direction', header: 'Direction', render: (r) => <Tag>{r.direction}</Tag> },
+            { key: 'by', header: 'From' },
             { key: 'note', header: 'Note' },
             { key: 'date', header: 'Date', sortable: true },
           ]}
           rowActions={(r) => [
-            { label: busy === r.id ? 'Working…' : 'Pull back', icon: 'lock', onClick: () => pullBack(r) },
+            r.canPullBack
+              ? { label: busy === r.id ? 'Working…' : 'Pull back', icon: 'lock', onClick: () => pullBack(r) }
+              : { label: 'Nothing to pull back', icon: 'lock', onClick: () => {} },
           ]}
-          emptyText="No coin grants recorded yet."
+          emptyText="No coin transfers involving your account yet."
         />
       </AsyncView>
     </>

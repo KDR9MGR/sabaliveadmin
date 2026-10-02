@@ -126,20 +126,39 @@ export async function createCoinGrant({ granted_to, coins, note }) {
     granted_to, granted_by, coins: Number(coins), note: note || null,
   }).select().single())
 }
-export async function listCoinGrants() {
-  const rows = unwrap(await supabase.from('coin_grants')
-    .select('id, coins, note, created_at, recipient:granted_to(name, username, staff_roles!user_id(role)), granter:granted_by(name)')
-    .order('created_at', { ascending: false }).limit(500))
-  return rows.map((r) => ({
-    id: r.id, idShort: shortId(r.id),
-    recipient: r.recipient?.name || '—',
-    username: r.recipient?.username,
-    recipientType: r.recipient?.staff_roles?.role ? (ROLE_LABEL[r.recipient.staff_roles.role] || r.recipient.staff_roles.role) : 'User',
-    coins: r.coins,
-    by: r.granter?.name || '—',
-    note: r.note || '—',
-    date: fmtDate(r.created_at),
-  }))
+/* The signed-in Master's OWN coin history — grants and wallet transfers where
+   this account is the sender/granter or the receiver, not the platform-wide
+   list (RLS lets any admin read every row, so the filter lives here). */
+export async function listMyCoinHistory() {
+  const me = await myId()
+  const typeOf = (p) => (p?.staff_roles?.role ? (ROLE_LABEL[p.staff_roles.role] || p.staff_roles.role) : 'User')
+  const [grants, transfers] = await Promise.all([
+    supabase.from('coin_grants')
+      .select('id, coins, note, created_at, granted_by, recipient:granted_to(name, username, staff_roles!user_id(role)), granter:granted_by(name)')
+      .or(`granted_by.eq.${me},granted_to.eq.${me}`)
+      .order('created_at', { ascending: false }).limit(500).then(unwrap),
+    supabase.from('coin_transfers')
+      .select('id, coins, note, created_at, sender_id, sender:sender_id(name), recipient:recipient_id(name, username, staff_roles!user_id(role))')
+      .or(`sender_id.eq.${me},recipient_id.eq.${me}`)
+      .order('created_at', { ascending: false }).limit(500).then(unwrap),
+  ])
+  const rows = [
+    ...grants.map((r) => ({
+      id: `grant-${r.id}`, grantId: r.id, idShort: shortId(r.id),
+      recipient: r.recipient?.name || '—', username: r.recipient?.username, recipientType: typeOf(r.recipient),
+      coins: r.coins, by: r.granter?.name || '—', note: r.note || '—',
+      direction: r.granted_by === me ? 'Sent' : 'Received', canPullBack: r.granted_by === me,
+      at: r.created_at, date: fmtDate(r.created_at),
+    })),
+    ...transfers.map((r) => ({
+      id: `transfer-${r.id}`, idShort: shortId(r.id),
+      recipient: r.recipient?.name || '—', username: r.recipient?.username, recipientType: typeOf(r.recipient),
+      coins: Number(r.coins), by: r.sender?.name || '—', note: r.note || '—',
+      direction: r.sender_id === me ? 'Sent' : 'Received', canPullBack: false,
+      at: r.created_at, date: fmtDate(r.created_at),
+    })),
+  ]
+  return rows.sort((a, b) => new Date(b.at) - new Date(a.at))
 }
 
 /* Reverses a coin_grants-sourced credit (a direct grant or one row of a
