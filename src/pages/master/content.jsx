@@ -4,10 +4,12 @@ import { PageHeader, Card, Button, StatusBadge, Tag, useToast } from '../../comp
 import { statusCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
+import SvgaPlayer from '../../components/SvgaPlayer.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { UPLOAD_ACCEPT, mediaKind } from '../../lib/storage.js'
 import {
   listBanners, createBanner, updateBanner, setBannerStatus, uploadBannerImage,
+  getBannerSettings, updateBannerSettings, BANNER_INTERVAL_MIN, BANNER_INTERVAL_MAX,
   listLegalPages, createLegalPage, updateLegalPage, setLegalStatus,
   listAnnouncements, createAnnouncement, updateAnnouncement, markAnnouncementSent, broadcastAnnouncement,
   BANNER_PLACEMENTS, BANNER_STATUSES, LEGAL_STATUSES, ANNOUNCE_AUDIENCES, ANNOUNCE_CHANNELS,
@@ -22,6 +24,51 @@ const AUDIENCE_OPTS = ANNOUNCE_AUDIENCES.map(opt)
 const CHANNEL_OPTS = ANNOUNCE_CHANNELS.map(opt)
 
 /* ------------------------------------------------------------------ Banners */
+/* How long each banner stays on the app's home screen before sliding to the next. */
+function BannerSlideSettings() {
+  const toast = useToast()
+  const { data, loading, error, reload } = useAsyncData(getBannerSettings)
+  const [value, setValue] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const current = data?.slide_interval_seconds
+  const shown = value ?? (current != null ? String(current) : '')
+  const dirty = value != null && Number(value) !== current
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      await updateBannerSettings({ slide_interval_seconds: value })
+      toast('Slide interval saved — the app picks it up within a few minutes')
+      setValue(null)
+      reload()
+    } catch (e) {
+      toast(e.message || 'Could not save')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <Card title="Auto-slide" sub="How long each banner shows on the app's home screen before sliding to the next">
+      <div className="card__body">
+        {error ? <div className="muted">Couldn't load the setting — {error}</div> : (
+          <div className="hstack wrap" style={{ gap: 12, alignItems: 'flex-end' }}>
+            <div className="field" style={{ margin: 0, width: 200 }}>
+              <label>Slide every (seconds)</label>
+              <input className="input" type="number" min={BANNER_INTERVAL_MIN} max={BANNER_INTERVAL_MAX} step="1"
+                disabled={loading} value={shown} onChange={(e) => setValue(e.target.value)} />
+            </div>
+            <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy || loading || !dirty} onClick={save}>
+              {busy ? 'Saving…' : 'Save'}
+            </Button>
+            <span className="muted" style={{ fontSize: 12 }}>
+              {BANNER_INTERVAL_MIN}–{BANNER_INTERVAL_MAX} seconds. Default 20. Only applies when there is more than one active banner.
+            </span>
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 export function Banners() {
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listBanners)
@@ -30,7 +77,7 @@ export function Banners() {
 
   const fields = [
     { name: 'title', label: 'Title', required: true },
-    { name: 'image_url', label: 'Image', type: 'image', accept: UPLOAD_ACCEPT, onUpload: uploadBannerImage, hint: 'SVGA, WebP, MP4 or PNG', full: true },
+    { name: 'image_url', label: 'Image', type: 'image', accept: UPLOAD_ACCEPT, onUpload: uploadBannerImage, hint: 'SVGA, MP4, GIF, WebP or PNG', full: true },
     { name: 'placement', label: 'Placement', type: 'select', options: PLACEMENT_OPTS, required: true },
     { name: 'starts_at', label: 'Starts (YYYY-MM-DD)', placeholder: '2026-09-10' },
     { name: 'ends_at', label: 'Ends (YYYY-MM-DD)', placeholder: '2026-09-20', hint: 'Leave blank to run with no expiry' },
@@ -41,6 +88,7 @@ export function Banners() {
     <>
       <PageHeader title="Banners" crumbs={[...CRUMBS, 'Banners']}
         actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Add Banner</Button>} />
+      <div className="mb-16"><BannerSlideSettings /></div>
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
@@ -57,6 +105,7 @@ export function Banners() {
                 <span className="hstack" style={{ gap: 10 }}>
                   {kind === 'video' ? <video src={r.imageUrl} autoPlay loop muted playsInline style={box} />
                     : kind === 'image' ? <img src={r.imageUrl} alt="" style={box} />
+                    : kind === 'svga' ? <SvgaPlayer url={r.imageUrl} size={44} style={{ borderRadius: 6, overflow: 'hidden' }} />
                     : <span style={{ ...box, display: 'block', background: 'linear-gradient(135deg,#7c3aed,#ec4899)' }} />}
                   <b>{r.title}</b>
                 </span>

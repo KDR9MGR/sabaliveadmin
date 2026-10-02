@@ -15,6 +15,28 @@ export const ANNOUNCE_CHANNELS = ['in_app', 'push', 'email']
 /* ---------------------------------------------------------------- banners */
 export const uploadBannerImage = (file) => uploadMedia('banners', 'banners', file)
 
+/* How long each home-screen banner shows before the app's carousel slides to the
+   next one (banner_settings, a single row; the database allows 3-600 seconds).
+   Master and Super Admin can change it — see migration 20261002100000. */
+export const BANNER_INTERVAL_MIN = 3
+export const BANNER_INTERVAL_MAX = 600
+
+export async function getBannerSettings() {
+  return unwrap(await supabase.from('banner_settings')
+    .select('slide_interval_seconds, updated_at').eq('id', true).single())
+}
+
+export async function updateBannerSettings({ slide_interval_seconds }) {
+  const n = Number(slide_interval_seconds)
+  if (!Number.isInteger(n) || n < BANNER_INTERVAL_MIN || n > BANNER_INTERVAL_MAX) {
+    throw new Error(`Enter a whole number of seconds between ${BANNER_INTERVAL_MIN} and ${BANNER_INTERVAL_MAX}`)
+  }
+  const { data: { session } } = await supabase.auth.getSession()
+  return unwrap(await supabase.from('banner_settings')
+    .update({ slide_interval_seconds: n, updated_at: new Date().toISOString(), updated_by: session?.user?.id ?? null })
+    .eq('id', true).select('slide_interval_seconds').single())
+}
+
 export async function listBanners() {
   const rows = unwrap(await supabase.from('banners')
     .select('id, title, image_url, placement, starts_at, ends_at, status')
