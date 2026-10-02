@@ -30,6 +30,7 @@ export function GlobalAdminAccounts() {
       crumbRoot={CRUMBS}
       addPath="/admin/admins/global-admin/add"
       allowGrant={false}
+      allowEditProfile
       intro="The top of the Global > Country > Sub > Agency ladder. A Global Admin sees and moves coins through the whole tree below it."
     />
   )
@@ -45,7 +46,7 @@ export const AddGlobalAdmin = () => (
   />
 )
 
-export const MasterCountryAdmins = () => <CountryAdminsList addPath="/admin/admins/country-admin/add" />
+export const MasterCountryAdmins = () => <CountryAdminsList addPath="/admin/admins/country-admin/add" manage />
 export const MasterAddCountryAdmin = () => (
   <AddStaffForm
     title="Add Country Admin"
@@ -57,7 +58,7 @@ export const MasterAddCountryAdmin = () => (
   />
 )
 
-export const MasterSubAdmins = () => <CountrySubAdmins addPath="/admin/admins/sub-admin/add" />
+export const MasterSubAdmins = () => <CountrySubAdmins addPath="/admin/admins/sub-admin/add" manage />
 export const MasterAddSubAdmin = () => (
   <AddStaffForm
     title="Add Sub Admin"
@@ -69,7 +70,7 @@ export const MasterAddSubAdmin = () => (
   />
 )
 
-export const MasterAgencies = () => <CountryAgencies addPath="/admin/admins/agency/add" />
+export const MasterAgencies = () => <CountryAgencies addPath="/admin/admins/agency/add" manage />
 export const MasterAddAgency = () => (
   <AddAgencyForm
     crumbRoot={[...CRUMBS, 'Agency']}

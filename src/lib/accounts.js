@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate, ROLE_LABEL } from './admin.js'
+import { staffEmails } from './country.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 
@@ -130,6 +131,48 @@ export async function inviteStaff({ email, role, agency_id, country_admin_id, fu
     try { msg = (await error.context?.json())?.error || msg } catch { /* keep msg */ }
     throw new Error(msg)
   }
+  return data
+}
+
+/* ---------------------------------------------------------------- Master: edit another staff account
+   Profile fields go through the admin_update_staff_profile RPC (it must run as
+   the caller so the username lock lets the change in); login email / password
+   go through the admin-update-staff-auth Edge Function (needs the service
+   role). Both are Master-only on the server. */
+export async function getStaffProfile(userId) {
+  const [row, emails] = await Promise.all([
+    supabase.from('profiles')
+      .select('name, username, phone, location, bio, avatar_url')
+      .eq('id', userId).maybeSingle().then(unwrap),
+    staffEmails([userId]),
+  ])
+  if (!row) throw new Error('Profile not found')
+  return { ...row, email: emails[userId] || '' }
+}
+
+export async function updateStaffProfile(userId, { name, username, phone, location, bio, avatar_url }) {
+  const { error } = await supabase.rpc('admin_update_staff_profile', {
+    p_user_id: userId, p_name: name, p_username: username, p_phone: phone || '',
+    p_location: location, p_bio: bio ?? '', p_avatar_url: avatar_url || null,
+  })
+  if (error) throw error
+}
+
+export async function updateStaffCredentials(userId, { email, password }) {
+  const { error } = await supabase.functions.invoke('admin-update-staff-auth', {
+    body: { user_id: userId, email: email || undefined, password: password || undefined },
+  })
+  if (error) {
+    let msg = error.message
+    try { msg = (await error.context?.json())?.error || msg } catch { /* keep msg */ }
+    throw new Error(msg)
+  }
+}
+
+/* Revokes the agency's manager login AND sets the agency Inactive, atomically. */
+export async function revokeAgencyManager(agencyId) {
+  const { data, error } = await supabase.rpc('revoke_agency_manager', { p_agency_id: agencyId })
+  if (error) throw error
   return data
 }
 

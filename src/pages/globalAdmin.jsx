@@ -14,6 +14,7 @@ import { TableSkeleton, LoadError } from './_templates.jsx'
 import { Profile } from './shared.jsx'
 import { AddStaffForm } from './addStaff.jsx'
 import { AddAgencyForm } from './addAgency.jsx'
+import StaffRowManager from '../components/StaffRowManager.jsx'
 import { TransferCoinsPage, CoinHistoryPage, USER_KIND } from './cascade.jsx'
 import { UsersList } from './master/users.jsx'
 import {
@@ -49,9 +50,29 @@ const ADD_AGENCY = '/global-admin/admin-management/agency/add'
 /* Shared with Master (master/admins.jsx), which sees the same whole tree
    (is_global_scope() covers 'admin' too) but needs its own /admin/... add
    path, hence the addPath prop instead of a hardcoded route. */
-export function CountryAdminsList({ addPath }) {
+export function CountryAdminsList({ addPath, manage = false }) {
   const nav = useNavigate()
   const { data, loading, error, reload } = useAsyncData(countryScope, [])
+  const table = (rowActions) => (
+    <DataTable
+      rows={data.countryAdmins}
+      rowActions={rowActions}
+      searchKeys={['name', 'username', 'displayId', 'email']}
+      columns={[
+        personCol('name', 'username'),
+        emailCol(),
+        { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+        roleCol(),
+        statusCol('accountStatus', 'Status'),
+        imageCol(),
+        numCol('subAdmins', 'Sub Admins'),
+        numCol('agencies', 'Agencies'),
+        numCol('hosts', 'Hosts'),
+        { key: 'granted', header: 'Added', sortable: true },
+      ]}
+      emptyText="No country admins yet — use “Add Country Admin” to create one."
+    />
+  )
   return (
     <>
       <PageHeader
@@ -61,25 +82,8 @@ export function CountryAdminsList({ addPath }) {
       />
       {error ? <LoadError error={error} onRetry={reload} />
         : loading || !data ? <TableSkeleton />
-        : (
-          <DataTable
-            rows={data.countryAdmins}
-            searchKeys={['name', 'username', 'displayId', 'email']}
-            columns={[
-              personCol('name', 'username'),
-              emailCol(),
-              { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
-              roleCol(),
-              statusCol('accountStatus', 'Status'),
-              imageCol(),
-              numCol('subAdmins', 'Sub Admins'),
-              numCol('agencies', 'Agencies'),
-              numCol('hosts', 'Hosts'),
-              { key: 'granted', header: 'Added', sortable: true },
-            ]}
-            emptyText="No country admins yet — use “Add Country Admin” to create one."
-          />
-        )}
+        : manage ? <StaffRowManager kind="staff" reload={reload}>{table}</StaffRowManager>
+        : table()}
     </>
   )
 }

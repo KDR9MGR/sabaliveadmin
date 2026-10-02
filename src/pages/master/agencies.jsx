@@ -13,6 +13,7 @@ import {
   listCommissionPlans, createCommissionPlan, updateCommissionPlan, setCommissionPlanStatus, PLAN_STATUSES,
 } from '../../lib/commissionPlans.js'
 import { TransferRequests } from './users.jsx'
+import { RevokeAgencyManagerDialog } from '../../components/StaffRowManager.jsx'
 
 const CRUMBS = ['Home', 'Agency Management']
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
@@ -29,6 +30,7 @@ export function AgencyList({ crumbLabel = 'Agencies', crumbRoot = CRUMBS } = {})
   const { data: rows, loading, error, reload } = useAsyncData(listAgencies)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [revokingManager, setRevokingManager] = useState(null)
 
   const create = async (v) => { await createAgency(v); reload() }
   const edit = async (v) => {
@@ -82,6 +84,7 @@ export function AgencyList({ crumbLabel = 'Agencies', crumbRoot = CRUMBS } = {})
             { label: 'View details', icon: 'eye', onClick: () => nav(`/admin/agencies/${r.id}`) },
             { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
             { label: r.status === 'Active' ? 'Deactivate' : 'Activate', icon: 'lock', onClick: () => toggleStatus(r) },
+            { label: 'Revoke manager & set Inactive', icon: 'trash', onClick: () => setRevokingManager(r) },
             { sep: true },
             { label: 'Delete', icon: 'trash', onClick: () => remove(r) },
           ]}
@@ -89,6 +92,9 @@ export function AgencyList({ crumbLabel = 'Agencies', crumbRoot = CRUMBS } = {})
         />
       </AsyncView>
 
+      {revokingManager && (
+        <RevokeAgencyManagerDialog agency={revokingManager} onClose={() => setRevokingManager(null)} onDone={reload} />
+      )}
       {adding && (
         <EntityForm
           title="Add Agency" onClose={() => setAdding(false)} onSubmit={create} savedMessage="Agency created"

@@ -7,6 +7,7 @@ import EntityForm from '../components/EntityForm.jsx'
 import Icon from '../components/Icon.jsx'
 import PanelChip from '../components/PanelChip.jsx'
 import UserPicker from '../components/UserPicker.jsx'
+import EditStaffProfile from '../components/EditStaffProfile.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
@@ -107,7 +108,7 @@ export function SuperDashboard() {
 
 /* ------------------------------------------------------------------ Admins */
 /* Shared staff-account management — grant / change / revoke staff_roles rows. */
-export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro, crumbRoot, addPath, allowGrant = true }) {
+export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro, crumbRoot, addPath, allowGrant = true, allowEditProfile = false }) {
   const toast = useToast()
   const nav = useNavigate()
   const { user } = useAuth()
@@ -119,6 +120,7 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
   const [granting, setGranting] = useState(false)
   const [changing, setChanging] = useState(null)
   const [revoking, setRevoking] = useState(null)
+  const [editingProfile, setEditingProfile] = useState(null)
   const [perms, setPerms] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -174,6 +176,7 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
             r.roleRaw === 'super_admin'
               ? { label: 'Full access (Super Admin)', icon: 'shield', onClick: () => {} }
               : { label: 'Permissions', icon: 'sliders', onClick: () => setPerms(r) },
+            ...(allowEditProfile ? [{ label: 'Edit profile', icon: 'edit', onClick: () => setEditingProfile(r) }] : []),
             { label: 'Change role', icon: 'shieldUser', onClick: () => setChanging(r) },
             { sep: true },
             r.id === user?.id
@@ -218,6 +221,9 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
           onConfirm={doRevoke}
           onClose={() => setRevoking(null)}
         />
+      )}
+      {editingProfile && (
+        <EditStaffProfile account={editingProfile} onClose={() => setEditingProfile(null)} onSaved={reload} />
       )}
       {perms && (
         <PermissionsDrawer

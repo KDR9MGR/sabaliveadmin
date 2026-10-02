@@ -28,6 +28,7 @@ import {
   otherCountryAdminOptions, transferAgency, transferAgencyCountry, transferHost, transferSubAdmin,
 } from '../lib/country.js'
 import { countryList } from '../lib/countries.js'
+import StaffRowManager from '../components/StaffRowManager.jsx'
 
 const CR = ['Home']
 const USER_CR = [...CR, 'User Management']
@@ -231,7 +232,7 @@ export function CountryTransferCountry() {
 
 /* ------------------------------------------------------------------ Admin Management */
 /* `addPath` is where "Add Sub Admin" goes — Country Admin and Global Admin each have their own. */
-export function CountrySubAdmins({ addPath = '/country-admin/admin-management/sub-admin/add' }) {
+export function CountrySubAdmins({ addPath = '/country-admin/admin-management/sub-admin/add', manage = false }) {
   const nav = useNavigate()
   return (
     <Loaded
@@ -240,15 +241,11 @@ export function CountrySubAdmins({ addPath = '/country-admin/admin-management/su
       load={countryScope}
       actions={() => <Button variant="primary" icon="userPlus" onClick={() => nav(addPath)}>Add Sub Admin</Button>}
     >
-      {({ subAdmins, seesAll }) => (
-        <>
-          <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-            {seesAll
-              ? 'Each sub admin belongs to one Country Admin. Adding a sub admin creates their login.'
-              : 'Sub admins you add belong to you, and so do the agencies they own. Adding a sub admin creates their login.'}
-          </div></Card>
+      {({ subAdmins, seesAll }, reload) => {
+        const table = (rowActions) => (
           <DataTable
             rows={subAdmins}
+            rowActions={rowActions}
             searchKeys={['name', 'username', 'displayId', 'email']}
             columns={[
               personCol('name', 'username'),
@@ -264,13 +261,23 @@ export function CountrySubAdmins({ addPath = '/country-admin/admin-management/su
             ]}
             emptyText="No sub admins yet — use “Add Sub Admin” to create one."
           />
-        </>
-      )}
+        )
+        return (
+          <>
+            <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+              {seesAll
+                ? 'Each sub admin belongs to one Country Admin. Adding a sub admin creates their login.'
+                : 'Sub admins you add belong to you, and so do the agencies they own. Adding a sub admin creates their login.'}
+            </div></Card>
+            {manage ? <StaffRowManager kind="staff" reload={reload}>{table}</StaffRowManager> : table()}
+          </>
+        )
+      }}
     </Loaded>
   )
 }
 
-export function CountryAgencies({ addPath = '/country-admin/admin-management/agency/add' }) {
+export function CountryAgencies({ addPath = '/country-admin/admin-management/agency/add', manage = false }) {
   const nav = useNavigate()
   return (
     <Loaded
@@ -279,14 +286,11 @@ export function CountryAgencies({ addPath = '/country-admin/admin-management/age
       load={countryScope}
       actions={() => <Button variant="primary" icon="plus" onClick={() => nav(addPath)}>Add Agency</Button>}
     >
-      {({ agencies }) => (
-        <>
-          <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-            Adding an agency also creates its own login. New agencies start as <b>Pending</b> until a platform
-            admin approves them and sets the commission.
-          </div></Card>
+      {({ agencies }, reload) => {
+        const table = (rowActions) => (
           <DataTable
             rows={agencies}
+            rowActions={rowActions}
             searchKeys={['name', 'subAdmin', 'manager', 'displayId', 'country', 'email']}
             tabs={[
               { label: 'All', value: 'all', filter: () => true },
@@ -309,8 +313,17 @@ export function CountryAgencies({ addPath = '/country-admin/admin-management/age
             ]}
             emptyText="No agencies under your sub admins yet."
           />
-        </>
-      )}
+        )
+        return (
+          <>
+            <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+              Adding an agency also creates its own login. New agencies start as <b>Pending</b> until a platform
+              admin approves them and sets the commission.
+            </div></Card>
+            {manage ? <StaffRowManager kind="agency" reload={reload}>{table}</StaffRowManager> : table()}
+          </>
+        )
+      }}
     </Loaded>
   )
 }
