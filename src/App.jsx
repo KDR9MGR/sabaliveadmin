@@ -22,6 +22,7 @@ import { HostsMgmt, HostAssignment, HostApplications, HostDetail, KycReview } fr
 import { HostCodes } from './pages/master/hostCodes.jsx'
 import { GiftSettings, CoinPackages, Transactions, GiftHistory, TransferCoins, TransferHistory } from './pages/master/coins.jsx'
 import { Banners, LegalPages, Announcements } from './pages/master/content.jsx'
+import { FlaggedMessages } from './pages/master/flagged.jsx'
 import ApplicationConfig from './pages/master/config.jsx'
 import { LiveRequests, LuckyBox, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary, Reports, SystemManagement } from './pages/master/platform.jsx'
 import { Withdrawals } from './pages/master/withdrawals.jsx'
@@ -90,6 +91,7 @@ export default function App() {
               <Route path="users/hosts" element={<HostsList />} />
               <Route path="users/sub-admins" element={<SubAdminsList />} />
               <Route path="users/ids" element={<UserIds />} />
+              <Route path="users/flagged" element={<FlaggedMessages />} />
               <Route path="users/status" element={<AccountStatus />} />
               <Route path="users/transfers" element={<TransferRequests />} />
               <Route path="users/transfer-host" element={<MasterTransferHost />} />
