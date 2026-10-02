@@ -23,6 +23,8 @@ import { HostCodes } from './pages/master/hostCodes.jsx'
 import { GiftSettings, CoinPackages, Transactions, GiftHistory, TransferCoins, TransferHistory } from './pages/master/coins.jsx'
 import { Banners, LegalPages, Announcements } from './pages/master/content.jsx'
 import { FlaggedMessages } from './pages/master/flagged.jsx'
+import { StoreItems, LiveEmojis } from './pages/master/store.jsx'
+import { STORE_CATEGORY_KEYS } from './lib/store.js'
 import ApplicationConfig from './pages/master/config.jsx'
 import { LiveRequests, LuckyBox, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary, Reports, SystemManagement } from './pages/master/platform.jsx'
 import { Withdrawals } from './pages/master/withdrawals.jsx'
@@ -134,6 +136,7 @@ export default function App() {
             </Route>
 
             <Route element={<RequireCap cap="manage_coins" />}>
+              {STORE_CATEGORY_KEYS.map((c) => <Route key={c} path={`store/${c}`} element={<StoreItems category={c} />} />)}
               <Route path="coins/gifts" element={<GiftSettings />} />
               <Route path="coins/packages" element={<CoinPackages />} />
               <Route path="coins/transactions" element={<Transactions />} />
@@ -157,6 +160,7 @@ export default function App() {
             <Route path="content/banners" element={<Banners />} />
             <Route path="content/pages" element={<LegalPages />} />
             <Route path="content/announcements" element={<Announcements />} />
+            <Route path="content/emojis" element={<LiveEmojis />} />
 
             <Route element={<RequireCap cap="edit_config" />}>
               <Route path="config" element={<ApplicationConfig crumbRoot="Application Configuration" />} />
