@@ -1,16 +1,9 @@
 import { useState } from 'react'
-import EntityForm from './EntityForm.jsx'
+import EditAgency from './EditAgency.jsx'
 import EditStaffProfile from './EditStaffProfile.jsx'
 import { ConfirmDialog, useToast } from './ui.jsx'
 import { useAuth } from '../lib/auth.jsx'
 import { revokeRole, revokeAgencyManager } from '../lib/accounts.js'
-import { updateAgency } from '../lib/admin.js'
-
-const AGENCY_STATUS_OPTS = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-]
 
 /* Revoke an agency's manager login AND set the agency Inactive (one server
    call, atomic). Shared by the Master agency lists. */
@@ -92,27 +85,7 @@ export default function StaffRowManager({ kind = 'staff', reload, children }) {
         <EditStaffProfile account={editing} onClose={() => setEditing(null)} onSaved={() => reload?.()} />
       )}
       {editing && kind === 'agency' && (
-        <EntityForm
-          title={`Edit — ${editing.name}`}
-          onClose={() => setEditing(null)}
-          savedMessage="Agency updated"
-          onSubmit={async (v) => {
-            await updateAgency(editing.id, { name: v.name, commission_percent: v.commission_percent, status: v.status, country: v.country })
-            reload?.()
-          }}
-          initial={{
-            name: editing.name,
-            commission_percent: editing.commission,
-            country: editing.country,
-            status: String(editing.status || '').toLowerCase(),
-          }}
-          fields={[
-            { name: 'name', label: 'Agency name', required: true },
-            { name: 'commission_percent', label: 'Commission %', type: 'number' },
-            { name: 'country', label: 'Region' },
-            { name: 'status', label: 'Status', type: 'select', options: AGENCY_STATUS_OPTS },
-          ]}
-        />
+        <EditAgency agency={editing} onClose={() => setEditing(null)} onSaved={() => reload?.()} />
       )}
 
       {revoking && kind === 'staff' && (

@@ -14,6 +14,7 @@ import {
 } from '../../lib/commissionPlans.js'
 import { TransferRequests } from './users.jsx'
 import { RevokeAgencyManagerDialog } from '../../components/StaffRowManager.jsx'
+import EditAgency from '../../components/EditAgency.jsx'
 
 const CRUMBS = ['Home', 'Agency Management']
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
@@ -33,10 +34,6 @@ export function AgencyList({ crumbLabel = 'Agencies', crumbRoot = CRUMBS } = {})
   const [revokingManager, setRevokingManager] = useState(null)
 
   const create = async (v) => { await createAgency(v); reload() }
-  const edit = async (v) => {
-    await updateAgency(editing.id, { name: v.name, commission_percent: v.commission_percent, status: v.status, country: v.country })
-    reload()
-  }
   const remove = async (r) => {
     try { await deleteAgency(r.id); toast(`${r.name} deleted`); reload() }
     catch (e) {
@@ -107,23 +104,7 @@ export function AgencyList({ crumbLabel = 'Agencies', crumbRoot = CRUMBS } = {})
           ]}
         />
       )}
-      {editing && (
-        <EntityForm
-          title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} onSubmit={edit} savedMessage="Agency updated"
-          initial={{
-            name: editing.name,
-            commission_percent: editing.commission,
-            country: editing.country,
-            status: editing.status.toLowerCase(),
-          }}
-          fields={[
-            { name: 'name', label: 'Agency name', required: true },
-            { name: 'commission_percent', label: 'Commission %', type: 'number' },
-            { name: 'country', label: 'Region' },
-            { name: 'status', label: 'Status', type: 'select', options: STATUS_OPTS },
-          ]}
-        />
-      )}
+      {editing && <EditAgency agency={editing} onClose={() => setEditing(null)} onSaved={reload} />}
     </>
   )
 }
@@ -137,10 +118,6 @@ export function AgencyDetail() {
   const [editing, setEditing] = useState(false)
 
   const a = data?.agency
-  const edit = async (v) => {
-    await updateAgency(id, { name: v.name, commission_percent: v.commission_percent, status: v.status, country: v.country })
-    reload()
-  }
 
   return (
     <>
@@ -158,18 +135,7 @@ export function AgencyDetail() {
         )}
       </AsyncView>
 
-      {editing && a && (
-        <EntityForm
-          title={`Edit — ${a.name}`} onClose={() => setEditing(false)} onSubmit={edit} savedMessage="Agency updated"
-          initial={{ name: a.name, commission_percent: a.commission_percent, country: a.country, status: a.status }}
-          fields={[
-            { name: 'name', label: 'Agency name', required: true },
-            { name: 'commission_percent', label: 'Commission %', type: 'number' },
-            { name: 'country', label: 'Region' },
-            { name: 'status', label: 'Status', type: 'select', options: STATUS_OPTS },
-          ]}
-        />
-      )}
+      {editing && a && <EditAgency agency={{ id, name: a.name }} onClose={() => setEditing(false)} onSaved={reload} />}
     </>
   )
 }

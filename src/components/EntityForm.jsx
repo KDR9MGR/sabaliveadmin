@@ -102,7 +102,12 @@ export default function EntityForm({ title, fields, initial = {}, onClose, onSub
         <div className="badge badge--danger" style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 14 }}>{error}</div>
       )}
       <div className="form-grid">
-        {fields.map((f) => (
+        {fields.map((f) => (f.type === 'section' ? (
+          <div className="field full" key={f.name}>
+            <h4 style={{ margin: '10px 0 0', fontSize: 13.5 }}>{f.label}</h4>
+            {f.hint && <span className="hint">{f.hint}</span>}
+          </div>
+        ) : (
           <div className={`field${f.full ? ' full' : ''}`} key={f.name}>
             {f.type !== 'toggle' && (
               <label>{f.label} {f.required && <span className="req">*</span>}</label>
@@ -139,7 +144,7 @@ export default function EntityForm({ title, fields, initial = {}, onClose, onSub
             )}
             {f.hint && f.type !== 'toggle' && <span className="hint">{f.hint}</span>}
           </div>
-        ))}
+        )))}
       </div>
     </Drawer>
   )
