@@ -6,7 +6,8 @@
  *
  * IMPORTANT: ROLE_BASELINE below must stay in sync with public.role_baseline()
  * in the sabalive migration 20260909110000_capability_permissions.sql — the SQL
- * copy is what the privileged RPCs enforce, this copy drives the UI.
+ * copy is what the privileged RPCs enforce, this copy drives the UI. (Keys in
+ * the 'Platform menu' group are UI-only and intentionally not in the SQL copy.)
  */
 
 export const CAPABILITIES = [
@@ -22,6 +23,18 @@ export const CAPABILITIES = [
   { key: 'view_audit', label: 'Access audit logs', group: 'System' },
   { key: 'impersonate', label: 'Impersonate accounts', group: 'System' },
   { key: 'export_data', label: 'Export data', group: 'System' },
+  // Master left-menu items that had no switch of their own. UI-only (menu + route
+  // guard); no RPC checks them, so they are deliberately absent from the SQL
+  // role_baseline() and off by default for every role until a Super Admin turns
+  // them on per account.
+  { key: 'view_reports', label: 'Reports & analytics', group: 'Platform menu' },
+  { key: 'manage_live_requests', label: 'Live requests', group: 'Platform menu' },
+  { key: 'manage_lucky_box', label: 'Lucky Box', group: 'Platform menu' },
+  { key: 'manage_badges', label: 'Badge management', group: 'Platform menu' },
+  { key: 'manage_leaderboard_frame', label: 'Leaderboard frame', group: 'Platform menu' },
+  { key: 'manage_profile_frames', label: 'Profile frames', group: 'Platform menu' },
+  { key: 'manage_content', label: 'Content / settings', group: 'Platform menu' },
+  { key: 'manage_system', label: 'System management', group: 'Platform menu' },
 ]
 
 export const CAPABILITY_KEYS = CAPABILITIES.map((c) => c.key)

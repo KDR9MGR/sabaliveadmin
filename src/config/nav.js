@@ -110,22 +110,22 @@ export const NAV = {
       ]},
       { label: 'Withdrawals', icon: 'wallet', cap: 'run_payroll', to: '/admin/withdrawals' },
       { label: 'Salary', icon: 'fileText', cap: 'run_payroll', to: '/admin/salary' },
-      { label: 'Reports & Analytics', icon: 'chart', to: '/admin/reports' },
+      { label: 'Reports & Analytics', icon: 'chart', cap: 'view_reports', to: '/admin/reports' },
     ]},
     { section: 'Platform', items: [
-      { label: 'Live Requests', icon: 'radio', to: '/admin/live' },
-      { label: 'Lucky Box', icon: 'gift', to: '/admin/lucky-box' },
-      { label: 'Badge Management', icon: 'award', to: '/admin/badges' },
-      { label: 'Leaderboard Frame', icon: 'trophy', to: '/admin/leaderboard' },
-      { label: 'Profile Frame', icon: 'frame', to: '/admin/frames' },
-      { label: 'Content / Settings', icon: 'fileText', children: [
+      { label: 'Live Requests', icon: 'radio', cap: 'manage_live_requests', to: '/admin/live' },
+      { label: 'Lucky Box', icon: 'gift', cap: 'manage_lucky_box', to: '/admin/lucky-box' },
+      { label: 'Badge Management', icon: 'award', cap: 'manage_badges', to: '/admin/badges' },
+      { label: 'Leaderboard Frame', icon: 'trophy', cap: 'manage_leaderboard_frame', to: '/admin/leaderboard' },
+      { label: 'Profile Frame', icon: 'frame', cap: 'manage_profile_frames', to: '/admin/frames' },
+      { label: 'Content / Settings', icon: 'fileText', cap: 'manage_content', children: [
         { label: 'Banners', to: '/admin/content/banners' },
         { label: 'Legal Pages', to: '/admin/content/pages' },
         { label: 'Announcements', to: '/admin/content/announcements' },
         { label: 'Emoji & GIFs', to: '/admin/content/emojis' },
       ]},
       { label: 'Application Config', icon: 'sliders', cap: 'edit_config', to: '/admin/config' },
-      { label: 'System Management', icon: 'server', to: '/admin/system' },
+      { label: 'System Management', icon: 'server', cap: 'manage_system', to: '/admin/system' },
     ]},
     { section: 'Account', items: [
       { label: 'My Profile', icon: 'user', to: '/admin/profile' },
@@ -148,6 +148,7 @@ export const NAV = {
       { label: 'Admin Management', icon: 'shieldUser', children: [
         { label: 'Country Admin', to: '/global-admin/admin-management/country-admin' },
         { label: 'Sub Admin', to: '/global-admin/admin-management/sub-admin' },
+        { label: 'Agency', to: '/global-admin/admin-management/agency' },
       ]},
       { label: 'Coin Management', icon: 'coins', children: [
         { label: 'Transfer Coins', to: '/global-admin/coin-management/transfer-coins' },
@@ -242,6 +243,7 @@ export const NAV = {
       ]},
       { label: 'Admin Management', icon: 'shieldUser', children: [
         { label: 'Sub Admin', to: '/country-admin/admin-management/sub-admin' },
+        { label: 'Agency', to: '/country-admin/admin-management/agency' },
       ]},
       { label: 'Coin Management', icon: 'coins', children: [
         { label: 'Transfer Coins', to: '/country-admin/coin-management/transfer-coins' },

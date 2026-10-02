@@ -152,22 +152,38 @@ export default function App() {
               <Route path="withdrawals" element={<Withdrawals />} />
             </Route>
 
-            <Route path="reports" element={<Reports />} />
-            <Route path="live" element={<LiveRequests />} />
-            <Route path="lucky-box" element={<LuckyBox />} />
-            <Route path="badges" element={<BadgeManagement />} />
-            <Route path="leaderboard" element={<LeaderboardFrame />} />
-            <Route path="frames" element={<ProfileFrame />} />
+            <Route element={<RequireCap cap="view_reports" />}>
+              <Route path="reports" element={<Reports />} />
+            </Route>
+            <Route element={<RequireCap cap="manage_live_requests" />}>
+              <Route path="live" element={<LiveRequests />} />
+            </Route>
+            <Route element={<RequireCap cap="manage_lucky_box" />}>
+              <Route path="lucky-box" element={<LuckyBox />} />
+            </Route>
+            <Route element={<RequireCap cap="manage_badges" />}>
+              <Route path="badges" element={<BadgeManagement />} />
+            </Route>
+            <Route element={<RequireCap cap="manage_leaderboard_frame" />}>
+              <Route path="leaderboard" element={<LeaderboardFrame />} />
+            </Route>
+            <Route element={<RequireCap cap="manage_profile_frames" />}>
+              <Route path="frames" element={<ProfileFrame />} />
+            </Route>
 
-            <Route path="content/banners" element={<Banners />} />
-            <Route path="content/pages" element={<LegalPages />} />
-            <Route path="content/announcements" element={<Announcements />} />
-            <Route path="content/emojis" element={<LiveEmojis />} />
+            <Route element={<RequireCap cap="manage_content" />}>
+              <Route path="content/banners" element={<Banners />} />
+              <Route path="content/pages" element={<LegalPages />} />
+              <Route path="content/announcements" element={<Announcements />} />
+              <Route path="content/emojis" element={<LiveEmojis />} />
+            </Route>
 
             <Route element={<RequireCap cap="edit_config" />}>
               <Route path="config" element={<ApplicationConfig crumbRoot="Application Configuration" />} />
             </Route>
-            <Route path="system" element={<SystemManagement />} />
+            <Route element={<RequireCap cap="manage_system" />}>
+              <Route path="system" element={<SystemManagement />} />
+            </Route>
             <Route path="profile" element={<Profile panel="Master / Admin" />} />
           </Route>
 
