@@ -42,7 +42,7 @@ export function GiftSettings() {
   const giftFields = [
     { name: 'name', label: 'Gift name', required: true },
     { name: 'icon_url', label: 'Icon / animation file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
-      onUpload: (file) => uploadMedia('gift-assets', 'gifts', file), hint: 'SVGA, WebP, MP4 or PNG' },
+      onUpload: (file) => uploadMedia('gift-assets', 'gifts', file), hint: 'SVGA, MP4, GIF, WebP or PNG' },
     { name: 'price_coins', label: 'Price (coins)', type: 'number', required: true, hint: 'Must be greater than 0' },
     { name: 'category', label: 'Category', type: 'select', options: CAT_OPTS, required: true },
     { name: 'status', label: 'Status', type: 'select', options: STATUS_OPTS },

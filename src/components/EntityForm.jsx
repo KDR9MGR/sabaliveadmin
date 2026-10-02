@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Drawer, Button, useToast } from './ui.jsx'
 import { mediaKind } from '../lib/storage.js'
+import SvgaPlayer from './SvgaPlayer.jsx'
 
 /* type: 'image' field — uploads immediately on file pick via f.onUpload(file) =>
    url, then stores the returned URL as the field's value (same as any other
@@ -31,6 +32,11 @@ function ImageUploadField({ value, onChange, onUpload, accept = 'image/*' }) {
       )}
       {value && kind === 'image' && (
         <img src={value} alt="" style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 8 }} />
+      )}
+      {value && kind === 'svga' && (
+        <div style={{ display: 'grid', placeItems: 'center', background: 'var(--surface-2, #0001)', borderRadius: 8, padding: 8 }}>
+          <SvgaPlayer url={value} size={140} fallback={<span className="muted" style={{ fontSize: 12.5 }}>SVGA uploaded (preview unavailable).</span>} />
+        </div>
       )}
       {value && kind === 'other' && (
         <div className="muted" style={{ fontSize: 12.5 }}>File uploaded (no in-browser preview for this format).</div>

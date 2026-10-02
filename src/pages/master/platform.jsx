@@ -167,7 +167,7 @@ export function BadgeManagement() {
   const fields = [
     { name: 'name', label: 'Badge name', required: true },
     { name: 'icon_url', label: 'Icon / animation file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
-      onUpload: (file) => uploadMedia('gift-assets', 'badges', file), hint: 'SVGA, WebP, MP4 or PNG' },
+      onUpload: (file) => uploadMedia('gift-assets', 'badges', file), hint: 'SVGA, MP4, GIF, WebP or PNG' },
     { name: 'criteria', label: 'Unlock criteria', full: true },
     { name: 'sort_order', label: 'Sort order', type: 'number' },
     { name: 'status', label: 'Status', type: 'select', options: BADGE_STATUSES.map(gOpt) },
@@ -245,7 +245,7 @@ export function LeaderboardFrame() {
   const fields = [
     { name: 'name', label: 'Frame name', required: true },
     { name: 'icon_url', label: 'Preview file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
-      onUpload: (file) => uploadMedia('gift-assets', 'leaderboard-frames', file), hint: 'SVGA, WebP, MP4 or PNG' },
+      onUpload: (file) => uploadMedia('gift-assets', 'leaderboard-frames', file), hint: 'SVGA, MP4, GIF, WebP or PNG' },
     { name: 'scope', label: 'Scope', type: 'select', options: LBF_SCOPES.map(gOpt), required: true },
     { name: 'period', label: 'Period', type: 'select', options: LBF_PERIODS.map(gOpt), required: true },
     { name: 'status', label: 'Status', type: 'select', options: LBF_STATUSES.map(gOpt) },
@@ -317,7 +317,7 @@ export function ProfileFrame() {
   const fields = [
     { name: 'name', label: 'Frame name', required: true },
     { name: 'icon_url', label: 'Preview file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
-      onUpload: (file) => uploadMedia('gift-assets', 'frames', file), hint: 'SVGA, WebP, MP4 or PNG' },
+      onUpload: (file) => uploadMedia('gift-assets', 'frames', file), hint: 'SVGA, MP4, GIF, WebP or PNG' },
     { name: 'unlock_type', label: 'Unlock type', type: 'select', options: FRAME_UNLOCK_TYPES.map(gOpt), required: true },
     { name: 'unlock_value', label: 'Unlock value (level / coins)', type: 'number' },
     { name: 'price_coins', label: 'Price (coins)', type: 'number' },
