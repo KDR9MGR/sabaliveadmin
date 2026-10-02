@@ -62,6 +62,7 @@ export const NAV = {
         { label: 'Hosts / Creators', to: '/admin/users/hosts' },
         { label: 'Sub Admins', to: '/admin/users/sub-admins' },
         { label: 'User IDs', to: '/admin/users/ids' },
+        { label: 'Bans', to: '/admin/users/bans' },
         { label: 'Flagged Messages', to: '/admin/users/flagged' },
         { label: 'Account Status', to: '/admin/users/status' },
         { label: 'Transfer Requests', to: '/admin/users/transfers' },

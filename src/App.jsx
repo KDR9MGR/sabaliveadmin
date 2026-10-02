@@ -23,6 +23,7 @@ import { HostCodes } from './pages/master/hostCodes.jsx'
 import { GiftSettings, CoinPackages, Transactions, GiftHistory, TransferCoins, TransferHistory } from './pages/master/coins.jsx'
 import { Banners, LegalPages, Announcements } from './pages/master/content.jsx'
 import { FlaggedMessages } from './pages/master/flagged.jsx'
+import { Bans } from './pages/master/bans.jsx'
 import { StoreItems, LiveEmojis } from './pages/master/store.jsx'
 import { STORE_CATEGORY_KEYS } from './lib/store.js'
 import ApplicationConfig from './pages/master/config.jsx'
@@ -94,6 +95,7 @@ export default function App() {
               <Route path="users/sub-admins" element={<SubAdminsList />} />
               <Route path="users/ids" element={<UserIds />} />
               <Route path="users/flagged" element={<FlaggedMessages />} />
+              <Route path="users/bans" element={<Bans />} />
               <Route path="users/status" element={<AccountStatus />} />
               <Route path="users/transfers" element={<TransferRequests />} />
               <Route path="users/transfer-host" element={<MasterTransferHost />} />

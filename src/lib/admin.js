@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { activeRestrictions } from './bans.js'
 
 /* ---------------------------------------------------------------- helpers */
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
@@ -9,20 +10,41 @@ const titleCase = (s) =>
   s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s
 export const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', global_admin: 'Global Admin', country_admin: 'Country Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
 
+/* What the app is actually enforcing on a profile row that embedded its bans:
+   the active Live / ID / Device bans, and whether it is under any restriction. */
+const restrictionFields = (r) => {
+  const restrictions = activeRestrictions(r.user_bans)
+  return {
+    restrictions,
+    restricted: restrictions.length > 0 || r.status === 'suspended',
+    // can't go live: suspended, ID-banned or live-banned
+    liveBlocked: r.status === 'suspended' || restrictions.some((x) => x.kind === 'live' || x.kind === 'account'),
+  }
+}
+
 /* ---------------------------------------------------------------- USERS */
 /* Staff/panel accounts have a profiles row too but aren't app users —
    excluded here so "All Users" only ever lists real app users, not just
    filterable down to them. */
 export async function listUsers() {
   const staffIds = unwrap(await supabase.from('staff_roles').select('user_id')).map((s) => s.user_id)
-  let q = supabase
-    .from('profiles')
-    .select('id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name))')
-    .order('created_at', { ascending: false })
-    .limit(1000)
-  if (staffIds.length) q = q.not('id', 'in', `(${staffIds.join(',')})`)
-  const rows = unwrap(await q)
+  const cols = 'id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name))'
+  const run = (select) => {
+    let q = supabase.from('profiles').select(select).order('created_at', { ascending: false }).limit(1000)
+    if (staffIds.length) q = q.not('id', 'in', `(${staffIds.join(',')})`)
+    return q
+  }
+  let rows
+  try {
+    rows = unwrap(await run(`${cols}, user_bans!user_id(kind, ends_at, lifted_at)`))
+  } catch (e) {
+    // Before the bans migration is applied there is no user_bans relationship;
+    // the list should still load (just without restrictions) rather than break.
+    if (!/user_bans/.test(e?.message || '')) throw e
+    rows = unwrap(await run(cols))
+  }
   return rows.map((r) => ({
+    ...restrictionFields(r),
     id: r.id,
     idShort: shortId(r.id),
     displayId: r.display_id,

@@ -12,6 +12,8 @@ import {
   agencyOptions, hostOptions, subAdminOptions,
 } from '../../lib/workflows.js'
 import EntityForm from '../../components/EntityForm.jsx'
+import BanDialog from '../../components/BanDialog.jsx'
+import { liftUserBans, liftBan, listUserBans } from '../../lib/bans.js'
 import { relativeTime } from '../../lib/format.js'
 import { HostsTable } from './hosts.jsx'
 import { listBadges, listFrames, grantBadge, grantUserFrame } from '../../lib/gamification.js'
@@ -21,6 +23,16 @@ import {
 
 const CRUMBS = ['Home', 'User Management']
 const STATUS_OPTS = ['active', 'inactive', 'suspended']
+
+/* The active bans on a user: "Live · 12 Oct 2026", "ID · Permanent". */
+function RestrictionTags({ list }) {
+  if (!list?.length) return <span className="muted">—</span>
+  return (
+    <span className="hstack" style={{ gap: 4, flexWrap: 'wrap' }}>
+      {list.map((x) => <Tag key={x.kind}>{x.label} · {x.until}</Tag>)}
+    </span>
+  )
+}
 
 /* Master already sees (and, since migration 20261001090000, may act on) the
    whole Global > Country > Sub > Agency tree — same components Global Admin
@@ -38,6 +50,7 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
   const nav = useNavigate()
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listUsers)
+  const [ban, setBan] = useState(null) // { user, kinds } — the Restrict dialog
 
   const changeStatus = async (r, status) => {
     try {
@@ -46,6 +59,15 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
       reload()
     } catch (e) {
       toast(e.message || 'Could not update status')
+    }
+  }
+  const liftAll = async (r) => {
+    try {
+      await liftUserBans(r.id, 'Lifted from the admin panel')
+      toast(`${r.name}: restrictions lifted`)
+      reload()
+    } catch (e) {
+      toast(e.message || 'Could not lift the restrictions')
     }
   }
 
@@ -66,6 +88,7 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
             { label: 'All', value: 'all', filter: () => true },
             { label: 'Hosts', value: 'h', filter: (r) => r.isHost },
             { label: 'Suspended', value: 'x', filter: (r) => r.status === 'Suspended' },
+            { label: 'Restricted', value: 'r', filter: (r) => r.restricted },
           ]}
           filters={[
             { label: 'Role', options: ['User', 'Host'], get: (r) => r.role },
@@ -77,12 +100,14 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
             numCol('coins', 'Coins'),
             { key: 'agency', header: 'Agency', render: (r) => r.agency === '—' ? <span className="muted">—</span> : <Tag>{r.agency}</Tag> },
             { key: 'status', header: 'User Status', render: (r) => <StatusBadge value={r.status} /> },
+            { key: 'restrictions', header: 'Restrictions', render: (r) => <RestrictionTags list={r.restrictions} /> },
             { key: 'isLive', header: 'Live Status', render: (r) => r.isLive ? <StatusBadge value="Live" /> : <span className="muted">Offline</span> },
             ...(readOnly ? [] : [{
               key: 'liveAction', header: 'Live Action', render: (r) => (
-                <div className="hstack" style={{ gap: 6 }}>
-                  <Button size="sm" variant="primary" disabled={r.status !== 'Suspended'} onClick={() => changeStatus(r, 'active')}>Yes</Button>
-                  <Button size="sm" variant="danger" disabled={r.status === 'Suspended'} onClick={() => changeStatus(r, 'suspended')}>No</Button>
+                // the row itself opens the profile — these buttons must not
+                <div className="hstack" style={{ gap: 6 }} onClick={(e) => e.stopPropagation()}>
+                  <Button size="sm" variant="primary" disabled={!r.restricted} onClick={() => liftAll(r)}>Yes</Button>
+                  <Button size="sm" variant="danger" disabled={r.liveBlocked} onClick={() => setBan({ user: r, kinds: ['live'] })}>No</Button>
                 </div>
               ),
             }]),
@@ -92,14 +117,14 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
           ]}
           rowActions={readOnly ? undefined : (r) => [
             { label: 'View profile', icon: 'eye', onClick: () => nav(`/admin/users/${r.id}`) },
-            r.status === 'Suspended'
-              ? { label: 'Reactivate', icon: 'check', onClick: () => changeStatus(r, 'active') }
-              : { label: 'Suspend', icon: 'lock', onClick: () => changeStatus(r, 'suspended') },
+            { label: 'Restrict (ban)…', icon: 'lock', onClick: () => setBan({ user: r, kinds: ['account'] }) },
+            ...(r.restricted ? [{ label: 'Lift restrictions', icon: 'check', onClick: () => liftAll(r) }] : []),
             { label: 'Set inactive', icon: 'clock', onClick: () => changeStatus(r, 'inactive') },
           ]}
           emptyText="No users yet."
         />
       </AsyncView>
+      {ban && <BanDialog user={ban.user} defaultKinds={ban.kinds} onClose={() => setBan(null)} onDone={reload} />}
     </>
   )
 }
@@ -182,6 +207,7 @@ export function UserIds() {
 export function AccountStatus() {
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listUsers)
+  const [ban, setBan] = useState(null)
   const list = rows || []
   const changeStatus = async (r, status) => {
     try { await setUserStatus(r.id, status); toast(`${r.name} → ${status}`); reload() }
@@ -196,6 +222,7 @@ export function AccountStatus() {
             { key: 'Active', v: list.filter((u) => u.status === 'Active').length, tile: 'tile-green', icon: 'userCheck' },
             { key: 'Inactive', v: list.filter((u) => u.status === 'Inactive').length, tile: 'tile-orange', icon: 'clock' },
             { key: 'Suspended', v: list.filter((u) => u.status === 'Suspended').length, tile: 'tile-red', icon: 'lock' },
+            { key: 'Restricted', v: list.filter((u) => u.restricted).length, tile: 'tile-red', icon: 'shield' },
             { key: 'Verified', v: list.filter((u) => u.verified).length, tile: 'tile-blue', icon: 'checkCircle' },
           ].map((s) => (
             <div className="stat" key={s.key}>
@@ -213,6 +240,7 @@ export function AccountStatus() {
           columns={[
             personCol('name', 'username'),
             statusCol('status', 'Account status'),
+            { key: 'restrictions', header: 'Restrictions', render: (r) => <RestrictionTags list={r.restrictions} /> },
             { key: 'verified', header: 'Verified', render: (r) => r.verified ? <StatusBadge value="Verified" /> : <span className="muted">No</span> },
             { key: 'location', header: 'Region' },
             { key: 'joined', header: 'Joined' },
@@ -220,10 +248,11 @@ export function AccountStatus() {
           rowActions={(r) => [
             { label: 'Set Active', icon: 'check', onClick: () => changeStatus(r, 'active') },
             { label: 'Set Inactive', icon: 'clock', onClick: () => changeStatus(r, 'inactive') },
-            { label: 'Suspend', icon: 'lock', onClick: () => changeStatus(r, 'suspended') },
+            { label: 'Restrict (ban)…', icon: 'lock', onClick: () => setBan({ user: r, kinds: ['account'] }) },
           ]}
         />
       </AsyncView>
+      {ban && <BanDialog user={ban.user} defaultKinds={ban.kinds} onClose={() => setBan(null)} onDone={reload} />}
     </>
   )
 }
@@ -330,11 +359,25 @@ export function UserProfile() {
   const { id } = useParams()
   const toast = useToast()
   const { data, loading, error, reload } = useAsyncData(() => getUserDetail(id), [id])
+  const { data: bans, reload: reloadBans } = useAsyncData(() => listUserBans(id), [id])
+  const [banning, setBanning] = useState(null) // default kinds for the Restrict dialog
+  const refresh = () => { reload(); reloadBans() }
 
   const changeStatus = async (status) => {
-    try { await setUserStatus(id, status); toast(`Status → ${status}`); reload() }
+    // Suspending is now an ID ban — go through the dialog so the type and length are chosen
+    if (status === 'suspended') { setBanning(['account']); return }
+    try { await setUserStatus(id, status); toast(`Status → ${status}`); refresh() }
     catch (e) { toast(e.message || 'Could not update status') }
   }
+  const liftOne = async (banId) => {
+    try { await liftBan(banId, 'Lifted from the admin panel'); toast('Ban lifted'); refresh() }
+    catch (e) { toast(e.message || 'Could not lift the ban') }
+  }
+  const liftEverything = async () => {
+    try { await liftUserBans(id, 'Lifted from the admin panel'); toast('Restrictions lifted'); refresh() }
+    catch (e) { toast(e.message || 'Could not lift the restrictions') }
+  }
+  const restricted = (bans || []).some((b) => b.state === 'Active') || data?.profile?.status === 'suspended'
 
   const u = data?.profile
   return (
@@ -344,21 +387,21 @@ export function UserProfile() {
         crumbs={['Home', 'User Management', 'Users', id?.slice(0, 8)]}
         actions={<>
           <Button icon="chevronLeft" onClick={() => history.back()}>Back</Button>
-          {u && (u.status === 'suspended'
-            ? <Button icon="check" onClick={() => changeStatus('active')}>Reactivate</Button>
-            : <Button variant="danger" icon="lock" onClick={() => changeStatus('suspended')}>Suspend</Button>)}
+          {u && restricted && <Button icon="check" onClick={liftEverything}>Lift restrictions</Button>}
+          {u && <Button variant="danger" icon="lock" onClick={() => setBanning(['account'])}>Restrict (ban)…</Button>}
         </>}
       />
       <AsyncView loading={loading} error={error} reload={reload}>
-        {u ? <UserProfileBody data={data} onStatus={changeStatus} onGranted={reload} /> : (
+        {u ? <UserProfileBody data={data} bans={bans || []} onLift={liftOne} onStatus={changeStatus} onGranted={reload} /> : (
           <Card><div className="card__body"><EmptyState icon="helpCircle" title="User not found" text="No profile with this ID." /></div></Card>
         )}
       </AsyncView>
+      {banning && u && <BanDialog user={{ id, name: u.name }} defaultKinds={banning} onClose={() => setBanning(null)} onDone={refresh} />}
     </>
   )
 }
 
-function UserProfileBody({ data, onStatus, onGranted }) {
+function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
   const u = data.profile
   const w = u.wallets || {}
   const hp = u.host_profiles
@@ -498,10 +541,32 @@ function UserProfileBody({ data, onStatus, onGranted }) {
             </div>
           ) : <EmptyState icon="radio" title="No streams" text={hp ? 'This host has not gone live yet.' : 'This user is not a host.'} />}
         </Card>
+        <Card title="Restrictions" sub="Live, ID and device bans — enforced by the app and the database">
+          {bans.length ? (
+            <div className="feed">
+              {bans.map((b) => (
+                <div className="feed__item" key={b.id}>
+                  <span className="feed__dot"><Icon name="lock" size={14} /></span>
+                  <div className="grow">
+                    <div className="feed__text">
+                      {b.kindLabel} · {b.permanent ? 'Permanent' : `until ${b.until}`} · <StatusBadge value={b.state} />
+                    </div>
+                    <div className="feed__time">
+                      {b.reason ? `${b.reason} · ` : ''}by {b.by} · {b.when}
+                      {b.devices ? ` · ${b.devices} device${b.devices === 1 ? '' : 's'}` : ''}
+                      {b.state === 'Lifted' && b.liftedBy ? ` · lifted by ${b.liftedBy}` : ''}
+                    </div>
+                  </div>
+                  {b.state === 'Active' && <Button size="sm" onClick={() => onLift(b.id)}>Lift</Button>}
+                </div>
+              ))}
+            </div>
+          ) : <EmptyState icon="shield" title="No bans" text="This user has never been restricted." />}
+        </Card>
         <Card title="Account status">
           <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>
-            The only admin-writable field on a user profile is status (via the <code>set_profile_status</code> RPC).
-            Other fields are edited by the user in-app.
+            Active lifts every ban. Suspended opens the Restrict dialog (an ID ban — choose how long).
+            Inactive just ends an ID ban. Other profile fields are edited by the user in-app.
           </p>
           <div className="hstack" style={{ gap: 8, flexWrap: 'wrap' }}>
             {STATUS_OPTS.map((s) => (
