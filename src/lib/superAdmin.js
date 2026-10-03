@@ -20,7 +20,7 @@ export async function superDashboard() {
     pendingWithdrawals, pendingApps, pendingTransfers,
     wallets, recentAudit, recentSignups,
   ] = await Promise.all([
-    countOf('profiles'),
+    countOf('profiles', (q) => q.eq('is_ghost', false)), // ghost IDs aren't app users
     countOf('host_profiles'),
     countOf('agencies'),
     countOf('staff_roles'),
@@ -30,7 +30,7 @@ export async function superDashboard() {
     countOf('transfer_requests', (q) => q.eq('status', 'pending')),
     supabase.from('wallets').select('coins, diamonds').limit(5000),
     supabase.from('audit_logs').select('id, action, target, severity, created_at, profiles(name)').order('created_at', { ascending: false }).limit(6),
-    supabase.from('profiles').select('id, name, username, created_at').order('created_at', { ascending: false }).limit(6),
+    supabase.from('profiles').select('id, name, username, created_at').eq('is_ghost', false).order('created_at', { ascending: false }).limit(6),
   ])
 
   const w = wallets.data || []
@@ -124,7 +124,7 @@ export async function systemPulse() {
     signups24h, streams24h, gifts24h, purchases24h,
     liveNow, pendingWithdrawals, openApplications,
   ] = await Promise.all([
-    countOf('profiles', (q) => q.gte('created_at', since)),
+    countOf('profiles', (q) => q.eq('is_ghost', false).gte('created_at', since)),
     countOf('live_streams', (q) => q.gte('started_at', since)),
     countOf('gift_transactions', (q) => q.gte('created_at', since)),
     countOf('coin_purchases', (q) => q.gte('created_at', since)),

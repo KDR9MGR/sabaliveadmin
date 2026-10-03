@@ -44,7 +44,7 @@ export async function loadReports() {
   const [purchases, gifts, newProfiles, streams] = await Promise.all([
     supabase.from('coin_purchases').select('amount_inr, coins_credited, payment_method, status, created_at').gte('created_at', since).limit(20000),
     supabase.from('gift_transactions').select('coins, sender_id, receiver_id, created_at').gte('created_at', since).limit(50000),
-    supabase.from('profiles').select('id, created_at').gte('created_at', since).limit(50000),
+    supabase.from('profiles').select('id, created_at').eq('is_ghost', false).gte('created_at', since).limit(50000),
     supabase.from('live_streams').select('id, status, started_at, ended_at').gte('started_at', since).limit(50000),
   ])
   for (const r of [purchases, gifts, newProfiles, streams]) if (r.error) throw r.error

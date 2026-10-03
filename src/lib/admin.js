@@ -30,7 +30,8 @@ export async function listUsers() {
   const staffIds = unwrap(await supabase.from('staff_roles').select('user_id')).map((s) => s.user_id)
   const cols = 'id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name))'
   const run = (select) => {
-    let q = supabase.from('profiles').select(select).order('created_at', { ascending: false }).limit(1000)
+    // ghost IDs (monitoring accounts) are managed under Super Admin → Ghost IDs, not here
+    let q = supabase.from('profiles').select(select).eq('is_ghost', false).order('created_at', { ascending: false }).limit(1000)
     if (staffIds.length) q = q.not('id', 'in', `(${staffIds.join(',')})`)
     return q
   }

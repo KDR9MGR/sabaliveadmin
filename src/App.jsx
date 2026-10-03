@@ -26,6 +26,8 @@ import { Banners, LegalPages, Announcements } from './pages/master/content.jsx'
 import { FlaggedMessages } from './pages/master/flagged.jsx'
 import { Bans } from './pages/master/bans.jsx'
 import { Maintenance } from './pages/maintenance.jsx'
+import { LiveMonitor } from './pages/liveMonitor.jsx'
+import { GhostIds } from './pages/ghosts.jsx'
 import { StoreItems, LiveEmojis } from './pages/master/store.jsx'
 import { STORE_CATEGORY_KEYS } from './lib/store.js'
 import ApplicationConfig from './pages/master/config.jsx'
@@ -162,6 +164,9 @@ export default function App() {
             <Route element={<RequireCap cap="manage_live_requests" />}>
               <Route path="live" element={<LiveRequests />} />
             </Route>
+            <Route element={<RequireCap cap="monitor_lives" />}>
+              <Route path="live-monitor" element={<LiveMonitor />} />
+            </Route>
             <Route element={<RequireCap cap="manage_lucky_box" />}>
               <Route path="lucky-box" element={<LuckyBox />} />
             </Route>
@@ -248,6 +253,8 @@ export default function App() {
             <Route index element={<SuperDashboard />} />
             <Route path="users" element={<SuperUsers />} />
             <Route path="maintenance" element={<Maintenance />} />
+            <Route path="live-monitor" element={<LiveMonitor root="Monitoring" />} />
+            <Route path="ghosts" element={<GhostIds />} />
 
             <Route element={<RequireCap cap="manage_admins" />}>
               <Route path="admins" element={<SuperAdmins />} />

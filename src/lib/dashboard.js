@@ -37,7 +37,7 @@ export async function fetchMasterDashboard() {
     recentProfiles, recentHosts, recentLive, recentGifts, recentAgencies,
     topAgenciesRaw, recentAudit,
   ] = await Promise.all([
-    statWithGrowth('profiles'),
+    statWithGrowth('profiles', (q) => q.eq('is_ghost', false)),
     statWithGrowth('host_profiles'),
     statWithGrowth('agencies'),
     count('live_streams', (q) => q.eq('status', 'live')),

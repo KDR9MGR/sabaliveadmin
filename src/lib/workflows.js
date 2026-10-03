@@ -211,7 +211,7 @@ export async function decideKyc(id, approve) {
 export async function listActiveStreams() {
   const rows = unwrap(await supabase
     .from('live_streams')
-    .select('id, title, category, status, is_pk, viewer_count, like_count, gift_coin_total, started_at, host:host_id(name, username, avatar_url)')
+    .select('id, title, category, status, mode, is_pk, viewer_count, like_count, gift_coin_total, started_at, host:host_id(name, username, avatar_url)')
     .eq('status', 'live')
     .order('viewer_count', { ascending: false })
     .limit(200))
@@ -227,6 +227,7 @@ export async function listActiveStreams() {
       title: s.title || 'Untitled stream',
       category: s.category || '—',
       isPk: !!s.is_pk,
+      isAudio: s.mode === 'audio',
       viewers: s.viewer_count || 0,
       likes: s.like_count || 0,
       coins: s.gift_coin_total || 0,

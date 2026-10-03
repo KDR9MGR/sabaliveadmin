@@ -13,7 +13,8 @@ import {
   listSalary, createSalaryPayment, updateSalaryPayment, setSalaryStatus,
   payeeOptions, agencyOptions, SALARY_ROLES, SALARY_STATUSES,
 } from '../../lib/salary.js'
-import { listLiveRequests, decideLiveRequest, listActiveStreams } from '../../lib/workflows.js'
+import { listLiveRequests, decideLiveRequest } from '../../lib/workflows.js'
+import ActiveRoomsGrid from '../../components/ActiveRoomsGrid.jsx'
 import {
   listBadges, createBadge, updateBadge, setBadgeStatus, grantBadge,
   listFrames, createFrame, updateFrame, setFrameStatus,
@@ -121,38 +122,7 @@ function RequestsTable() {
 }
 
 function ActiveRooms() {
-  const toast = useToast()
-  const { data: rooms, loading, error, reload } = useAsyncData(listActiveStreams)
-  return (
-    <AsyncView loading={loading} error={error} reload={reload}>
-      {(rooms || []).length === 0 ? (
-        <Card><div className="card__body"><Icon name="radio" size={20} /> <span className="muted">No streams are live right now.</span></div></Card>
-      ) : (
-        <div className="live-grid">
-          {rooms.map((room) => (
-            <div className="live-card" key={room.id}>
-              <div className="live-card__thumb">
-                <Icon name="radio" size={28} />
-                <span className="live-card__live">● LIVE</span>
-                <span className="live-card__views">{num(room.viewers)} watching</span>
-              </div>
-              <div className="live-card__body">
-                <div className="hstack spread">
-                  <Person name={room.host} size="sm" meta={room.username ? `@${room.username}` : room.category} />
-                  {room.isPk && <Badge tone="warning">PK</Badge>}
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 600, margin: '10px 0 4px' }}>{room.title}</div>
-                <div className="hstack spread muted" style={{ fontSize: 12 }}>
-                  <span>{room.duration} · 🪙 {num(room.coins)} · ♥ {num(room.likes)}</span>
-                  <button className="btn btn--sm btn--ghost" onClick={() => toast(`${room.idShort} — ${room.host}`)}>Details</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </AsyncView>
-  )
+  return <ActiveRoomsGrid />
 }
 
 /* ------------------------------------------------------------------ Badge Management */

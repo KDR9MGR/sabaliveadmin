@@ -115,6 +115,7 @@ export const NAV = {
     ]},
     { section: 'Platform', items: [
       { label: 'Live Requests', icon: 'radio', cap: 'manage_live_requests', to: '/admin/live' },
+      { label: 'Live Monitor', icon: 'eye', cap: 'monitor_lives', to: '/admin/live-monitor' },
       { label: 'Lucky Box', icon: 'gift', cap: 'manage_lucky_box', to: '/admin/lucky-box' },
       { label: 'Badge Management', icon: 'award', cap: 'manage_badges', to: '/admin/badges' },
       { label: 'Leaderboard Frame', icon: 'trophy', cap: 'manage_leaderboard_frame', to: '/admin/leaderboard' },
@@ -207,6 +208,10 @@ export const NAV = {
     ]},
     { section: 'User Management', items: [
       { label: 'Users', icon: 'users', to: '/super/users' },
+    ]},
+    { section: 'Monitoring', items: [
+      { label: 'Live Monitor', icon: 'eye', to: '/super/live-monitor' },
+      { label: 'Ghost IDs', icon: 'eye', to: '/super/ghosts' },
     ]},
     { section: 'Administration', items: [
       { label: 'Admin Management', icon: 'shield', cap: 'manage_admins', children: [
