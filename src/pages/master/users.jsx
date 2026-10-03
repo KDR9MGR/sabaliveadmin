@@ -12,6 +12,7 @@ import {
   agencyOptions, hostOptions, subAdminOptions,
 } from '../../lib/workflows.js'
 import EntityForm from '../../components/EntityForm.jsx'
+import MediaPreview from '../../components/MediaPreview.jsx'
 import BanDialog from '../../components/BanDialog.jsx'
 import { liftUserBans, liftBan, listUserBans } from '../../lib/bans.js'
 import { relativeTime } from '../../lib/format.js'
@@ -354,6 +355,72 @@ function NewTransferDrawer({ onClose, onDone, defaultType }) {
   )
 }
 
+/* ------------------------------------------------------------------ Sign-in & devices */
+const METHOD_LABEL = {
+  email: 'Email & password', phone: 'Phone & password', phone_otp: 'Phone OTP', signup: 'New sign-up',
+  google: 'Google', apple: 'Apple', facebook: 'Facebook',
+}
+const methodLabel = (m) => METHOD_LABEL[m] || m || 'Unknown'
+const platformLabel = (p) => ({ android: 'Android', ios: 'iPhone / iPad' }[p] || p || 'Unknown')
+
+function LoginInfoCard({ login }) {
+  if (!login) {
+    return (
+      <Card title="Sign-in & devices">
+        <EmptyState icon="shield" title="Not available" text="Login details need the latest database update." />
+      </Card>
+    )
+  }
+  const providers = (login.providers || []).map((p) => methodLabel(p.provider === 'phone' ? 'phone_otp' : p.provider))
+  const last = (login.logins || [])[0]
+  return (
+    <Card title="Sign-in & devices" sub="How this user signs in, and the devices they use">
+      <KV rows={[
+        ['Email', login.email || <span className="muted">—</span>],
+        ['Phone', login.phone || <span className="muted">—</span>],
+        ['Sign-in methods', providers.length ? <span className="hstack" style={{ gap: 4, flexWrap: 'wrap' }}>{[...new Set(providers)].map((p) => <Tag key={p}>{p}</Tag>)}</span> : <span className="muted">—</span>],
+        ['Last sign-in', login.last_sign_in_at ? `${fmtDate(login.last_sign_in_at)} · ${relativeTime(login.last_sign_in_at)}` : '—'],
+        ['Last used', last ? `${methodLabel(last.method)} · ${platformLabel(last.platform)}${last.model ? ` (${last.model})` : ''}` : '—'],
+        ['Signed in on', login.active_session ? `${platformLabel(login.active_session.platform)}${login.active_session.model ? ` · ${login.active_session.model}` : ''}` : <span className="muted">No active device recorded</span>],
+        ['Account created', fmtDate(login.created_at)],
+      ]} />
+      <div className="mt-16">
+        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Devices ({(login.devices || []).length})</div>
+        {(login.devices || []).length ? (
+          <div className="feed">
+            {login.devices.map((d) => (
+              <div className="feed__item" key={d.device_id}>
+                <span className="feed__dot"><Icon name="cpu" size={14} /></span>
+                <div>
+                  <div className="feed__text">{platformLabel(d.platform)}{d.model ? ` · ${d.model}` : ''}</div>
+                  <div className="feed__time">First seen {fmtDate(d.first_seen_at)} · last {relativeTime(d.last_seen_at)}</div>
+                  <div className="feed__time mono" style={{ fontSize: 11 }}>{d.device_id}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : <span className="muted" style={{ fontSize: 12.5 }}>No devices recorded yet — they appear after the user opens the updated app.</span>}
+      </div>
+      <div className="mt-16">
+        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Recent sign-ins</div>
+        {(login.logins || []).length ? (
+          <div className="feed">
+            {login.logins.slice(0, 8).map((l, i) => (
+              <div className="feed__item" key={i}>
+                <span className="feed__dot"><Icon name="key" size={14} /></span>
+                <div>
+                  <div className="feed__text">{methodLabel(l.method)} · {platformLabel(l.platform)}{l.model ? ` (${l.model})` : ''}</div>
+                  <div className="feed__time">{fmtDate(l.created_at)} · {relativeTime(l.created_at)}{l.ip ? ` · IP ${l.ip}` : ''}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : <span className="muted" style={{ fontSize: 12.5 }}>No sign-ins recorded yet.</span>}
+      </div>
+    </Card>
+  )
+}
+
 /* ------------------------------------------------------------------ User Profile (real) */
 export function UserProfile() {
   const { id } = useParams()
@@ -432,7 +499,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
       <div className="vstack" style={{ gap: 16 }}>
         <Card>
           <div className="hstack" style={{ gap: 16, alignItems: 'flex-start' }}>
-            <Person name={u.name} size="xl" meta={'@' + (u.username || '')} />
+            <Person name={u.name} size="xl" src={u.avatar_url} meta={'@' + (u.username || '')} />
             <div className="grow" />
             <div className="hstack wrap" style={{ gap: 8 }}>
               <StatusBadge value={u.status} />
@@ -455,20 +522,23 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
           </div>
         </Card>
 
-        <Card title="Recent gifts">
-          {data.gifts.length ? (
+        <Card title="Entry" sub="Entry effects and vehicles this user has bought — the equipped one plays when they walk into a live">
+          {data.entries.length ? (
             <div className="feed">
-              {data.gifts.map((g, i) => (
+              {data.entries.map((e, i) => (
                 <div className="feed__item" key={i}>
-                  <span className="feed__dot"><Icon name="gift" size={14} /></span>
-                  <div>
-                    <div className="feed__text">{g.coins} coins — {g.sender?.name || '?'} → {g.receiver?.name || '?'}</div>
-                    <div className="feed__time">{relativeTime(g.created_at)}</div>
+                  <span className="feed__dot" style={{ background: 'none' }}><MediaPreview url={e.assetUrl} emoji={e.emoji} size={12} /></span>
+                  <div className="grow">
+                    <div className="feed__text">{e.name} · <Tag>{e.kind}</Tag></div>
+                    <div className="feed__time">
+                      {e.active ? `Expires ${fmtDate(e.expiresAt)}` : `Expired ${fmtDate(e.expiresAt)}`} · bought {relativeTime(e.purchasedAt)}
+                    </div>
                   </div>
+                  {e.equipped && e.active ? <StatusBadge value="Equipped" /> : !e.active ? <StatusBadge value="Expired" /> : <span className="muted">Owned</span>}
                 </div>
               ))}
             </div>
-          ) : <EmptyState icon="gift" title="No gift activity yet" />}
+          ) : <EmptyState icon="userPlus" title="No entry effects or vehicles" text="They haven't bought one from the Store yet." />}
         </Card>
 
         <Card title="Badges" action={<Button size="sm" icon="userPlus" onClick={() => setGranting('badge')}>Assign badge</Button>}>
@@ -517,6 +587,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
       </div>
 
       <div className="vstack" style={{ gap: 16 }}>
+        <LoginInfoCard login={data.login} />
         <Card title="Roles & KYC">
           <KV rows={[
             ['Platform role', <Tag role>{role}</Tag>],

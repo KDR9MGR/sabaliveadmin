@@ -406,7 +406,7 @@ export function LuckyBox() {
   return (
     <>
       <PageHeader title="Lucky Box" crumbs={['Home', 'Platform', 'Lucky Box']} />
-      <Card title="Reward settings" sub="A host who stays continuously live for this long in one stream gets a one-time diamond reward — checked automatically every minute." className="mb-16">
+      <Card title="Reward settings" sub="A host who stays continuously live for this long in one video stream gets a one-time diamond reward — checked automatically every minute. Audio rooms never earn it." className="mb-16">
         <AsyncView loading={configLoading} error={configError} reload={reloadConfig}>
           <div className="form-grid">
             <div className="field">

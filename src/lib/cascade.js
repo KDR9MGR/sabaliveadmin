@@ -2,6 +2,7 @@ import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
 import { myCoinGrants } from './treasury.js'
 import { staffEmails } from './country.js'
+import { notifyCoinsChanged } from './balance.js'
 
 /* Data layer for the staff hierarchy (Sub Admin now; Country Admin builds on
    the same calls). Coin balances are wallets.coins at every level; a transfer
@@ -26,6 +27,7 @@ export async function transferCoinsDown({ to, coins, note }) {
     p_note: note || null,
   })
   if (error) throw error
+  notifyCoinsChanged()
   return data
 }
 

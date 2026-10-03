@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Icon from '../Icon.jsx'
 import { PANELS, DEFAULT_LOGIN_PATH } from '../../config/nav.js'
 import { useAuth } from '../../lib/auth.jsx'
+import { myBalances, COINS_CHANGED } from '../../lib/balance.js'
 
 const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', global_admin: 'Global Admin', country_admin: 'Country Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
 
@@ -21,6 +22,8 @@ export default function Topbar({ panel, onToggleSidebar }) {
 
       <div className="topbar__spacer" />
 
+      <CoinBalance />
+
       <PanelMenu panel={panel} />
 
       <button className="icon-btn" aria-label="Notifications">
@@ -30,6 +33,48 @@ export default function Topbar({ panel, onToggleSidebar }) {
 
       <UserMenu panel={panel} onNav={nav} />
     </header>
+  )
+}
+
+/* This account's coin balance, on every panel. Refreshes when you change page,
+   come back to the tab, or move coins. */
+function CoinBalance() {
+  const { user, staffRole } = useAuth()
+  const { pathname } = useLocation()
+  const [bal, setBal] = useState(null)
+  const role = staffRole?.role
+
+  useEffect(() => {
+    if (!user?.id) return undefined
+    let alive = true
+    const load = () => myBalances(user.id, role).then((b) => { if (alive) setBal(b) }).catch(() => {})
+    load()
+    window.addEventListener(COINS_CHANGED, load)
+    window.addEventListener('focus', load)
+    return () => {
+      alive = false
+      window.removeEventListener(COINS_CHANGED, load)
+      window.removeEventListener('focus', load)
+    }
+  }, [user?.id, role, pathname])
+
+  if (!bal) return null
+  const fmt = (n) => Number(n).toLocaleString('en-IN')
+  return (
+    <>
+      <span className="coin-chip" title="Your coin balance">
+        <Icon name="coins" size={15} />
+        <span className="coin-chip__label hide-sm">Coins</span>
+        <b>{fmt(bal.wallet)}</b>
+      </span>
+      {bal.treasury != null && (
+        <span className="coin-chip coin-chip--treasury hide-sm" title="Platform coin treasury — what can still be distributed">
+          <Icon name="bank" size={15} />
+          <span className="coin-chip__label">Treasury</span>
+          <b>{fmt(bal.treasury)}</b>
+        </span>
+      )}
+    </>
   )
 }
 

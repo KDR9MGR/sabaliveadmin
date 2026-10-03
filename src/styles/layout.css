@@ -125,6 +125,17 @@
 .topbar__search input { border: 0; background: transparent; outline: none; flex: 1; font-size: 13px; color: var(--text); }
 .topbar__spacer { flex: 1; }
 
+.coin-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 12px;
+  border: 1px solid var(--border, #e5e7eb); border-radius: 999px;
+  background: var(--surface, #fff); color: var(--text-soft, #6b7280);
+  font-size: 12.5px; white-space: nowrap;
+}
+.coin-chip b { color: var(--text, #111827); font-weight: 700; font-variant-numeric: tabular-nums; }
+.coin-chip__label { color: var(--text-muted, #9ca3af); }
+.coin-chip--treasury { border-style: dashed; }
+
 .userchip {
   display: flex; align-items: center; gap: 10px;
   padding: 4px 10px 4px 4px; border-radius: 999px;

@@ -10,7 +10,7 @@ const num = (v) => (v === '' || v == null ? undefined : Number(v))
 export const STORE_CATEGORIES = {
   frame: {
     label: 'Frames', singular: 'Frame', icon: 'frame',
-    blurb: 'Profile frames users buy in the Store → Frame tab.',
+    blurb: 'Frames sold in the Store → Frame tab, bought for a number of days. Frames users unlock by level or coins, or that you grant, are managed on the Profile Frame page. Either way the equipped frame shows on the user\'s profile and in every live.',
   },
   vip: {
     label: 'Lucky ID', singular: 'Lucky ID tier', icon: 'star',

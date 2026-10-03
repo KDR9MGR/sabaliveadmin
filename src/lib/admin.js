@@ -67,14 +67,14 @@ export async function listUsers() {
 }
 
 export async function getUserDetail(id) {
-  const [profile, gifts, streams, badges, frames, following, followers] = await Promise.all([
+  const [profile, entries, streams, badges, frames, following, followers, login] = await Promise.all([
     supabase.from('profiles')
       .select('*, wallets(coins, diamonds), host_profiles(*, agencies(name)), staff_roles!user_id(role, agency_id, agencies(name)), kyc_verifications!profile_id(status, document_type, created_at)')
       .eq('id', id).maybeSingle().then(unwrap),
-    supabase.from('gift_transactions')
-      .select('coins, created_at, sender:sender_id(name), receiver:receiver_id(name)')
-      .or(`sender_id.eq.${id},receiver_id.eq.${id}`)
-      .order('created_at', { ascending: false }).limit(8).then(unwrap),
+    // the entry effects and vehicles this user has bought (and is wearing)
+    supabase.from('user_items')
+      .select('expires_at, equipped, purchased_at, store_items(name, emoji, category, asset_url)')
+      .eq('profile_id', id).order('purchased_at', { ascending: false }).limit(50).then(unwrap),
     supabase.from('live_streams')
       .select('title, status, viewer_count, gift_coin_total, started_at')
       .eq('host_id', id).order('started_at', { ascending: false }).limit(8).then(unwrap),
@@ -90,10 +90,25 @@ export async function getUserDetail(id) {
     supabase.from('follows')
       .select('follower:follower_id(id, name, username)')
       .eq('followee_id', id).limit(50).then(unwrap),
+    // how they sign in, and from which devices (RPC from migration 20261003120000;
+    // the page still loads without it)
+    supabase.rpc('admin_user_login_info', { p_user: id }).then(({ data, error }) => (error ? null : data)),
   ])
   return {
     profile,
-    gifts: gifts || [],
+    entries: (entries || [])
+      .filter((e) => e.store_items && ['entry_effect', 'vehicle'].includes(e.store_items.category))
+      .map((e) => ({
+        name: e.store_items.name,
+        emoji: e.store_items.emoji,
+        kind: e.store_items.category === 'vehicle' ? 'Vehicle' : 'Entry effect',
+        assetUrl: e.store_items.asset_url,
+        equipped: e.equipped,
+        expiresAt: e.expires_at,
+        purchasedAt: e.purchased_at,
+        active: new Date(e.expires_at).getTime() > Date.now(),
+      })),
+    login: login || null,
     streams: streams || [],
     badges: badges || [],
     frames: frames || [],

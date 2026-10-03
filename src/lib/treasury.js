@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
+import { notifyCoinsChanged } from './balance.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split(/[_:]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -43,7 +44,9 @@ export async function listTreasuryEvents() {
 }
 
 export async function mintCoins({ coins, note }) {
-  return unwrap(await supabase.rpc('mint_coins', { p_coins: Number(coins), p_note: note || null }))
+  const out = unwrap(await supabase.rpc('mint_coins', { p_coins: Number(coins), p_note: note || null }))
+  notifyCoinsChanged()
+  return out
 }
 
 /* Lighter treasury read for a coin_minters-listed agency_manager/sub_admin —
@@ -82,6 +85,7 @@ export async function distributeCoins({ perRecipient, audience, role, recipientI
     p_note: note || null,
   })
   if (error) throw error
+  notifyCoinsChanged()
   return data // { recipients, total, balance }
 }
 

@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate, ROLE_LABEL } from './admin.js'
 import { relativeTime } from './format.js'
+import { notifyCoinsChanged } from './balance.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -8,7 +9,7 @@ const lc = (patch, keys) => { const o = { ...patch }; for (const k of keys) if (
 const myId = async () => (await supabase.auth.getSession()).data.session?.user?.id
 const num = (v) => (v === '' || v == null ? undefined : Number(v))
 
-export const GIFT_CATEGORIES = ['basic', 'luxury', 'vehicle', 'special']
+export const GIFT_CATEGORIES = ['basic', 'luxury', 'vehicle', 'special', 'event']
 export const PLATFORMS = ['all', 'android', 'ios']
 
 /* ---------------------------------------------------------------- pickers */
@@ -167,4 +168,5 @@ export async function listMyCoinHistory() {
 export async function pullBackCoinGrant(id) {
   const { error } = await supabase.rpc('pull_back_coin_grant', { p_grant_id: id })
   if (error) throw error
+  notifyCoinsChanged()
 }
