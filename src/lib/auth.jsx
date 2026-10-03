@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { supabase } from './supabase.js'
 import { can as canCap } from './capabilities.js'
 import { ROLE_LABEL } from './admin.js'
+import { rememberAdminVersion } from './maintenance.js'
+import MaintenanceLock from '../components/MaintenanceLock.jsx'
 
 /* Which panel a staff_roles.role lands in. super_admin/admin get their own
    panel; global_admin, country_admin, sub_admin and agency_manager are scoped
@@ -27,13 +29,19 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [staffRole, setStaffRole] = useState(null)
   const [loading, setLoading] = useState(true)
+  // the server turned this account's own requests away with MAINTENANCE_MODE
+  const [lockedOut, setLockedOut] = useState(false)
 
   const loadForUser = useCallback(async (user) => {
-    if (!user) { setProfile(null); setStaffRole(null); return }
-    const [{ data: prof }, { data: role }] = await Promise.all([
+    if (!user) { setProfile(null); setStaffRole(null); setLockedOut(false); return }
+    const [{ data: prof, error: profErr }, { data: role, error: roleErr }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       supabase.from('staff_roles').select('*').eq('user_id', user.id).maybeSingle(),
     ])
+    // Locked out by maintenance / lockdown: the role can't even be read, so say why
+    // instead of showing a panel that has nothing in it.
+    const refused = [profErr, roleErr].some((e) => e && (e.code === 'PT503' || e.message === 'MAINTENANCE_MODE'))
+    setLockedOut(refused)
     setProfile(prof ?? null)
     setStaffRole(role ?? null)
   }, [])
@@ -57,6 +65,7 @@ export function AuthProvider({ children }) {
   const signIn = useCallback(async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { error }
+    await rememberAdminVersion()
     await loadForUser(data.user)
     return { error: null }
   }, [loadForUser])
@@ -105,7 +114,9 @@ export function AuthProvider({ children }) {
       session, user: session?.user ?? null, profile, staffRole, panel, can,
       isStaff: !!staffRole, loading, signIn, signOut, updateProfile, changePassword,
     }}>
-      {children}
+      {lockedOut
+        ? <MaintenanceLock forced onSignOut={signOut} onUnlocked={() => loadForUser(session?.user)} />
+        : children}
     </Ctx.Provider>
   )
 }

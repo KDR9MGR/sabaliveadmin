@@ -24,6 +24,7 @@ import { GiftSettings, CoinPackages, Transactions, GiftHistory, TransferCoins, T
 import { Banners, LegalPages, Announcements } from './pages/master/content.jsx'
 import { FlaggedMessages } from './pages/master/flagged.jsx'
 import { Bans } from './pages/master/bans.jsx'
+import { Maintenance } from './pages/maintenance.jsx'
 import { StoreItems, LiveEmojis } from './pages/master/store.jsx'
 import { STORE_CATEGORY_KEYS } from './lib/store.js'
 import ApplicationConfig from './pages/master/config.jsx'
@@ -242,6 +243,7 @@ export default function App() {
           }>
             <Route index element={<SuperDashboard />} />
             <Route path="users" element={<SuperUsers />} />
+            <Route path="maintenance" element={<Maintenance />} />
 
             <Route element={<RequireCap cap="manage_admins" />}>
               <Route path="admins" element={<SuperAdmins />} />

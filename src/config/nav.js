@@ -200,6 +200,9 @@ export const NAV = {
     { section: 'Overview', items: [
       { label: 'Dashboard', icon: 'dashboard', to: '/super' },
     ]},
+    { section: 'System Control', items: [
+      { label: 'Maintenance', icon: 'server', to: '/super/maintenance' },
+    ]},
     { section: 'User Management', items: [
       { label: 'Users', icon: 'users', to: '/super/users' },
     ]},
