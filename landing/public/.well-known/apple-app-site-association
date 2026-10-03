@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": [
+          "TUKQ9KBCN8.com.sabalive.in"
+        ],
+        "components": [
+          {
+            "/": "/live/*",
+            "comment": "Shared live links open in the app"
+          }
+        ]
+      }
+    ]
+  }
+}
