@@ -25,7 +25,8 @@ import { useAsyncData } from '../lib/useAsync.js'
 import { listTransferRequests } from '../lib/workflows.js'
 import {
   countryScope, listScopeHosts, scopeSubAdminOptions, scopeAgencyManagerOptions,
-  otherCountryAdminOptions, transferAgency, transferAgencyCountry, transferHost, transferSubAdmin,
+  otherCountryAdminOptions, otherGlobalAdminOptions,
+  transferAgency, transferAgencyCountry, transferHost, transferSubAdmin, transferCountryAdmin,
 } from '../lib/country.js'
 import { countryList } from '../lib/countries.js'
 import StaffRowManager from '../components/StaffRowManager.jsx'
@@ -222,6 +223,71 @@ export function CountryTransferCountry() {
               onSubmit={async (v) => { await transferAgencyCountry({ agencyId: moving.id, country: v.country }); reload() }}
               initial={{ country: moving.country }}
               fields={[{ name: 'country', label: 'New country', type: 'select', required: true, options: countryList() }]}
+            />
+          )}
+        </>
+      )}
+    </Loaded>
+  )
+}
+
+/* Transfer Global — hand a Country Admin (and all their Sub Admins / Agencies / Hosts)
+   to another Global Admin. Mirrors the Transfer Sub Admin pattern, one level up. */
+export function CountryTransferGlobal() {
+  const [moving, setMoving] = useState(null)
+  const [targets, setTargets] = useState(null)
+  const openWith = async (countryAdmin) => {
+    setMoving(countryAdmin)
+    try {
+      const list = await otherGlobalAdminOptions([countryAdmin.globalAdminId])
+      setTargets(list)
+    } catch (e) {
+      setTargets([])
+    }
+  }
+  return (
+    <Loaded
+      title="Transfer Global"
+      crumbs={[...USER_CR, 'Transfer Global']}
+      load={countryScope}
+    >
+      {({ countryAdmins }, reload) => (
+        <>
+          <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+            Transferring a Country Admin hands them, and every Sub Admin, Agency and Host they own, to another Global Admin. The current owner loses access immediately.
+          </div></Card>
+          <DataTable
+            rows={countryAdmins}
+            searchKeys={['name', 'username', 'globalAdmin', 'displayId']}
+            columns={[
+              personCol('name', 'username'),
+              { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+              { key: 'globalAdmin', header: 'Owned by Global Admin', sortable: true, render: (r) => r.globalAdminId ? <Tag>{r.globalAdmin}</Tag> : <span className="muted">{r.globalAdmin}</span> },
+              numCol('subAdmins', 'Sub Admins'),
+              numCol('agencies', 'Agencies'),
+              numCol('hosts', 'Hosts'),
+            ]}
+            rowActions={(r) => [{ label: 'Transfer to another Global Admin', icon: 'arrowLeftRight', onClick: () => openWith(r) }]}
+            emptyText="No Country Admins yet — grant the country_admin role from Super Admin → Access Control."
+          />
+          {moving && (
+            <EntityForm
+              title={`Transfer Country Admin — ${moving.name}`}
+              onClose={() => { setMoving(null); setTargets(null) }}
+              savedMessage={`${moving.name} transferred`}
+              onSubmit={async (v) => {
+                await transferCountryAdmin({ countryAdminId: moving.id, toGlobalAdmin: v.global_admin })
+                reload()
+              }}
+              fields={[
+                {
+                  name: 'global_admin',
+                  label: `New Global Admin (currently: ${moving.globalAdmin})`,
+                  type: 'select',
+                  required: true,
+                  options: targets || [],
+                },
+              ]}
             />
           )}
         </>

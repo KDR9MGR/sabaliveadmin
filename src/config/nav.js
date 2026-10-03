@@ -70,6 +70,7 @@ export const NAV = {
         { label: 'Transfer Agency', to: '/admin/users/transfer-agency' },
         { label: 'Transfer Sub Admin', to: '/admin/users/transfer-sub-admin' },
         { label: 'Transfer Country', to: '/admin/users/transfer-country' },
+        { label: 'Transfer Global', to: '/admin/users/transfer-global' },
       ]},
       { label: 'Admin Management', icon: 'shieldUser', cap: 'manage_admins', children: [
         { label: 'Admins', to: '/admin/admins' },
@@ -144,6 +145,7 @@ export const NAV = {
         { label: 'Transfer Agency', to: '/global-admin/user-management/transfer-agency' },
         { label: 'Transfer Sub Admin', to: '/global-admin/user-management/transfer-sub-admin' },
         { label: 'Transfer Country', to: '/global-admin/user-management/transfer-country' },
+        { label: 'Transfer Global', to: '/global-admin/user-management/transfer-global' },
       ]},
       { label: 'Admin Management', icon: 'shieldUser', children: [
         { label: 'Country Admin', to: '/global-admin/admin-management/country-admin' },

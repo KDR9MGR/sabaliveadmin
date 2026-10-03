@@ -11,6 +11,7 @@ import MasterDashboard from './pages/master/Dashboard.jsx'
 import {
   UsersList, HostsList, SubAdminsList, UserIds, AccountStatus, TransferRequests, UserProfile,
   MasterTransferHost, MasterTransferAgency, MasterTransferSubAdmin, MasterTransferCountry,
+  MasterTransferGlobal,
 } from './pages/master/users.jsx'
 import {
   Admins, AddMasterAdmin, AdminSubAdmins, AgenciesAdmin, RolesPermissions,
@@ -51,6 +52,7 @@ import {
   CountryTransferCoins,
   CountryCoinHistorySubAdmin, CountryCoinHistoryAgency, CountryCoinHistoryUser, CountryBadges,
   CountryLeaderboard, CountryLiveRequest, CountrySalary, CountryProfileFrame, CountryProfile,
+  CountryTransferGlobal,
 } from './pages/countryAdmin.jsx'
 import {
   SubAdminDashboard, SubAdminUsers, SubAdminHosts, SubAdminAgencies, SubAdminAddAgency, SubAdminTransferCoins,
@@ -61,7 +63,7 @@ import {
   PanelAgencyCoinHistoryUser, PanelAgencyLiveRequest, PanelAgencyProfile,
 } from './pages/panelAgency.jsx'
 import {
-  GlobalAdminDashboard, GlobalUsers, GlobalHosts, GlobalTransferHost, GlobalTransferAgency, GlobalTransferSubAdmin, GlobalTransferCountry,
+  GlobalAdminDashboard, GlobalUsers, GlobalHosts, GlobalTransferHost, GlobalTransferAgency, GlobalTransferSubAdmin, GlobalTransferCountry, GlobalTransferGlobal,
   GlobalCountryAdmins, GlobalSubAdmins, GlobalAgencies, GlobalTransferCoins,
   GlobalAddCountryAdmin, GlobalAddSubAdmin, GlobalAddAgency,
   GlobalCoinHistoryCountryAdmin, GlobalCoinHistorySubAdmin, GlobalCoinHistoryAgency, GlobalCoinHistoryUser,
@@ -103,6 +105,7 @@ export default function App() {
               <Route path="users/transfer-agency" element={<MasterTransferAgency />} />
               <Route path="users/transfer-sub-admin" element={<MasterTransferSubAdmin />} />
               <Route path="users/transfer-country" element={<MasterTransferCountry />} />
+              <Route path="users/transfer-global" element={<MasterTransferGlobal />} />
               <Route path="users/:id" element={<UserProfile />} />
             </Route>
 
@@ -199,6 +202,7 @@ export default function App() {
             <Route path="user-management/transfer-agency" element={<GlobalTransferAgency />} />
             <Route path="user-management/transfer-sub-admin" element={<GlobalTransferSubAdmin />} />
             <Route path="user-management/transfer-country" element={<GlobalTransferCountry />} />
+            <Route path="user-management/transfer-global" element={<GlobalTransferGlobal />} />
             <Route path="admin-management/country-admin" element={<GlobalCountryAdmins />} />
             <Route path="admin-management/country-admin/add" element={<GlobalAddCountryAdmin />} />
             <Route path="admin-management/sub-admin" element={<GlobalSubAdmins />} />

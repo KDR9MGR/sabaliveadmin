@@ -20,6 +20,7 @@ import { HostsTable } from './hosts.jsx'
 import { listBadges, listFrames, grantBadge, grantUserFrame } from '../../lib/gamification.js'
 import {
   CountryTransferHost, CountryTransferAgency, CountryTransferSubAdmin, CountryTransferCountry,
+  CountryTransferGlobal,
 } from '../countryAdmin.jsx'
 
 const CRUMBS = ['Home', 'User Management']
@@ -42,6 +43,7 @@ export const MasterTransferHost = CountryTransferHost
 export const MasterTransferAgency = CountryTransferAgency
 export const MasterTransferSubAdmin = CountryTransferSubAdmin
 export const MasterTransferCountry = CountryTransferCountry
+export const MasterTransferGlobal = CountryTransferGlobal
 
 /* ------------------------------------------------------------------ All Users */
 /* readOnly: browse-only (a Global Admin sees every user but can't change their

@@ -35,12 +35,40 @@ export async function countryScope() {
   const seesAll = mine?.role !== 'country_admin'
 
   // Global view also needs the country admins, to label who owns each sub admin.
-  const countryRows = seesAll
-    ? unwrap(await supabase.from('staff_roles')
-        .select('user_id, created_at, profiles!user_id(name, username, status, display_id, avatar_url)')
-        .eq('role', 'country_admin')
-        .order('created_at', { ascending: false }))
-    : []
+  // Try to read global_admin_id too; if the column doesn't exist yet Supabase
+  // will throw the whole select, so wrap in a safe fallback.
+  let countryRows = []
+  try {
+    countryRows = seesAll
+      ? unwrap(await supabase.from('staff_roles')
+          .select('user_id, global_admin_id, created_at, profiles!user_id(name, username, status, display_id, avatar_url)')
+          .eq('role', 'country_admin')
+          .order('created_at', { ascending: false }))
+      : []
+  } catch {
+    countryRows = seesAll
+      ? unwrap(await supabase.from('staff_roles')
+          .select('user_id, created_at, profiles!user_id(name, username, status, display_id, avatar_url)')
+          .eq('role', 'country_admin')
+          .order('created_at', { ascending: false }))
+      : []
+  }
+
+  // Resolve Global Admin owners for each country admin
+  const globalAdminIds = [...new Set(countryRows.map((c) => c.global_admin_id).filter(Boolean))]
+  let globalAdminNames = {}
+  if (globalAdminIds.length) {
+    try {
+      const gaRows = unwrap(await supabase.from('staff_roles')
+        .select('user_id, profiles!user_id(name, username)')
+        .eq('role', 'global_admin')
+        .in('user_id', globalAdminIds))
+      globalAdminNames = Object.fromEntries(
+        gaRows.map((g) => [g.user_id, g.profiles?.name || shortId(g.user_id)])
+      )
+    } catch { /* keep empty */ }
+  }
+
   const countryName = Object.fromEntries(countryRows.map((c) => [c.user_id, c.profiles?.name || shortId(c.user_id)]))
 
   let q = supabase.from('staff_roles')
@@ -110,6 +138,8 @@ export async function countryScope() {
       email: emails[c.user_id] || '',
       avatar: c.profiles?.avatar_url || null,
       role: 'Country Admin',
+      globalAdminId: c.global_admin_id || null,
+      globalAdmin: globalAdminNames[c.global_admin_id] || 'Unassigned',
       subAdmins: subs.length,
       agencies: subs.reduce((n, s) => n + s.agencies, 0),
       hosts: subs.reduce((n, s) => n + s.hosts, 0),
@@ -185,6 +215,22 @@ export async function otherCountryAdminOptions() {
     .map((r) => ({ value: r.user_id, label: `${r.profiles?.name || shortId(r.user_id)} (@${r.profiles?.username || '—'})` }))
 }
 
+/* Other global admins — targets for "Transfer Global". Pass an optional
+   currentOwnerId to also exclude whoever currently owns this country admin. */
+export async function otherGlobalAdminOptions(excludeIds = []) {
+  const me = await myId()
+  const exclude = new Set([...(excludeIds || []), me].filter(Boolean))
+  const rows = unwrap(await supabase.from('staff_roles')
+    .select('user_id, profiles!user_id(name, username, display_id)')
+    .eq('role', 'global_admin'))
+  return rows
+    .filter((r) => !exclude.has(r.user_id))
+    .map((r) => ({
+      value: r.user_id,
+      label: `${r.profiles?.name || shortId(r.user_id)} (@${r.profiles?.username || '—'}) · ID ${r.profiles?.display_id || '—'}`,
+    }))
+}
+
 /* ---------------------------------------------------------------- actions (server re-checks scope) */
 export const createCountryAgency = ({ name, country, subAdmin }) =>
   rpc('create_country_agency', { p_name: name, p_sub_admin: subAdmin, p_country: country || 'India' })
@@ -200,3 +246,8 @@ export const transferHost = ({ hostId, toAgency, reason }) =>
 
 export const transferSubAdmin = ({ subAdminId, toCountryAdmin }) =>
   rpc('transfer_sub_admin', { p_sub_admin: subAdminId, p_to_country_admin: toCountryAdmin })
+
+/* Transfer a Country Admin (and their Sub Admin / Agency / Host tree) to
+   another Global Admin. The server RPC must exist in Supabase. */
+export const transferCountryAdmin = ({ countryAdminId, toGlobalAdmin }) =>
+  rpc('transfer_country_admin', { p_country_admin_id: countryAdminId, p_to_global_admin: toGlobalAdmin })

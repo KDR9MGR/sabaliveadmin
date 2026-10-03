@@ -19,7 +19,8 @@ import { TransferCoinsPage, CoinHistoryPage, USER_KIND } from './cascade.jsx'
 import { UsersList } from './master/users.jsx'
 import {
   CountryAdminDashboard, CountryHosts, CountryTransferHost, CountryTransferAgency,
-  CountryTransferSubAdmin, CountryTransferCountry, CountrySubAdmins, CountryAgencies,
+  CountryTransferSubAdmin, CountryTransferCountry, CountryTransferGlobal,
+  CountrySubAdmins, CountryAgencies,
   CountryBadges, CountryLeaderboard, CountryLiveRequest, CountrySalary, CountryProfileFrame,
 } from './countryAdmin.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
@@ -41,6 +42,7 @@ export const GlobalTransferHost = CountryTransferHost
 export const GlobalTransferAgency = CountryTransferAgency
 export const GlobalTransferSubAdmin = CountryTransferSubAdmin
 export const GlobalTransferCountry = CountryTransferCountry
+export const GlobalTransferGlobal = CountryTransferGlobal
 
 /* Admin Management */
 const ADD_COUNTRY = '/global-admin/admin-management/country-admin/add'
