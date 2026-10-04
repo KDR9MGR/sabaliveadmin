@@ -28,7 +28,7 @@ export function LuckyIds() {
   }
 
   const fields = [
-    { name: 'number', label: 'ID number', type: 'number', required: true, hint: 'At least 4 digits, e.g. 888888. Must not already be someone\'s app ID.' },
+    { name: 'number', label: 'ID number', type: 'text', required: true, placeholder: '888888 or 0786', hint: 'At least 4 digits, e.g. 888888. A leading zero is kept (0786). Must not already be someone\'s app ID.' },
     { name: 'price', label: 'Price (coins)', type: 'number', required: true, hint: '0 makes it free to claim.' },
     { name: 'days', label: 'Days a purchase lasts', type: 'number', required: true },
     { name: 'status', label: 'Status', type: 'select', required: true, options: [{ value: 'active', label: 'For sale' }, { value: 'inactive', label: 'Hidden' }] },
