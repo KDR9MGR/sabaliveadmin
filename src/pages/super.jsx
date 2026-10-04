@@ -15,6 +15,7 @@ import {
   listStaffAccounts, grantableProfiles, agencyOptions, grantRole, changeRole, revokeRole, superAdminCount,
   setStaffPermissions, masterAccountOptions,
 } from '../lib/accounts.js'
+import { ROLE_LABEL } from '../lib/admin.js'
 import { CAPABILITIES, roleBaseline, effectivePermissions } from '../lib/capabilities.js'
 import { AddStaffForm } from './addStaff.jsx'
 import { UsersList } from './master/users.jsx'
@@ -108,7 +109,7 @@ export function SuperDashboard() {
 
 /* ------------------------------------------------------------------ Admins */
 /* Shared staff-account management — grant / change / revoke staff_roles rows. */
-export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro, crumbRoot, addPath, allowGrant = true, allowEditProfile = false }) {
+export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro, crumbRoot, addPath, allowGrant = true, allowEditProfile = false, addLabel = 'Add Admin', canChangeRole = () => true, summary }) {
   const toast = useToast()
   const nav = useNavigate()
   const { user } = useAuth()
@@ -154,11 +155,12 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
         title={title}
         crumbs={[...(crumbRoot || CR), crumbLabel]}
         actions={<>
-          <Button icon="userPlus" onClick={() => nav(addPath)}>Add Admin</Button>
+          <Button icon="userPlus" onClick={() => nav(addPath)}>{addLabel}</Button>
           {allowGrant && <Button variant="primary" icon="shieldUser" onClick={() => setGranting(true)}>Grant Role</Button>}
         </>}
       />
       {intro && <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{intro}</div></Card>}
+      {summary && rows && summary(rows)}
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
@@ -177,7 +179,7 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
               ? { label: 'Full access (Super Admin)', icon: 'shield', onClick: () => {} }
               : { label: 'Permissions', icon: 'sliders', onClick: () => setPerms(r) },
             ...(allowEditProfile ? [{ label: 'Edit profile', icon: 'edit', onClick: () => setEditingProfile(r) }] : []),
-            { label: 'Change role', icon: 'shieldUser', onClick: () => setChanging(r) },
+            ...(canChangeRole(r) ? [{ label: 'Change role', icon: 'shieldUser', onClick: () => setChanging(r) }] : []),
             { sep: true },
             r.id === user?.id
               ? { label: "Can't revoke yourself", icon: 'lock', onClick: () => {} }
@@ -333,6 +335,37 @@ export function AddAdminAccount() {
       roleOpts={[{ value: 'admin', label: 'Admin' }]}
       showAgency={false}
       countryAdminMode="none"
+    />
+  )
+}
+
+/* Every staff account across every panel (Super Admin, Master, Global, Country,
+   Sub Admin, Agency) in one place. Read / revoke / permissions work on any of
+   them; creating and re-roling stay Master-only for a Super Admin, and editing
+   another account's profile is a Master action — those rules live in the
+   database (check_staff_creation, update_staff_role, assert_can_manage_staff),
+   so the page only offers what a Super Admin can actually do. */
+const PANEL_ORDER = ['super_admin', 'admin', 'global_admin', 'country_admin', 'sub_admin', 'agency_manager']
+export function StaffPanels() {
+  return (
+    <StaffAccountsPage
+      roles={[]}
+      grantRoleOpts={[{ value: 'admin', label: 'Master' }]}
+      title="Staff Panels"
+      crumbLabel="Staff Panels"
+      addPath="/super/admins/add"
+      addLabel="Add Master"
+      allowGrant={false}
+      canChangeRole={(r) => r.roleRaw === 'admin'}
+      intro="Every staff login across all panels. As Super Admin you can see them all, set per-account permissions and revoke any account (their Saba Live user account stays). You can create or change only Master accounts — a Master creates everything below."
+      summary={(rows) => (
+        <div className="hstack mb-16" style={{ gap: 8, flexWrap: 'wrap' }}>
+          {PANEL_ORDER.map((k) => (
+            <Badge key={k}>{ROLE_LABEL[k]}: <b>{rows.filter((r) => r.roleRaw === k).length}</b></Badge>
+          ))}
+          <Badge>Total: <b>{rows.length}</b></Badge>
+        </div>
+      )}
     />
   )
 }
