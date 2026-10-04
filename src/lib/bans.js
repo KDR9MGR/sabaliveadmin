@@ -74,8 +74,8 @@ export async function liftBan(banId, note) {
   return unwrap(await supabase.rpc('lift_ban', { p_ban_id: banId, p_note: note || null }))
 }
 
-export async function liftUserBans(userId, note) {
-  return unwrap(await supabase.rpc('lift_user_bans', { p_user: userId, p_note: note || null }))
+export async function liftUserBans(userId, note, kinds) {
+  return unwrap(await supabase.rpc('lift_user_bans', { p_user: userId, p_note: note || null, p_kinds: kinds?.length ? kinds : null }))
 }
 
 const PERSON = 'name, username, display_id, avatar_url'

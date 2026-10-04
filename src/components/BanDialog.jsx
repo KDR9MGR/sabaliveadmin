@@ -1,27 +1,50 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal, Button, useToast } from './ui.jsx'
-import { BAN_KINDS, BAN_KIND_KEYS, BAN_DURATIONS, endsOn, banUser } from '../lib/bans.js'
+import { BAN_KINDS, BAN_KIND_KEYS, BAN_DURATIONS, endsOn, banUser, liftUserBans, listUserBans } from '../lib/bans.js'
 
 /* Restrict a user: tick any of Live ban / ID ban / Device ban, pick how long,
    add an internal reason. The reason is for staff — the user is only told the
-   type and the end date. */
+   type and the end date. The switches start at what is in force now, so
+   turning one OFF and pressing Apply lifts that ban; turning one ON adds it. */
 export default function BanDialog({ user, defaultKinds = ['account'], onClose, onDone }) {
   const toast = useToast()
   const [kinds, setKinds] = useState(defaultKinds)
+  const [active, setActive] = useState(null) // kinds banned right now; null while loading
   const [duration, setDuration] = useState('7d')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    let live = true
+    listUserBans(user.id)
+      .then((rows) => {
+        if (!live) return
+        const now = [...new Set(rows.filter((r) => r.state === 'Active').map((r) => r.kind))]
+        setActive(now)
+        setKinds([...new Set([...now, ...defaultKinds])])
+      })
+      .catch(() => { if (live) setActive([]) })
+    return () => { live = false }
+  }, [user.id])
+
+  const toAdd = kinds.filter((k) => !(active || []).includes(k))
+  const toLift = (active || []).filter((k) => !kinds.includes(k))
+
   const toggle = (k) => setKinds((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))
 
   const submit = async () => {
-    if (!kinds.length) { setError('Choose at least one type of ban'); return }
+    if (!toAdd.length && !toLift.length) { setError('Nothing to change'); return }
     setBusy(true)
     setError('')
     try {
-      await banUser(user.id, kinds, duration, reason.trim())
-      toast(`${user.name}: ${kinds.map((k) => BAN_KINDS[k].label).join(' + ')} applied`)
+      if (toLift.length) await liftUserBans(user.id, 'Lifted from the admin panel', toLift)
+      if (toAdd.length) await banUser(user.id, toAdd, duration, reason.trim())
+      const parts = [
+        ...toLift.map((k) => `${BAN_KINDS[k].label} lifted`),
+        ...toAdd.map((k) => `${BAN_KINDS[k].label} applied`),
+      ]
+      toast(`${user.name}: ${parts.join(', ')}`)
       onDone?.()
       onClose()
     } catch (e) {
@@ -37,7 +60,7 @@ export default function BanDialog({ user, defaultKinds = ['account'], onClose, o
       onClose={busy ? () => {} : onClose}
       footer={<>
         <Button onClick={onClose} disabled={busy}>Cancel</Button>
-        <Button variant="danger" icon={busy ? 'refresh' : 'lock'} disabled={busy || !kinds.length} onClick={submit}>
+        <Button variant="danger" icon={busy ? 'refresh' : 'lock'} disabled={busy || active === null || (!toAdd.length && !toLift.length)} onClick={submit}>
           {busy ? 'Applying…' : 'Apply'}
         </Button>
       </>}
@@ -62,6 +85,7 @@ export default function BanDialog({ user, defaultKinds = ['account'], onClose, o
         ))}
       </div>
 
+      {toAdd.length > 0 && <>
       <div className="field" style={{ marginBottom: 16 }}>
         <label>For how long</label>
         <div className="hstack" style={{ gap: 8 }}>
@@ -78,6 +102,10 @@ export default function BanDialog({ user, defaultKinds = ['account'], onClose, o
         <label>Reason (internal)</label>
         <textarea className="textarea" placeholder="Why — visible to staff only" value={reason} onChange={(e) => setReason(e.target.value)} />
       </div>
+      </>}
+      {toLift.length > 0 && (
+        <div className="hint">Will be lifted: {toLift.map((k) => BAN_KINDS[k].label).join(', ')}.</div>
+      )}
     </Modal>
   )
 }
