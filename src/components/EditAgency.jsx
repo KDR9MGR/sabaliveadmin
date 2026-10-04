@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import EntityForm from './EntityForm.jsx'
-import { Drawer } from './ui.jsx'
+import { Drawer, useToast } from './ui.jsx'
 import { supabase } from '../lib/supabase.js'
 import { updateAgency } from '../lib/admin.js'
-import { getStaffProfile, updateStaffProfile, updateStaffCredentials } from '../lib/accounts.js'
+import { getStaffProfile, updateStaffProfile, updateStaffCredentials, inviteStaff } from '../lib/accounts.js'
 import { scopeSubAdminOptions, transferAgency } from '../lib/country.js'
 
 const STATUS_OPTS = [
@@ -28,11 +28,13 @@ async function loadAgency(agencyId) {
    (name, region, owning sub admin, and the agency login — manager name,
    username, email, phone, password) plus commission and status. Saved in
    stages (agency record, owner, manager profile, login), only the parts that
-   changed; if a later stage fails, the earlier ones are already applied and
+   changed; an agency with no manager can be given one here (creates the login
+   and makes it the manager of record); if a later stage fails, the earlier ones are already applied and
    the message says so. */
 export default function EditAgency({ agency: row, onClose, onSaved }) {
   const [data, setData] = useState(null)
   const [loadError, setLoadError] = useState('')
+  const toast = useToast()
 
   useEffect(() => {
     loadAgency(row.id).then(setData).catch((e) => setLoadError(e?.message || 'Could not load this agency'))
@@ -73,12 +75,21 @@ export default function EditAgency({ agency: row, onClose, onSaved }) {
     const newEmail = String(v.email || '').trim().toLowerCase()
     const emailChanged = !!manager && !!newEmail && newEmail !== String(initial.email).toLowerCase()
     const password = manager ? (v.password || '') : ''
+    const assignManager = !manager && !!newEmail
 
+    if (!manager && !newEmail && (v.full_name || v.username || v.phone || v.password || v.confirm_password)) {
+      throw new Error("Enter the manager's email to assign a manager")
+    }
+    if (assignManager && !newEmail.includes('@')) throw new Error('Enter a valid manager email')
+    if (assignManager && (v.password || v.confirm_password)) {
+      if (v.password !== v.confirm_password) throw new Error('Passwords do not match')
+      if (v.password.length < 8) throw new Error('Password must be at least 8 characters')
+    }
     if (password || v.confirm_password) {
       if (password !== v.confirm_password) throw new Error('Passwords do not match')
       if (password.length < 8) throw new Error('Password must be at least 8 characters')
     }
-    if (!agencyChanged && !ownerChanged && !profileChanged && !emailChanged && !password) {
+    if (!agencyChanged && !ownerChanged && !profileChanged && !emailChanged && !password && !assignManager) {
       throw new Error('No changes to save')
     }
 
@@ -105,6 +116,18 @@ export default function EditAgency({ agency: row, onClose, onSaved }) {
     if (emailChanged || password) {
       await stage('login', () => updateStaffCredentials(managerId, { email: emailChanged ? newEmail : undefined, password }))
     }
+    if (assignManager) {
+      await stage('manager login', async () => {
+        const res = await inviteStaff({
+          email: newEmail, role: 'agency_manager', agency_id: agency.id,
+          full_name: v.full_name || null, username: v.username || null, phone: v.phone || null,
+          location: v.country || null, password: v.password || null,
+        })
+        if (res?.temp_password) {
+          toast(`Manager ${res.email} assigned. Temporary password: ${res.temp_password} — share it securely.`)
+        }
+      })
+    }
     onSaved?.()
   }
 
@@ -121,7 +144,7 @@ export default function EditAgency({ agency: row, onClose, onSaved }) {
         { name: 'sub_admin', label: 'Owned by sub admin', type: 'select', options: ownerOpts },
         { name: 'commission_percent', label: 'Commission %', type: 'number' },
         { name: 'status', label: 'Status', type: 'select', options: STATUS_OPTS },
-        { name: 'login_section', type: 'section', label: 'Agency login', hint: manager ? undefined : 'This agency has no manager login (it was revoked, or never created).' },
+        { name: 'login_section', type: 'section', label: 'Agency login', hint: manager ? undefined : 'This agency has no manager yet (it was revoked, or never created). Fill in the manager below to assign one — leave the email blank to keep it unassigned.' },
         ...(manager ? [
           { name: 'full_name', label: 'Manager name' },
           { name: 'username', label: 'Username', hint: '3-30 characters: letters, numbers, underscore' },
@@ -129,7 +152,14 @@ export default function EditAgency({ agency: row, onClose, onSaved }) {
           { name: 'phone', label: 'Phone' },
           { name: 'password', label: 'New password', type: 'password', hint: 'Leave blank to keep the current password (min 8 characters)' },
           { name: 'confirm_password', label: 'Confirm new password', type: 'password' },
-        ] : []),
+        ] : [
+          { name: 'full_name', label: 'Manager name' },
+          { name: 'username', label: 'Username', hint: '3-30 characters: letters, numbers, underscore' },
+          { name: 'email', label: 'Manager email', type: 'email', placeholder: 'manager@example.com' },
+          { name: 'phone', label: 'Phone' },
+          { name: 'password', label: 'Password', type: 'password', hint: 'Leave blank to generate a temporary password (min 8 characters if set)' },
+          { name: 'confirm_password', label: 'Confirm password', type: 'password' },
+        ]),
       ]}
     />
   )

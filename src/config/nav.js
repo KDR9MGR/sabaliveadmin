@@ -79,6 +79,7 @@ export const NAV = {
         { label: 'Sub Admin', to: '/admin/admins/sub-admin' },
         { label: 'Agency', to: '/admin/admins/agency' },
         { label: 'Roles & Permissions', to: '/admin/admins/roles' },
+        { label: 'Revoked Users', to: '/admin/admins/revoked' },
       ]},
       { label: 'Agency Management', icon: 'building', cap: 'manage_agencies', children: [
         { label: 'Agencies', to: '/admin/agencies' },

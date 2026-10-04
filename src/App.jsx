@@ -25,6 +25,7 @@ import { GiftSettings, CoinPackages, Transactions, GiftHistory, TransferCoins, T
 import { Banners, LegalPages, Announcements } from './pages/master/content.jsx'
 import { FlaggedMessages } from './pages/master/flagged.jsx'
 import { Bans } from './pages/master/bans.jsx'
+import { RevokedUsers } from './pages/master/revoked.jsx'
 import { Maintenance } from './pages/maintenance.jsx'
 import { LiveMonitor } from './pages/liveMonitor.jsx'
 import { GhostIds } from './pages/ghosts.jsx'
@@ -121,6 +122,7 @@ export default function App() {
               <Route path="admins/sub-admins" element={<AdminSubAdmins />} />
               <Route path="admins/agencies" element={<AgenciesAdmin />} />
               <Route path="admins/roles" element={<RolesPermissions />} />
+              <Route path="admins/revoked" element={<RevokedUsers />} />
               <Route path="admins/global-admin" element={<GlobalAdminAccounts />} />
               <Route path="admins/global-admin/add" element={<AddGlobalAdmin />} />
               <Route path="admins/country-admin" element={<MasterCountryAdmins />} />
