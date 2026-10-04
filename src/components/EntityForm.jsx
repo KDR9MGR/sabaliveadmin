@@ -51,7 +51,7 @@ function ImageUploadField({ value, onChange, onUpload, accept = 'image/*' }) {
 }
 
 /* Schema-driven form rendered inside a Drawer.
-   fields: [{ name, label, type: text|email|number|select|textarea|toggle|image, options?, required?, hint?, full?, placeholder?, onUpload? }]
+   fields: [{ name, label, type: text|email|number|select|textarea|toggle|image, options?, required?, hint?, full?, placeholder?, autoComplete?, onUpload? }]
    type: 'image' needs onUpload: (file) => Promise<url>.
    onSubmit(values): optional async persister. If given, its result drives success/error;
    without it the form just toasts (used by screens still on mock data). */
@@ -138,7 +138,7 @@ export default function EntityForm({ title, fields, initial = {}, onClose, onSub
               </div>
             ) : (
               <input
-                className="input" type={f.type || 'text'} placeholder={f.placeholder}
+                className="input" type={f.type || 'text'} placeholder={f.placeholder} autoComplete={f.autoComplete}
                 value={values[f.name]} onChange={(e) => set(f.name, e.target.value)}
               />
             )}

@@ -74,19 +74,15 @@ export default function EditAgency({ agency: row, onClose, onSaved }) {
     const profileChanged = !!manager && ['full_name', 'username', 'phone'].some(changed)
     const newEmail = String(v.email || '').trim().toLowerCase()
     const emailChanged = !!manager && !!newEmail && newEmail !== String(initial.email).toLowerCase()
-    const password = manager ? (v.password || '') : ''
     const assignManager = !manager && !!newEmail
+    // With no manager and no email the manager fields are ignored — a browser
+    // may have autofilled them, and "leave the email blank" means stay unassigned.
+    const password = manager || assignManager ? (v.password || '') : ''
+    const confirm = manager || assignManager ? (v.confirm_password || '') : ''
 
-    if (!manager && !newEmail && (v.full_name || v.username || v.phone || v.password || v.confirm_password)) {
-      throw new Error("Enter the manager's email to assign a manager")
-    }
     if (assignManager && !newEmail.includes('@')) throw new Error('Enter a valid manager email')
-    if (assignManager && (v.password || v.confirm_password)) {
-      if (v.password !== v.confirm_password) throw new Error('Passwords do not match')
-      if (v.password.length < 8) throw new Error('Password must be at least 8 characters')
-    }
-    if (password || v.confirm_password) {
-      if (password !== v.confirm_password) throw new Error('Passwords do not match')
+    if (password || confirm) {
+      if (password !== confirm) throw new Error('Passwords do not match')
       if (password.length < 8) throw new Error('Password must be at least 8 characters')
     }
     if (!agencyChanged && !ownerChanged && !profileChanged && !emailChanged && !password && !assignManager) {
@@ -146,19 +142,19 @@ export default function EditAgency({ agency: row, onClose, onSaved }) {
         { name: 'status', label: 'Status', type: 'select', options: STATUS_OPTS },
         { name: 'login_section', type: 'section', label: 'Agency login', hint: manager ? undefined : 'This agency has no manager yet (it was revoked, or never created). Fill in the manager below to assign one — leave the email blank to keep it unassigned.' },
         ...(manager ? [
-          { name: 'full_name', label: 'Manager name' },
-          { name: 'username', label: 'Username', hint: '3-30 characters: letters, numbers, underscore' },
-          { name: 'email', label: 'Email', type: 'email' },
-          { name: 'phone', label: 'Phone' },
-          { name: 'password', label: 'New password', type: 'password', hint: 'Leave blank to keep the current password (min 8 characters)' },
-          { name: 'confirm_password', label: 'Confirm new password', type: 'password' },
+          { name: 'full_name', autoComplete: 'off', label: 'Manager name' },
+          { name: 'username', autoComplete: 'off', label: 'Username', hint: '3-30 characters: letters, numbers, underscore' },
+          { name: 'email', autoComplete: 'off', label: 'Email', type: 'email' },
+          { name: 'phone', autoComplete: 'off', label: 'Phone' },
+          { name: 'password', autoComplete: 'new-password', label: 'New password', type: 'password', hint: 'Leave blank to keep the current password (min 8 characters)' },
+          { name: 'confirm_password', autoComplete: 'new-password', label: 'Confirm new password', type: 'password' },
         ] : [
-          { name: 'full_name', label: 'Manager name' },
-          { name: 'username', label: 'Username', hint: '3-30 characters: letters, numbers, underscore' },
-          { name: 'email', label: 'Manager email', type: 'email', placeholder: 'manager@example.com' },
-          { name: 'phone', label: 'Phone' },
-          { name: 'password', label: 'Password', type: 'password', hint: 'Leave blank to generate a temporary password (min 8 characters if set)' },
-          { name: 'confirm_password', label: 'Confirm password', type: 'password' },
+          { name: 'full_name', autoComplete: 'off', label: 'Manager name' },
+          { name: 'username', autoComplete: 'off', label: 'Username', hint: '3-30 characters: letters, numbers, underscore' },
+          { name: 'email', autoComplete: 'off', label: 'Manager email', type: 'email', placeholder: 'manager@example.com' },
+          { name: 'phone', autoComplete: 'off', label: 'Phone' },
+          { name: 'password', autoComplete: 'new-password', label: 'Password', type: 'password', hint: 'Leave blank to generate a temporary password (min 8 characters if set)' },
+          { name: 'confirm_password', autoComplete: 'new-password', label: 'Confirm password', type: 'password' },
         ]),
       ]}
     />
