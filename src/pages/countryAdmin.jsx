@@ -30,6 +30,7 @@ import {
 } from '../lib/country.js'
 import { countryList } from '../lib/countries.js'
 import StaffRowManager from '../components/StaffRowManager.jsx'
+import HandoverButton from '../components/HandoverButton.jsx'
 
 const CR = ['Home']
 const USER_CR = [...CR, 'User Management']
@@ -120,10 +121,13 @@ export function CountryTransferHost() {
 }
 
 /* Transfer Agency — hand an agency to another of my sub admins. */
-export function CountryTransferAgency() {
+export function CountryTransferAgency({ handover = false }) {
   const [moving, setMoving] = useState(null)
   return (
-    <Loaded title="Transfer Agency" crumbs={[...USER_CR, 'Transfer Agency']} load={countryScope}>
+    <Loaded
+      title="Transfer Agency" crumbs={[...USER_CR, 'Transfer Agency']} load={countryScope}
+      actions={handover ? (_, reload) => <HandoverButton role="agency_manager" onDone={reload} /> : undefined}
+    >
       {({ agencies, subAdmins }, reload) => (
         <>
           <DataTable
@@ -156,12 +160,13 @@ export function CountryTransferAgency() {
 }
 
 /* Transfer Sub Admin — hand a sub admin (and their agencies) to another country admin. */
-export function CountryTransferSubAdmin() {
+export function CountryTransferSubAdmin({ handover = false }) {
   const [moving, setMoving] = useState(null)
   return (
     <Loaded
       title="Transfer Sub Admin"
       crumbs={[...USER_CR, 'Transfer Sub Admin']}
+      actions={handover ? (_, reload) => <HandoverButton role="sub_admin" onDone={reload} /> : undefined}
       load={async () => ({ ...(await countryScope()), countryAdmins: await otherCountryAdminOptions() })}
     >
       {({ subAdmins, countryAdmins }, reload) => (
@@ -195,10 +200,13 @@ export function CountryTransferSubAdmin() {
 }
 
 /* Transfer Country — reassign which country/region an agency in my tree is counted under. */
-export function CountryTransferCountry() {
+export function CountryTransferCountry({ handover = false }) {
   const [moving, setMoving] = useState(null)
   return (
-    <Loaded title="Transfer Country" crumbs={[...USER_CR, 'Transfer Country']} load={countryScope}>
+    <Loaded
+      title="Transfer Country" crumbs={[...USER_CR, 'Transfer Country']} load={countryScope}
+      actions={handover ? (_, reload) => <HandoverButton role="country_admin" onDone={reload} /> : undefined}
+    >
       {({ agencies }, reload) => (
         <>
           <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
@@ -233,7 +241,7 @@ export function CountryTransferCountry() {
 
 /* Transfer Global — hand a Country Admin (and all their Sub Admins / Agencies / Hosts)
    to another Global Admin. Mirrors the Transfer Sub Admin pattern, one level up. */
-export function CountryTransferGlobal() {
+export function CountryTransferGlobal({ handover = false }) {
   const [moving, setMoving] = useState(null)
   const [targets, setTargets] = useState(null)
   const openWith = async (countryAdmin) => {
@@ -250,6 +258,7 @@ export function CountryTransferGlobal() {
       title="Transfer Global"
       crumbs={[...USER_CR, 'Transfer Global']}
       load={countryScope}
+      actions={handover ? (_, reload) => <HandoverButton role="global_admin" onDone={reload} /> : undefined}
     >
       {({ countryAdmins }, reload) => (
         <>
@@ -343,14 +352,15 @@ export function CountrySubAdmins({ addPath = '/country-admin/admin-management/su
   )
 }
 
-export function CountryAgencies({ addPath = '/country-admin/admin-management/agency/add', manage = false }) {
+/* canAdd=false hides the Add Agency button (Country Admin can't add agencies from the panel). */
+export function CountryAgencies({ addPath = '/country-admin/admin-management/agency/add', manage = false, canAdd = true }) {
   const nav = useNavigate()
   return (
     <Loaded
       title="Agency"
       crumbs={[...ADMIN_CR, 'Agency']}
       load={countryScope}
-      actions={() => <Button variant="primary" icon="plus" onClick={() => nav(addPath)}>Add Agency</Button>}
+      actions={() => (canAdd ? <Button variant="primary" icon="plus" onClick={() => nav(addPath)}>Add Agency</Button> : null)}
     >
       {({ agencies }, reload) => {
         const table = (rowActions) => (

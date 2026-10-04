@@ -18,6 +18,10 @@ import { liftUserBans, liftBan, listUserBans } from '../../lib/bans.js'
 import { relativeTime } from '../../lib/format.js'
 import { HostsTable } from './hosts.jsx'
 import { listBadges, listFrames, grantBadge, grantUserFrame } from '../../lib/gamification.js'
+import { listStoreItems } from '../../lib/store.js'
+import { assignStoreItem, removeUserItem, updateUserProfile } from '../../lib/userTools.js'
+import { userLuckyId, availableLuckyOptions, assignLuckyId, revokeLuckyId } from '../../lib/luckyIds.js'
+import { uploadMedia } from '../../lib/storage.js'
 import {
   CountryTransferHost, CountryTransferAgency, CountryTransferSubAdmin, CountryTransferCountry,
   CountryTransferGlobal,
@@ -40,10 +44,11 @@ function RestrictionTags({ list }) {
    whole Global > Country > Sub > Agency tree — same components Global Admin
    uses over that same tree, just crumbed under Master's own User Management. */
 export const MasterTransferHost = CountryTransferHost
-export const MasterTransferAgency = CountryTransferAgency
-export const MasterTransferSubAdmin = CountryTransferSubAdmin
-export const MasterTransferCountry = CountryTransferCountry
-export const MasterTransferGlobal = CountryTransferGlobal
+/* Master also hands a panel account's seat to another user (Agency / Sub Admin / Country / Global). */
+export const MasterTransferAgency = () => <CountryTransferAgency handover />
+export const MasterTransferSubAdmin = () => <CountryTransferSubAdmin handover />
+export const MasterTransferCountry = () => <CountryTransferCountry handover />
+export const MasterTransferGlobal = () => <CountryTransferGlobal handover />
 
 /* ------------------------------------------------------------------ All Users */
 /* readOnly: browse-only (a Global Admin sees every user but can't change their
@@ -238,7 +243,7 @@ export function AccountStatus() {
         </div>
         <DataTable
           rows={list}
-          searchKeys={['name', 'username', 'idShort']}
+          searchKeys={['name', 'username', 'displayId']}
           filters={[{ label: 'Status', options: ['Active', 'Inactive', 'Suspended'], get: (r) => r.status }]}
           columns={[
             personCol('name', 'username'),
@@ -430,6 +435,7 @@ export function UserProfile() {
   const { data, loading, error, reload } = useAsyncData(() => getUserDetail(id), [id])
   const { data: bans, reload: reloadBans } = useAsyncData(() => listUserBans(id), [id])
   const [banning, setBanning] = useState(null) // default kinds for the Restrict dialog
+  const [editing, setEditing] = useState(false)
   const refresh = () => { reload(); reloadBans() }
 
   const changeStatus = async (status) => {
@@ -453,10 +459,11 @@ export function UserProfile() {
     <>
       <PageHeader
         title={u?.name || 'User'}
-        crumbs={['Home', 'User Management', 'Users', id?.slice(0, 8)]}
+        crumbs={['Home', 'User Management', 'Users', u?.display_id != null ? String(u.display_id) : '…']}
         actions={<>
           <Button icon="chevronLeft" onClick={() => history.back()}>Back</Button>
           {u && restricted && <Button icon="check" onClick={liftEverything}>Lift restrictions</Button>}
+          {u && <Button icon="edit" onClick={() => setEditing(true)}>Edit profile</Button>}
           {u && <Button variant="danger" icon="lock" onClick={() => setBanning(['account'])}>Restrict (ban)…</Button>}
         </>}
       />
@@ -466,6 +473,7 @@ export function UserProfile() {
         )}
       </AsyncView>
       {banning && u && <BanDialog user={{ id, name: u.name }} defaultKinds={banning} onClose={() => setBanning(null)} onDone={refresh} />}
+      {editing && u && <EditUserProfile user={u} onClose={() => setEditing(false)} onDone={refresh} />}
     </>
   )
 }
@@ -478,11 +486,23 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
   const kyc = (u.kyc_verifications || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
   const role = sr ? (ROLE_LABEL[sr.role] || sr.role) : hp ? 'Host' : 'User'
   const [granting, setGranting] = useState(null) // 'badge' | 'frame'
+  const [assigningItem, setAssigningItem] = useState(false)
+  const [assigningLucky, setAssigningLucky] = useState(false)
+  const { data: lucky, reload: reloadLucky } = useAsyncData(() => userLuckyId(u.id), [u.id])
   const toast = useToast()
   const { data: catalog } = useAsyncData(async () => ({
     badges: await listBadges(),
     frames: await listFrames(),
   }))
+
+  const removeItem = async (e) => {
+    try { await removeUserItem(e.id); toast(`${e.name} removed`); onGranted?.() }
+    catch (err) { toast(err.message || 'Could not remove') }
+  }
+  const revokeLucky = async () => {
+    try { await revokeLuckyId(lucky.id); toast('Lucky ID revoked'); reloadLucky(); onGranted?.() }
+    catch (err) { toast(err.message || 'Could not revoke') }
+  }
 
   const grant = async (kind, id) => {
     try {
@@ -524,23 +544,40 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
           </div>
         </Card>
 
-        <Card title="Entry" sub="Entry effects and vehicles this user has bought — the equipped one plays when they walk into a live">
+        <Card
+          title="Bag"
+          sub="Entry effects, vehicles, frames and room skins this user owns — the equipped entry effect / vehicle plays when they walk into a live"
+          action={<Button size="sm" icon="userPlus" onClick={() => setAssigningItem(true)}>Assign item</Button>}
+        >
           {data.entries.length ? (
             <div className="feed">
-              {data.entries.map((e, i) => (
-                <div className="feed__item" key={i}>
+              {data.entries.map((e) => (
+                <div className="feed__item" key={e.id}>
                   <span className="feed__dot" style={{ background: 'none' }}><MediaPreview url={e.assetUrl} emoji={e.emoji} size={12} /></span>
                   <div className="grow">
                     <div className="feed__text">{e.name} · <Tag>{e.kind}</Tag></div>
                     <div className="feed__time">
-                      {e.active ? `Expires ${fmtDate(e.expiresAt)}` : `Expired ${fmtDate(e.expiresAt)}`} · bought {relativeTime(e.purchasedAt)}
+                      {e.active ? `Expires ${fmtDate(e.expiresAt)}` : `Expired ${fmtDate(e.expiresAt)}`} · added {relativeTime(e.purchasedAt)}
                     </div>
                   </div>
                   {e.equipped && e.active ? <StatusBadge value="Equipped" /> : !e.active ? <StatusBadge value="Expired" /> : <span className="muted">Owned</span>}
+                  <Button size="sm" onClick={() => removeItem(e)}>Remove</Button>
                 </div>
               ))}
             </div>
-          ) : <EmptyState icon="userPlus" title="No entry effects or vehicles" text="They haven't bought one from the Store yet." />}
+          ) : <EmptyState icon="userPlus" title="Nothing in the Bag" text="Nothing bought or assigned yet — use Assign item to add something." />}
+        </Card>
+
+        <Card
+          title="Lucky ID"
+          sub="A special app ID that replaces this user's own while they hold it"
+          action={lucky
+            ? <Button size="sm" onClick={revokeLucky}>Revoke</Button>
+            : <Button size="sm" icon="userPlus" onClick={() => setAssigningLucky(true)}>Assign Lucky ID</Button>}
+        >
+          {lucky
+            ? <div className="hstack" style={{ gap: 10 }}><b className="mono" style={{ fontSize: 18 }}>{lucky.number}</b><span className="muted">expires {lucky.expires}</span></div>
+            : <EmptyState icon="star" title="No Lucky ID" text="They use their own app ID." />}
         </Card>
 
         <Card title="Badges" action={<Button size="sm" icon="userPlus" onClick={() => setGranting('badge')}>Assign badge</Button>}>
@@ -651,6 +688,8 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
         </Card>
       </div>
 
+      {assigningItem && <AssignItemForm user={u} onClose={() => setAssigningItem(false)} onDone={() => { setAssigningItem(false); onGranted?.() }} />}
+      {assigningLucky && <AssignLuckyForm user={u} onClose={() => setAssigningLucky(false)} onDone={() => { setAssigningLucky(false); reloadLucky(); onGranted?.() }} />}
       {granting && (
         <EntityForm
           title={granting === 'badge' ? `Assign a badge to ${u.name}` : `Assign a frame to ${u.name}`}
@@ -667,5 +706,83 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
         />
       )}
     </div>
+  )
+}
+
+/* Assign a Store item straight into the user's Bag (no coins charged). */
+const ITEM_KINDS = [
+  { value: 'entry_effect', label: 'Entry effect' },
+  { value: 'vehicle', label: 'Vehicle (Garage)' },
+  { value: 'frame', label: 'Frame (Store)' },
+  { value: 'room_skin', label: 'Room skin' },
+]
+function AssignItemForm({ user, onClose, onDone }) {
+  const [kind, setKind] = useState('entry_effect')
+  const { data: items } = useAsyncData(() => listStoreItems(kind), [kind])
+  return (
+    <EntityForm
+      title={`Assign an item to ${user.name}`}
+      submitLabel="Assign"
+      savedMessage="Added to their Bag"
+      initial={{ kind: 'entry_effect', equip: true }}
+      onChange={(name, val) => { if (name === 'kind') setKind(val) }}
+      onClose={onClose}
+      fields={[
+        { name: 'kind', label: 'Type', type: 'select', required: true, options: ITEM_KINDS, full: true },
+        { name: 'item_id', label: 'Item', type: 'select', required: true, full: true,
+          options: (items || []).map((i) => ({ value: i.id, label: `${i.emoji} ${i.name} · ${i.days} days` })) },
+        { name: 'days', label: 'Days (optional)', type: 'number', hint: 'Leave empty for the item\'s own duration. Adds to an unexpired copy.' },
+        { name: 'equip', label: 'Equip it now', type: 'toggle' },
+      ]}
+      onSubmit={async (v) => {
+        if (!(items || []).some((i) => i.id === v.item_id)) throw new Error('Pick an item of this type')
+        await assignStoreItem(user.id, v.item_id, v.days, v.equip)
+        onDone()
+      }}
+    />
+  )
+}
+
+function AssignLuckyForm({ user, onClose, onDone }) {
+  const { data: options } = useAsyncData(availableLuckyOptions)
+  return (
+    <EntityForm
+      title={`Assign a Lucky ID to ${user.name}`}
+      submitLabel="Assign"
+      savedMessage="Lucky ID assigned"
+      onClose={onClose}
+      fields={[
+        { name: 'lucky_id', label: 'Lucky ID', type: 'select', required: true, full: true, options: options || [], hint: 'Their own app ID comes back when it expires or you revoke it.' },
+        { name: 'days', label: 'Days (optional)', type: 'number' },
+      ]}
+      onSubmit={async (v) => { await assignLuckyId(v.lucky_id, user.id, v.days); onDone() }}
+    />
+  )
+}
+
+/* Edit an ordinary user's profile from the panel. */
+function EditUserProfile({ user, onClose, onDone }) {
+  return (
+    <EntityForm
+      title={`Edit ${user.name}`}
+      savedMessage="Profile updated"
+      initial={{
+        name: user.name || '', username: user.username || '', bio: user.bio || '', location: user.location || '',
+        gender: user.gender || '', date_of_birth: user.date_of_birth || '', phone: user.phone || '', avatar_url: user.avatar_url || '',
+      }}
+      onClose={onClose}
+      fields={[
+        { name: 'avatar_url', label: 'Profile photo', type: 'image', full: true, accept: '.png,.jpg,.jpeg,image/png,image/jpeg',
+          onUpload: (file) => uploadMedia('avatars', user.id, file), hint: 'PNG or JPG' },
+        { name: 'name', label: 'Name', required: true },
+        { name: 'username', label: 'Username', required: true, hint: '3–30 letters, numbers or underscore' },
+        { name: 'gender', label: 'Gender', type: 'select', options: [{ value: 'female', label: 'Female' }, { value: 'male', label: 'Male' }, { value: 'other', label: 'Other' }] },
+        { name: 'date_of_birth', label: 'Date of birth', type: 'date' },
+        { name: 'location', label: 'Location' },
+        { name: 'phone', label: 'Phone' },
+        { name: 'bio', label: 'Bio', type: 'textarea', full: true },
+      ]}
+      onSubmit={async (v) => { await updateUserProfile(user.id, v); onDone() }}
+    />
   )
 }

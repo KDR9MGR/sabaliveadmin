@@ -101,6 +101,7 @@ export const NAV = {
         { label: 'Gift History', to: '/admin/coins/gift-history' },
         { label: 'Transfer Coins', to: '/admin/coins/transfer' },
         { label: 'Transfer History', to: '/admin/coins/transfer-history' },
+        { label: 'Coin Sellers', to: '/admin/coins/sellers' },
       ]},
       { label: 'Store', icon: 'gift', cap: 'manage_coins', children: [
         { label: 'Frames', to: '/admin/store/frame' },
@@ -116,6 +117,8 @@ export const NAV = {
     { section: 'Platform', items: [
       { label: 'Live Requests', icon: 'radio', cap: 'manage_live_requests', to: '/admin/live' },
       { label: 'Live Monitor', icon: 'eye', cap: 'monitor_lives', to: '/admin/live-monitor' },
+      { label: 'Levels', icon: 'award', cap: 'manage_levels', to: '/admin/levels' },
+      { label: 'Support', icon: 'mail', cap: 'manage_support', to: '/admin/support' },
       { label: 'Lucky Box', icon: 'gift', cap: 'manage_lucky_box', to: '/admin/lucky-box' },
       { label: 'Badge Management', icon: 'award', cap: 'manage_badges', to: '/admin/badges' },
       { label: 'Leaderboard Frame', icon: 'trophy', cap: 'manage_leaderboard_frame', to: '/admin/leaderboard' },
@@ -162,11 +165,8 @@ export const NAV = {
       ]},
     ]},
     { section: 'Platform', items: [
-      { label: 'Badge Management', icon: 'award', to: '/global-admin/badges' },
-      { label: 'Leaderboard Frame', icon: 'trophy', to: '/global-admin/leaderboard' },
       { label: 'Live Request', icon: 'radio', to: '/global-admin/live-request' },
       { label: 'Salary', icon: 'wallet', to: '/global-admin/salary' },
-      { label: 'Profile Frame', icon: 'frame', to: '/global-admin/profile-frame' },
     ]},
     { section: 'Account', items: [
       { label: 'My Profile', icon: 'user', to: '/global-admin/profile' },
@@ -212,6 +212,9 @@ export const NAV = {
     { section: 'Monitoring', items: [
       { label: 'Live Monitor', icon: 'eye', to: '/super/live-monitor' },
       { label: 'Ghost IDs', icon: 'eye', to: '/super/ghosts' },
+    ]},
+    { section: 'Support', items: [
+      { label: 'Support Chat', icon: 'mail', cap: 'manage_support', to: '/super/support' },
     ]},
     { section: 'Administration', items: [
       { label: 'Admin Management', icon: 'shield', cap: 'manage_admins', children: [
@@ -263,11 +266,8 @@ export const NAV = {
       ]},
     ]},
     { section: 'Platform', items: [
-      { label: 'Badge Management', icon: 'award', to: '/country-admin/badges' },
-      { label: 'Leaderboard Frame', icon: 'trophy', to: '/country-admin/leaderboard' },
       { label: 'Live Request', icon: 'radio', to: '/country-admin/live-request' },
       { label: 'Salary', icon: 'wallet', to: '/country-admin/salary' },
-      { label: 'Profile Frame', icon: 'frame', to: '/country-admin/profile-frame' },
     ]},
     { section: 'Account', items: [
       { label: 'My Profile', icon: 'user', to: '/country-admin/profile' },

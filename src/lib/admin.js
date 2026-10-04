@@ -3,6 +3,8 @@ import { activeRestrictions } from './bans.js'
 
 /* ---------------------------------------------------------------- helpers */
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
+/* What a Bag item is called on the user detail page. */
+const BAG_KIND = { entry_effect: 'Entry effect', vehicle: 'Vehicle', frame: 'Frame', room_skin: 'Room skin' }
 export const shortId = (uuid) => (uuid ? uuid.slice(0, 8) : '')
 export const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
@@ -74,7 +76,7 @@ export async function getUserDetail(id) {
       .eq('id', id).maybeSingle().then(unwrap),
     // the entry effects and vehicles this user has bought (and is wearing)
     supabase.from('user_items')
-      .select('expires_at, equipped, purchased_at, store_items(name, emoji, category, asset_url)')
+      .select('id, expires_at, equipped, purchased_at, store_items(name, emoji, category, asset_url)')
       .eq('profile_id', id).order('purchased_at', { ascending: false }).limit(50).then(unwrap),
     supabase.from('live_streams')
       .select('title, status, viewer_count, gift_coin_total, started_at')
@@ -98,11 +100,12 @@ export async function getUserDetail(id) {
   return {
     profile,
     entries: (entries || [])
-      .filter((e) => e.store_items && ['entry_effect', 'vehicle'].includes(e.store_items.category))
+      .filter((e) => e.store_items && e.store_items.category !== 'vip')
       .map((e) => ({
+        id: e.id,
         name: e.store_items.name,
         emoji: e.store_items.emoji,
-        kind: e.store_items.category === 'vehicle' ? 'Vehicle' : 'Entry effect',
+        kind: BAG_KIND[e.store_items.category] || e.store_items.category,
         assetUrl: e.store_items.asset_url,
         equipped: e.equipped,
         expiresAt: e.expires_at,

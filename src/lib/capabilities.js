@@ -38,6 +38,9 @@ export const CAPABILITIES = [
   // Watch any live from the panel without being seen. On by default for a Master and
   // enforced server-side (staff_can_ghost_watch): an explicit false here blocks it.
   { key: 'monitor_lives', label: 'Live monitor (ghost view)', group: 'Platform menu' },
+  // Also enforced server-side (staff_cap_on): on by default for a Master, an explicit false blocks.
+  { key: 'manage_levels', label: 'Levels (XP & images)', group: 'Platform menu' },
+  { key: 'manage_support', label: 'Support chat', group: 'Platform menu' },
 ]
 
 export const CAPABILITY_KEYS = CAPABILITIES.map((c) => c.key)
@@ -47,7 +50,7 @@ const ALL = Object.fromEntries(CAPABILITY_KEYS.map((k) => [k, true]))
 
 export const ROLE_BASELINE = {
   super_admin: ALL,
-  admin: set('view_dashboards', 'manage_users', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'monitor_lives'),
+  admin: set('view_dashboards', 'manage_users', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'monitor_lives', 'manage_levels', 'manage_support'),
   agency_manager: set('view_dashboards', 'manage_hosts', 'export_data'),
   sub_admin: set('view_dashboards', 'manage_hosts'),
   country_admin: set('view_dashboards', 'manage_hosts'),

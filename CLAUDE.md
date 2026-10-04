@@ -30,3 +30,9 @@ Deploys via one Vercel project (`npm run build:site`, panel under /admin/).
 - Queries that count/list users filter `.eq('is_ghost', false)`; this needs the
   ghost migration applied.
 - `.trae/` is an untracked leftover from another tool; ignore it.
+
+## Master/Super pages added with the app sync
+`pages/master/{levels,coinSellers,support,luckyIds}.jsx`, `components/HandoverButton.jsx` (Transfer pages),
+user detail Bag assign / Lucky ID / Edit profile in `pages/master/users.jsx`, helpers in `lib/{levels,
+coinSellers,support,luckyIds,handover,userTools}.js`. Global and Country menus intentionally have no
+Badge / Profile Frame / Leaderboard entries; Country has no Add Agency.

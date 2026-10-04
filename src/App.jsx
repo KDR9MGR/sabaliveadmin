@@ -28,6 +28,10 @@ import { Bans } from './pages/master/bans.jsx'
 import { Maintenance } from './pages/maintenance.jsx'
 import { LiveMonitor } from './pages/liveMonitor.jsx'
 import { GhostIds } from './pages/ghosts.jsx'
+import { Levels } from './pages/master/levels.jsx'
+import { CoinSellers } from './pages/master/coinSellers.jsx'
+import { Support } from './pages/master/support.jsx'
+import { LuckyIds } from './pages/master/luckyIds.jsx'
 import { StoreItems, LiveEmojis } from './pages/master/store.jsx'
 import { STORE_CATEGORY_KEYS } from './lib/store.js'
 import ApplicationConfig from './pages/master/config.jsx'
@@ -144,7 +148,9 @@ export default function App() {
             </Route>
 
             <Route element={<RequireCap cap="manage_coins" />}>
-              {STORE_CATEGORY_KEYS.map((c) => <Route key={c} path={`store/${c}`} element={<StoreItems category={c} />} />)}
+              <Route path="store/vip" element={<LuckyIds />} />
+              <Route path="coins/sellers" element={<CoinSellers />} />
+              {STORE_CATEGORY_KEYS.filter((c) => c !== 'vip').map((c) => <Route key={c} path={`store/${c}`} element={<StoreItems category={c} />} />)}
               <Route path="coins/gifts" element={<GiftSettings />} />
               <Route path="coins/packages" element={<CoinPackages />} />
               <Route path="coins/transactions" element={<Transactions />} />
@@ -166,6 +172,12 @@ export default function App() {
             </Route>
             <Route element={<RequireCap cap="monitor_lives" />}>
               <Route path="live-monitor" element={<LiveMonitor />} />
+            </Route>
+            <Route element={<RequireCap cap="manage_levels" />}>
+              <Route path="levels" element={<Levels />} />
+            </Route>
+            <Route element={<RequireCap cap="manage_support" />}>
+              <Route path="support" element={<Support />} />
             </Route>
             <Route element={<RequireCap cap="manage_lucky_box" />}>
               <Route path="lucky-box" element={<LuckyBox />} />
@@ -219,11 +231,8 @@ export default function App() {
             <Route path="coin-management/history-sub-admin" element={<GlobalCoinHistorySubAdmin />} />
             <Route path="coin-management/history-agency" element={<GlobalCoinHistoryAgency />} />
             <Route path="coin-management/history-user" element={<GlobalCoinHistoryUser />} />
-            <Route path="badges" element={<GlobalBadges />} />
-            <Route path="leaderboard" element={<GlobalLeaderboard />} />
             <Route path="live-request" element={<GlobalLiveRequest />} />
             <Route path="salary" element={<GlobalSalary />} />
-            <Route path="profile-frame" element={<GlobalProfileFrame />} />
             <Route path="profile" element={<GlobalProfile />} />
           </Route>
 
@@ -255,6 +264,7 @@ export default function App() {
             <Route path="maintenance" element={<Maintenance />} />
             <Route path="live-monitor" element={<LiveMonitor root="Monitoring" />} />
             <Route path="ghosts" element={<GhostIds />} />
+            <Route path="support" element={<Support />} />
 
             <Route element={<RequireCap cap="manage_admins" />}>
               <Route path="admins" element={<SuperAdmins />} />
@@ -297,17 +307,13 @@ export default function App() {
             <Route path="user-management/transfer-sub-admin" element={<CountryTransferSubAdmin />} />
             <Route path="admin-management/sub-admin" element={<CountrySubAdmins />} />
             <Route path="admin-management/sub-admin/add" element={<CountryAddSubAdmin />} />
-            <Route path="admin-management/agency" element={<CountryAgencies />} />
-            <Route path="admin-management/agency/add" element={<CountryAddAgency />} />
+            <Route path="admin-management/agency" element={<CountryAgencies canAdd={false} />} />
             <Route path="coin-management/transfer-coins" element={<CountryTransferCoins />} />
             <Route path="coin-management/history-sub-admin" element={<CountryCoinHistorySubAdmin />} />
             <Route path="coin-management/history-agency" element={<CountryCoinHistoryAgency />} />
             <Route path="coin-management/history-user" element={<CountryCoinHistoryUser />} />
-            <Route path="badges" element={<CountryBadges />} />
-            <Route path="leaderboard" element={<CountryLeaderboard />} />
             <Route path="live-request" element={<CountryLiveRequest />} />
             <Route path="salary" element={<CountrySalary />} />
-            <Route path="profile-frame" element={<CountryProfileFrame />} />
             <Route path="profile" element={<CountryProfile />} />
           </Route>
 
