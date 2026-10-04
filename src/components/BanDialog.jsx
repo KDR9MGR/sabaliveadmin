@@ -24,7 +24,7 @@ export default function BanDialog({ user, defaultKinds = ['account'], onClose, o
         setActive(now)
         setKinds([...new Set([...now, ...defaultKinds])])
       })
-      .catch(() => { if (live) setActive([]) })
+      .catch((e) => { if (live) { setActive([]); setError(`Could not load this user's current bans: ${e?.message || 'unknown error'}`) } })
     return () => { live = false }
   }, [user.id])
 
@@ -69,6 +69,9 @@ export default function BanDialog({ user, defaultKinds = ['account'], onClose, o
         <div className="badge badge--danger" style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 14 }}>{error}</div>
       )}
 
+      {active && !active.length && (
+        <div className="hint" style={{ marginBottom: 10 }}>This user has no active bans. Switch one on to apply it.</div>
+      )}
       <div className="field" style={{ marginBottom: 16 }}>
         <label>Type of ban</label>
         {BAN_KIND_KEYS.map((k) => (
