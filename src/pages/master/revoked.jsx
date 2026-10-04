@@ -7,18 +7,21 @@ import DataTable from '../../components/DataTable.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { useAuth } from '../../lib/auth.jsx'
 import { listRevocations } from '../../lib/revocations.js'
-import { restoreRole, agencyOptions, countryAdminOptions } from '../../lib/accounts.js'
+import { restoreRole, restoreAgencyManager, agencyOptions, countryAdminOptions, grantableProfiles } from '../../lib/accounts.js'
+import UserPicker from '../../components/UserPicker.jsx'
+import { Modal, Button } from '../../components/ui.jsx'
 
 /* Who may restore which role — mirrors can_manage_staff_role() and the Super
    Admin "Master only" rule in restore_staff_role(); the database is the judge. */
+const ALL_ROLES = ['admin', 'global_admin', 'country_admin', 'sub_admin', 'agency_manager']
 const RESTORABLE = {
-  super_admin: ['admin'],
-  admin: ['global_admin', 'country_admin', 'sub_admin', 'agency_manager'],
+  super_admin: ['super_admin', ...ALL_ROLES],
+  admin: ALL_ROLES,
   global_admin: ['country_admin', 'sub_admin', 'agency_manager'],
   country_admin: ['sub_admin', 'agency_manager'],
   sub_admin: ['agency_manager'],
 }
-const WHO = { admin: 'a Super Admin or Master', global_admin: 'a Master', country_admin: 'a Master or Global Admin', sub_admin: 'a Master, Global or Country Admin', agency_manager: 'a Master, Global, Country or Sub Admin' }
+const WHO = { super_admin: 'a Super Admin', admin: 'a Super Admin or Master', global_admin: 'a Super Admin or Master', country_admin: 'a Super Admin or Master', sub_admin: 'a Super Admin or Master', agency_manager: 'a Super Admin or Master' }
 
 /* Staff accounts and agency manager logins that have been revoked, and who
    revoked each. Read from the audit log, so it is a permanent record: an
@@ -29,9 +32,11 @@ export function RevokedUsers({ crumbRoot = ['Home', 'Admin Management'] }) {
   const { staffRole } = useAuth()
   const [liftError, setLiftError] = useState('')
   const [lifting, setLifting] = useState(null)
+  const [pick, setPick] = useState('')
   const [busy, setBusy] = useState(false)
   const { data: extra } = useAsyncData(async () => ({
     agencies: await agencyOptions().catch(() => []),
+    people: await grantableProfiles().catch(() => []),
     owners: await countryAdminOptions().catch(() => []),
   }))
   const { data: rows, loading, error, reload } = useAsyncData(listRevocations)
@@ -46,14 +51,25 @@ export function RevokedUsers({ crumbRoot = ['Home', 'Admin Management'] }) {
     setLiftError('')
     try { await lift(); setLifting(null) } catch (e) { setLiftError(e.message || 'Could not lift the revoke') } finally { setBusy(false) }
   }
-  const needsPick = lifting && ['agency_manager', 'sub_admin'].includes(lifting.roleRaw)
+  const liftAgency = async () => {
+    setBusy(true)
+    setLiftError('')
+    try {
+      const res = await restoreAgencyManager(lifting.agencyId, pick)
+      toast(`${lifting.user} has a manager again${res?.reactivated ? ' and is Active' : ''}`)
+      setLifting(null)
+      reload()
+    } catch (e) { setLiftError(e.message || 'Could not lift the revoke') } finally { setBusy(false) }
+  }
+  const isAgencyRow = !!lifting?.agencyId
+  const needsPick = lifting && !isAgencyRow && ['agency_manager', 'sub_admin'].includes(lifting.roleRaw)
 
   return (
     <>
       <PageHeader title="Revoked Users" crumbs={[...crumbRoot, 'Revoked Users']} />
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
         Every time a staff role or an agency's manager login is revoked, it is recorded here with the person who did it.
-        {' '}An <b>agency manager</b> revoke is logged against the agency (all of its manager logins are removed and it is set Inactive).
+        {' '}An <b>agency manager</b> revoke is logged against the agency (all of its manager logins are removed and it is set Inactive). To lift it, pick the account that should manage the agency.
       </div></Card>
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
@@ -82,6 +98,11 @@ export function RevokedUsers({ crumbRoot = ['Home', 'Admin Management'] }) {
             { key: 'state', header: 'Status', render: (r) => <StatusBadge value={r.state} /> },
           ]}
           rowActions={(r) => [
+            ...(r.agencyId && r.state === 'Revoked'
+              ? ((RESTORABLE[staffRole?.role] || []).includes('agency_manager')
+                ? [{ label: 'Lift revoke', icon: 'check', onClick: () => { setLiftError(''); setPick(''); setLifting(r) } }]
+                : [{ label: 'Only a Super Admin or Master can lift this', icon: 'lock', onClick: () => toast('Only a Super Admin or Master can restore an agency manager.') }])
+              : []),
             ...(r.userId && r.state === 'Revoked' && r.roleRaw
               ? ((RESTORABLE[staffRole?.role] || []).includes(r.roleRaw)
                 ? [{ label: 'Lift revoke', icon: 'check', onClick: () => { setLiftError(''); setLifting(r) } }]
@@ -92,7 +113,7 @@ export function RevokedUsers({ crumbRoot = ['Home', 'Admin Management'] }) {
           ]}
         />
       </AsyncView>
-      {lifting && !needsPick && (
+      {lifting && !isAgencyRow && !needsPick && (
         <ConfirmDialog
           title={`Lift revoke on ${lifting.user}?`}
           confirmLabel="Lift revoke"
@@ -104,6 +125,26 @@ export function RevokedUsers({ crumbRoot = ['Home', 'Admin Management'] }) {
           onConfirm={liftSimple}
           onClose={() => setLifting(null)}
         />
+      )}
+      {lifting && isAgencyRow && (
+        <Modal
+          title={`Lift revoke — ${lifting.user}`}
+          onClose={busy ? () => {} : () => setLifting(null)}
+          footer={<>
+            <Button onClick={() => setLifting(null)} disabled={busy}>Cancel</Button>
+            <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy || !pick} onClick={liftAgency}>
+              {busy ? 'Working…' : 'Lift revoke'}
+            </Button>
+          </>}
+        >
+          <p style={{ fontSize: 13, color: 'var(--text-soft)', marginBottom: 12 }}>
+            The revoke removed this agency's manager login without recording who it was. Pick the account that should manage
+            <b> {lifting.user}</b> — it becomes the agency's manager straight away, and if the agency was set Inactive it goes back to Active.
+          </p>
+          <UserPicker options={extra?.people || []} value={pick} onChange={setPick} placeholder="Search a user by name, username or ID…" />
+          <span className="hint">Only users who are not already staff are listed.</span>
+          {liftError && <div style={{ color: 'var(--danger)', fontSize: 13, marginTop: 10 }}>{liftError}</div>}
+        </Modal>
       )}
       {lifting && needsPick && (
         <EntityForm

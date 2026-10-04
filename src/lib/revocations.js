@@ -42,6 +42,10 @@ export async function listRevocations() {
   for (const l of parsed) {
     if (l.action === 'staff.revoked' && l.subjectId && !newest.has(l.subjectId)) newest.set(l.subjectId, l.id)
   }
+  const newestAgency = new Map()
+  for (const l of parsed) {
+    if (l.action === 'agency.manager_revoked' && l.subjectId && !newestAgency.has(l.subjectId)) newestAgency.set(l.subjectId, l.id)
+  }
   const byId = Object.fromEntries((profiles || []).map((p) => [p.id, p]))
   const restored = new Set((stillStaff || []).map((s) => s.user_id))
   const hasManager = new Set((agencies || []).filter((a) => a.manager_id).map((a) => a.id))
@@ -66,7 +70,7 @@ export async function listRevocations() {
       byUsername: actor?.username || '',
       at: fmtWhen(l.created_at),
       state: isAgency
-        ? (hasManager.has(l.subjectId) ? 'Restored' : 'Revoked')
+        ? (hasManager.has(l.subjectId) || newestAgency.get(l.subjectId) !== l.id ? 'Restored' : 'Revoked')
         : (restored.has(l.subjectId) || newest.get(l.subjectId) !== l.id ? 'Restored' : 'Revoked'),
     }
   })

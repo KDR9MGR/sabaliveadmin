@@ -43,13 +43,13 @@ export async function setStaffPermissions(userId, permissions) {
 /* Profiles that don't yet have any staff_roles row — candidates to grant. */
 export async function grantableProfiles() {
   const [profiles, staff] = await Promise.all([
-    supabase.from('profiles').select('id, name, username').order('name').limit(2000).then(unwrap),
+    supabase.from('profiles').select('id, name, username, display_id').order('name').limit(2000).then(unwrap),
     supabase.from('staff_roles').select('user_id').then(unwrap),
   ])
   const taken = new Set((staff || []).map((s) => s.user_id))
   return (profiles || [])
     .filter((p) => !taken.has(p.id))
-    .map((p) => ({ value: p.id, label: `${p.name} (@${p.username})` }))
+    .map((p) => ({ value: p.id, label: `${p.name} (@${p.username}) · ID ${p.display_id}`, search: `${p.name} ${p.username} ${p.display_id}`.toLowerCase() }))
 }
 
 /* Country admins a new sub admin can be placed under (optional at creation). */
@@ -113,6 +113,14 @@ export async function restoreRole(user_id, { role, agency_id, country_admin_id }
     p_user_id: user_id, p_role: role, p_agency_id: agency_id || null, p_country_admin_id: country_admin_id || null,
   })
   if (error) throw error
+}
+
+/* Lift an agency-manager revoke: the chosen account becomes the agency's manager
+   again (and an Inactive agency goes back to Active). */
+export async function restoreAgencyManager(agency_id, user_id) {
+  const { data, error } = await supabase.rpc('restore_agency_manager', { p_agency_id: agency_id, p_user_id: user_id })
+  if (error) throw error
+  return data
 }
 
 export async function revokeRole(user_id) {
