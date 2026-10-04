@@ -109,7 +109,7 @@ export default function EditAgency({ agency: row, onClose, onSaved }) {
         location: manager.location, bio: manager.bio, avatar_url: null,
       }))
     }
-    if (emailChanged || password) {
+    if (manager && (emailChanged || password)) {
       await stage('login', () => updateStaffCredentials(managerId, { email: emailChanged ? newEmail : undefined, password }))
     }
     if (assignManager) {
