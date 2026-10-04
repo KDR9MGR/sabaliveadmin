@@ -37,6 +37,11 @@ export async function listRevocations() {
       ? supabase.from('agencies').select('id, manager_id').then(unwrap)
       : [],
   ])
+  // only a user's newest revocation can still be lifted
+  const newest = new Map()
+  for (const l of parsed) {
+    if (l.action === 'staff.revoked' && l.subjectId && !newest.has(l.subjectId)) newest.set(l.subjectId, l.id)
+  }
   const byId = Object.fromEntries((profiles || []).map((p) => [p.id, p]))
   const restored = new Set((stillStaff || []).map((s) => s.user_id))
   const hasManager = new Set((agencies || []).filter((a) => a.manager_id).map((a) => a.id))
@@ -56,12 +61,13 @@ export async function listRevocations() {
       avatar: subject?.avatar_url || null,
       displayId: subject?.display_id ?? null,
       role: ROLE_LABEL[role] || role || '—',
+      roleRaw: role || null,
       by: actor?.name || (l.actor_id ? 'Unknown' : 'System'),
       byUsername: actor?.username || '',
       at: fmtWhen(l.created_at),
       state: isAgency
         ? (hasManager.has(l.subjectId) ? 'Restored' : 'Revoked')
-        : (restored.has(l.subjectId) ? 'Restored' : 'Revoked'),
+        : (restored.has(l.subjectId) || newest.get(l.subjectId) !== l.id ? 'Restored' : 'Revoked'),
     }
   })
 }

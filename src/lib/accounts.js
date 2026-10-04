@@ -106,6 +106,15 @@ export async function changeRole(user_id, { role, agency_id, country_admin_id })
   if (error) throw error
 }
 
+/* "Lift revoke": put a revoked account straight back in the same role it was
+   revoked from (restore_staff_role checks that against the audit log). */
+export async function restoreRole(user_id, { role, agency_id, country_admin_id }) {
+  const { error } = await supabase.rpc('restore_staff_role', {
+    p_user_id: user_id, p_role: role, p_agency_id: agency_id || null, p_country_admin_id: country_admin_id || null,
+  })
+  if (error) throw error
+}
+
 export async function revokeRole(user_id) {
   const { error } = await supabase.rpc('revoke_staff_role', { p_user_id: user_id })
   if (error) throw error

@@ -220,6 +220,7 @@ export const NAV = {
     { section: 'Administration', items: [
       { label: 'Admin Management', icon: 'shield', cap: 'manage_admins', children: [
         { label: 'Staff Panels', to: '/super/staff' },
+        { label: 'Revoked Users', to: '/super/revoked' },
         { label: 'Master', to: '/super/admins' },
         { label: 'Access Control', to: '/super/access' },
       ]},

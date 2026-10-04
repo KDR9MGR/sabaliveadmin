@@ -272,6 +272,7 @@ export default function App() {
               <Route path="admins" element={<SuperAdmins />} />
               <Route path="admins/add" element={<AddAdminAccount />} />
               <Route path="staff" element={<StaffPanels />} />
+              <Route path="revoked" element={<RevokedUsers crumbRoot={['Home', 'Super Admin']} />} />
               <Route path="access" element={<AccessControl />} />
             </Route>
 
