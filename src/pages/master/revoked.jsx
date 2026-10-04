@@ -5,8 +5,20 @@ import { PageHeader, Card, Person, StatusBadge, Tag, ConfirmDialog, useToast } f
 import EntityForm from '../../components/EntityForm.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
+import { useAuth } from '../../lib/auth.jsx'
 import { listRevocations } from '../../lib/revocations.js'
 import { restoreRole, agencyOptions, countryAdminOptions } from '../../lib/accounts.js'
+
+/* Who may restore which role — mirrors can_manage_staff_role() and the Super
+   Admin "Master only" rule in restore_staff_role(); the database is the judge. */
+const RESTORABLE = {
+  super_admin: ['admin'],
+  admin: ['global_admin', 'country_admin', 'sub_admin', 'agency_manager'],
+  global_admin: ['country_admin', 'sub_admin', 'agency_manager'],
+  country_admin: ['sub_admin', 'agency_manager'],
+  sub_admin: ['agency_manager'],
+}
+const WHO = { admin: 'a Super Admin or Master', global_admin: 'a Master', country_admin: 'a Master or Global Admin', sub_admin: 'a Master, Global or Country Admin', agency_manager: 'a Master, Global, Country or Sub Admin' }
 
 /* Staff accounts and agency manager logins that have been revoked, and who
    revoked each. Read from the audit log, so it is a permanent record: an
@@ -14,6 +26,8 @@ import { restoreRole, agencyOptions, countryAdminOptions } from '../../lib/accou
 export function RevokedUsers({ crumbRoot = ['Home', 'Admin Management'] }) {
   const nav = useNavigate()
   const toast = useToast()
+  const { staffRole } = useAuth()
+  const [liftError, setLiftError] = useState('')
   const [lifting, setLifting] = useState(null)
   const [busy, setBusy] = useState(false)
   const { data: extra } = useAsyncData(async () => ({
@@ -29,7 +43,8 @@ export function RevokedUsers({ crumbRoot = ['Home', 'Admin Management'] }) {
   }
   const liftSimple = async () => {
     setBusy(true)
-    try { await lift(); setLifting(null) } catch (e) { toast(e.message || 'Could not lift the revoke') } finally { setBusy(false) }
+    setLiftError('')
+    try { await lift(); setLifting(null) } catch (e) { setLiftError(e.message || 'Could not lift the revoke') } finally { setBusy(false) }
   }
   const needsPick = lifting && ['agency_manager', 'sub_admin'].includes(lifting.roleRaw)
 
@@ -67,7 +82,11 @@ export function RevokedUsers({ crumbRoot = ['Home', 'Admin Management'] }) {
             { key: 'state', header: 'Status', render: (r) => <StatusBadge value={r.state} /> },
           ]}
           rowActions={(r) => [
-            ...(r.userId && r.state === 'Revoked' && r.roleRaw ? [{ label: 'Lift revoke', icon: 'check', onClick: () => setLifting(r) }] : []),
+            ...(r.userId && r.state === 'Revoked' && r.roleRaw
+              ? ((RESTORABLE[staffRole?.role] || []).includes(r.roleRaw)
+                ? [{ label: 'Lift revoke', icon: 'check', onClick: () => { setLiftError(''); setLifting(r) } }]
+                : [{ label: `Only ${WHO[r.roleRaw] || 'a higher role'} can lift this`, icon: 'lock', onClick: () => toast(`A ${staffRole?.role === 'super_admin' ? 'Super Admin' : 'your role'} can't lift a ${r.role} revoke — ${WHO[r.roleRaw] || 'a higher role'} can.`) }])
+              : []),
             ...(r.userId ? [{ label: 'View user', icon: 'user', onClick: () => nav(`/admin/users/${r.userId}`) }] : []),
             ...(r.agencyId ? [{ label: 'View agency', icon: 'building', onClick: () => nav(`/admin/agencies/${r.agencyId}`) }] : []),
           ]}
@@ -78,7 +97,10 @@ export function RevokedUsers({ crumbRoot = ['Home', 'Admin Management'] }) {
           title={`Lift revoke on ${lifting.user}?`}
           confirmLabel="Lift revoke"
           busy={busy}
-          message={`${lifting.user} gets the ${lifting.role} role back straight away and can sign in to that panel again.`}
+          message={<>
+            {`${lifting.user} gets the ${lifting.role} role back straight away and can sign in to that panel again.`}
+            {liftError && <span style={{ display: 'block', color: 'var(--danger)', marginTop: 10 }}>{liftError}</span>}
+          </>}
           onConfirm={liftSimple}
           onClose={() => setLifting(null)}
         />
