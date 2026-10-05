@@ -106,6 +106,7 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
             personCol('name', 'username'),
             { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
             numCol('coins', 'Coins'),
+            numCol('diamonds', 'Diamonds'),
             { key: 'agency', header: 'Agency', render: (r) => r.agency === '—' ? <span className="muted">—</span> : <Tag>{r.agency}</Tag> },
             { key: 'status', header: 'User Status', render: (r) => <StatusBadge value={r.status} /> },
             { key: 'restrictions', header: 'Restrictions', render: (r) => <RestrictionTags list={r.restrictions} /> },

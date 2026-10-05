@@ -30,7 +30,7 @@ const restrictionFields = (r) => {
    filterable down to them. */
 export async function listUsers() {
   const staffIds = unwrap(await supabase.from('staff_roles').select('user_id')).map((s) => s.user_id)
-  const cols = 'id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins), host_profiles(tier, status, kyc_status, agencies(name))'
+  const cols = 'id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins, diamonds), host_profiles(tier, status, kyc_status, agencies(name))'
   const run = (select) => {
     // ghost IDs (monitoring accounts) are managed under Super Admin → Ghost IDs, not here
     let q = supabase.from('profiles').select(select).eq('is_ghost', false).order('created_at', { ascending: false }).limit(1000)
@@ -64,7 +64,9 @@ export async function listUsers() {
     role: r.host_profiles ? 'Host' : 'User',
     isHost: !!r.host_profiles,
     agency: r.host_profiles?.agencies?.name || '—',
-    coins: r.wallets?.coins ?? 0,
+    // null when the wallet isn't readable by this role (RLS hides it) — shown as a dash, not 0
+    coins: r.wallets ? Number(r.wallets.coins) : null,
+    diamonds: r.wallets ? Number(r.wallets.diamonds) : null,
     joined: fmtDate(r.created_at),
   }))
 }
@@ -141,8 +143,8 @@ export async function listHosts() {
     tier: titleCase(r.tier),
     rating: Number(r.rating).toFixed(1),
     followers: r.profiles?.followers_count ?? 0,
-    coins: r.profiles?.wallets?.coins ?? 0,
-    diamonds: r.profiles?.wallets?.diamonds ?? 0,
+    coins: r.profiles?.wallets ? Number(r.profiles.wallets.coins) : null,
+    diamonds: r.profiles?.wallets ? Number(r.profiles.wallets.diamonds) : null,
     liveHours: Math.round(Number(r.live_hours_total) || 0),
     kyc: titleCase(r.kyc_status),
     status: titleCase(r.status),

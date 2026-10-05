@@ -18,7 +18,10 @@ export const roleCol = (key = 'role') => ({
 
 export const numCol = (key, header, opts = {}) => ({
   key, header, sortable: true, align: 'right',
-  render: (r) => <span className="mono">{opts.prefix || ''}{num(r[key])}{opts.suffix || ''}</span>,
+  // null = "not visible to you" (e.g. a wallet your role can't read), shown as a dash, never a false 0
+  render: (r) => (r[key] == null
+    ? <span className="muted" title="Not visible to your role">—</span>
+    : <span className="mono">{opts.prefix || ''}{num(r[key])}{opts.suffix || ''}</span>),
 })
 
 /* Profile picture, as in the reference lists. */
