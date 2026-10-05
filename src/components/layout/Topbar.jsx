@@ -62,15 +62,17 @@ function CoinBalance() {
   const fmt = (n) => Number(n).toLocaleString('en-IN')
   return (
     <>
-      <span className="coin-chip" title="Your coin balance">
-        <Icon name="coins" size={15} />
-        <span className="coin-chip__label hide-sm">Coins</span>
-        <b>{fmt(bal.wallet)}</b>
-      </span>
+      {bal.showWallet && (
+        <span className="coin-chip" title="Your coin balance">
+          <Icon name="coins" size={15} />
+          <span className="coin-chip__label hide-sm">Coins</span>
+          <b>{fmt(bal.wallet)}</b>
+        </span>
+      )}
       {bal.treasury != null && (
-        <span className="coin-chip coin-chip--treasury hide-sm" title="Platform coin treasury — what can still be distributed">
+        <span className="coin-chip coin-chip--treasury hide-sm" title={bal.treasuryIsOwn ? 'Coins you may still generate / distribute (you are on the coin-minter list)' : 'Platform coin treasury — what can still be distributed'}>
           <Icon name="bank" size={15} />
-          <span className="coin-chip__label">Treasury</span>
+          <span className="coin-chip__label">{bal.treasuryIsOwn ? 'To distribute' : 'Treasury'}</span>
           <b>{fmt(bal.treasury)}</b>
         </span>
       )}
