@@ -35,8 +35,9 @@ export const CAPABILITIES = [
   { key: 'manage_profile_frames', label: 'Profile frames', group: 'Platform menu' },
   { key: 'manage_content', label: 'Content / settings', group: 'Platform menu' },
   { key: 'manage_system', label: 'System management', group: 'Platform menu' },
-  // Watch any live from the panel without being seen. On by default for a Master and
-  // enforced server-side (staff_can_ghost_watch): an explicit false here blocks it.
+  // Watch any live from the panel without being seen. Super Admin has it; a Master only when a Super Admin
+  // switches it on for that account (OFF by default). Enforced server-side (staff_can_ghost_watch, migration
+  // 20261006160000). Never for Global / Country / Sub Admin or Agency: the page only exists under Super and Master.
   { key: 'monitor_lives', label: 'Live monitor (ghost view)', group: 'Platform menu' },
   // Also enforced server-side (staff_cap_on): on by default for a Master, an explicit false blocks.
   { key: 'manage_levels', label: 'Levels (XP & images)', group: 'Platform menu' },
@@ -50,7 +51,7 @@ const ALL = Object.fromEntries(CAPABILITY_KEYS.map((k) => [k, true]))
 
 export const ROLE_BASELINE = {
   super_admin: ALL,
-  admin: set('view_dashboards', 'manage_users', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'monitor_lives', 'manage_levels', 'manage_support'),
+  admin: set('view_dashboards', 'manage_users', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support'),
   agency_manager: set('view_dashboards', 'manage_hosts', 'export_data'),
   sub_admin: set('view_dashboards', 'manage_hosts'),
   country_admin: set('view_dashboards', 'manage_hosts'),
