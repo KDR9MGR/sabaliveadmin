@@ -3,6 +3,7 @@ import EditAgency from './EditAgency.jsx'
 import EditStaffProfile from './EditStaffProfile.jsx'
 import { ConfirmDialog, useToast } from './ui.jsx'
 import { useAuth } from '../lib/auth.jsx'
+import { PermissionsFor } from './PermissionsDrawer.jsx'
 import { revokeRole, revokeAgencyManager } from '../lib/accounts.js'
 
 /* Revoke an agency's manager login AND set the agency Inactive (one server
@@ -46,7 +47,9 @@ function downlineNote(r) {
      kind 'agency' -> Edit agency, Revoke manager & set Inactive */
 export default function StaffRowManager({ kind = 'staff', reload, children }) {
   const toast = useToast()
-  const { user } = useAuth()
+  const { user, staffRole } = useAuth()
+  const canSetPerms = staffRole?.role === 'admin' || staffRole?.role === 'super_admin'
+  const [perming, setPerming] = useState(null) // { id, name }
   const [editing, setEditing] = useState(null)
   const [revoking, setRevoking] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -54,11 +57,13 @@ export default function StaffRowManager({ kind = 'staff', reload, children }) {
   const rowActions = (r) => (kind === 'agency'
     ? [
       { label: 'Edit agency', icon: 'edit', onClick: () => setEditing(r) },
+      ...(canSetPerms && r.managerId ? [{ label: "Manager's permissions", icon: 'sliders', onClick: () => setPerming({ id: r.managerId, name: r.manager }) }] : []),
       { sep: true },
       { label: 'Revoke manager & set Inactive', icon: 'trash', onClick: () => setRevoking(r) },
     ]
     : [
       { label: 'Edit profile', icon: 'edit', onClick: () => setEditing(r) },
+      ...(canSetPerms ? [{ label: 'Permissions', icon: 'sliders', onClick: () => setPerming({ id: r.id, name: r.name }) }] : []),
       { sep: true },
       r.id === user?.id
         ? { label: "Can't revoke yourself", icon: 'lock', onClick: () => {} }
@@ -81,6 +86,9 @@ export default function StaffRowManager({ kind = 'staff', reload, children }) {
     <>
       {children(rowActions)}
 
+      {perming && (
+        <PermissionsFor userId={perming.id} name={perming.name} onClose={() => setPerming(null)} onSaved={() => { setPerming(null); reload?.() }} />
+      )}
       {editing && kind === 'staff' && (
         <EditStaffProfile account={editing} onClose={() => setEditing(null)} onSaved={() => reload?.()} />
       )}

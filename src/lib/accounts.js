@@ -32,13 +32,21 @@ export async function listStaffAccounts(roles) {
   }))
 }
 
-/* Per-user capability overrides (jsonb). Only a super_admin may write —
-   the existing "Only super admins change roles" UPDATE policy covers it. */
+/* Per-user capability overrides (jsonb), saved through set_staff_permissions: a Super Admin may change
+   any account, a Master the accounts below Master — and only switches the Master holds themselves. */
 export async function setStaffPermissions(userId, permissions) {
-  return unwrap(await supabase.from('staff_roles')
-    .update({ permissions: permissions || {} })
-    .eq('user_id', userId).select().single())
+  const { data, error } = await supabase.rpc('set_staff_permissions', { p_user_id: userId, p_permissions: permissions || {} })
+  if (error) throw error
+  return data
 }
+
+/* Role + current permissions of one account, for the permissions drawer. */
+export async function getStaffAccess(userId) {
+  const row = unwrap(await supabase.from('staff_roles').select('role, permissions').eq('user_id', userId).maybeSingle())
+  if (!row) throw new Error('That account has no staff role')
+  return { roleRaw: row.role, role: ROLE_LABEL[row.role] || row.role, permissions: row.permissions || {} }
+}
+
 
 /* Profiles that don't yet have any staff_roles row — candidates to grant. */
 export async function grantableProfiles() {

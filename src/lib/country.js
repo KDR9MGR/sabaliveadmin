@@ -99,6 +99,7 @@ export async function countryScope() {
     name: a.name,
     subAdminId: a.sub_admin_id,
     subAdmin: subName[a.sub_admin_id] || 'Unassigned',
+    managerId: a.manager_id || null,
     manager: a.manager?.name || 'Unassigned',
     managerUsername: a.manager?.username,
     email: emails[a.manager_id] || '',

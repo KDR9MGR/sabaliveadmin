@@ -13,10 +13,11 @@ import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
 import {
   listStaffAccounts, grantableProfiles, agencyOptions, grantRole, changeRole, revokeRole, superAdminCount,
-  setStaffPermissions, masterAccountOptions,
+  masterAccountOptions,
 } from '../lib/accounts.js'
 import { ROLE_LABEL } from '../lib/admin.js'
-import { CAPABILITIES, roleBaseline, effectivePermissions, canGrant, LOWER_ROLE_GRANTS } from '../lib/capabilities.js'
+import { CAPABILITIES, roleBaseline, effectivePermissions } from '../lib/capabilities.js'
+import PermissionsDrawer from '../components/PermissionsDrawer.jsx'
 import { AddStaffForm } from './addStaff.jsx'
 import { UsersList } from './master/users.jsx'
 import { superDashboard, listAuditLogs, securityOverview, systemPulse } from '../lib/superAdmin.js'
@@ -177,8 +178,9 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
           rowActions={(r) => [
             r.roleRaw === 'super_admin'
               ? { label: 'Full access (Super Admin)', icon: 'shield', onClick: () => {} }
-              // only a Super Admin can write staff_roles.permissions (RLS), so a Master would just get an error
-              : (staffRole?.role === 'super_admin' ? { label: 'Permissions', icon: 'sliders', onClick: () => setPerms(r) } : null),
+              // a Super Admin: any account; a Master: accounts below Master (set_staff_permissions enforces both)
+              : ((staffRole?.role === 'super_admin' || (staffRole?.role === 'admin' && r.roleRaw !== 'admin'))
+                ? { label: 'Permissions', icon: 'sliders', onClick: () => setPerms(r) } : null),
             ...(allowEditProfile ? [{ label: 'Edit profile', icon: 'edit', onClick: () => setEditingProfile(r) }] : []),
             ...(canChangeRole(r) ? [{ label: 'Change role', icon: 'shieldUser', onClick: () => setChanging(r) }] : []),
             { sep: true },
@@ -236,80 +238,6 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
         />
       )}
     </>
-  )
-}
-
-/* Per-account capability overrides. Toggles start at the account's effective
-   value; the role baseline is shown as helper text. Only keys that differ
-   from the baseline are persisted. Enforcement: the UI hides gated nav/actions
-   and the privileged RPCs re-check via has_capability() (deny-only). */
-function PermissionsDrawer({ account, onClose, onSaved }) {
-  const toast = useToast()
-  const base = roleBaseline(account.roleRaw)
-  const [vals, setVals] = useState(() => effectivePermissions({ role: account.roleRaw, permissions: account.permissions }))
-  const [busy, setBusy] = useState(false)
-  const set = (k, v) => setVals((s) => ({ ...s, [k]: v }))
-
-  const save = async () => {
-    setBusy(true)
-    try {
-      const delta = {}
-      for (const c of CAPABILITIES) {
-        if (!!vals[c.key] !== !!base[c.key]) delta[c.key] = !!vals[c.key]
-      }
-      await setStaffPermissions(account.id, delta)
-      toast(`Permissions updated for ${account.name}`)
-      onSaved()
-    } catch (e) {
-      toast(e?.message || 'Could not save permissions')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const reset = () => setVals(Object.fromEntries(CAPABILITIES.map((c) => [c.key, !!base[c.key]])))
-  const groups = [...new Set(CAPABILITIES.map((c) => c.group))]
-  const changed = CAPABILITIES.some((c) => !!vals[c.key] !== !!base[c.key])
-
-  return (
-    <Drawer
-      title={`Permissions — ${account.name}`}
-      onClose={busy ? () => {} : onClose}
-      footer={<>
-        <Button onClick={reset} disabled={busy || !changed}>Reset to role default</Button>
-        <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy} onClick={save}>
-          {busy ? 'Saving…' : 'Save'}
-        </Button>
-      </>}
-    >
-      <p className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}>
-        Baseline comes from the <b>{account.role}</b> role. Turning a capability <b>off</b> is enforced everywhere
-        (menu, screens and the database). {account.roleRaw === 'admin'
-          ? <>Turning one <b>on</b> adds that menu and the database already allows a Master to do it.</>
-          : <>For this role only the features marked below can be turned <b>on</b> — each adds a menu entry and the database allows exactly that action for this account. Other switches are locked because they would change nothing. Changes reach a signed-in account within a minute.</>}
-      </p>
-      {groups.map((g) => (
-        <div key={g} style={{ marginTop: 14 }}>
-          <div className="nav-group__label" style={{ padding: '0 0 6px' }}>{g}</div>
-          {CAPABILITIES.filter((c) => c.group === g).map((c) => (
-            <div className="toggle-row" key={c.key}>
-              <div>
-                <div className="t-title">{c.label}</div>
-                <div className="t-desc">Role default: {base[c.key] ? 'allowed' : 'denied'}
-                  {(!!vals[c.key] !== !!base[c.key]) && <span style={{ color: 'var(--warning)' }}> · overridden</span>}
-                  {!base[c.key] && !canGrant(account.roleRaw, c.key) && <span> · {vals[c.key] ? 'has no effect for this role — switch off to clear it' : 'not available for this role'}</span>}
-                  {!base[c.key] && account.roleRaw !== 'admin' && LOWER_ROLE_GRANTS[c.key]?.roles.includes(account.roleRaw) && <span style={{ color: 'var(--text-soft)' }}> · gives: {LOWER_ROLE_GRANTS[c.key].gives}</span>}
-                </div>
-              </div>
-              <label className="toggle" style={!base[c.key] && !canGrant(account.roleRaw, c.key) && !vals[c.key] ? { opacity: 0.4 } : undefined}>
-                <input type="checkbox" checked={!!vals[c.key]} disabled={!base[c.key] && !canGrant(account.roleRaw, c.key) && !vals[c.key]} onChange={(e) => set(c.key, e.target.checked)} />
-                <span className="track" /><span className="thumb" />
-              </label>
-            </div>
-          ))}
-        </div>
-      ))}
-    </Drawer>
   )
 }
 
