@@ -16,7 +16,7 @@ import { AddStaffForm } from './addStaff.jsx'
 import { AddAgencyForm } from './addAgency.jsx'
 import StaffRowManager from '../components/StaffRowManager.jsx'
 import { TransferCoinsPage, CoinHistoryPage, USER_KIND } from './cascade.jsx'
-import { UsersList } from './master/users.jsx'
+import { UsersList, GrantableUsers } from './master/users.jsx'
 import {
   CountryAdminDashboard, CountryHosts, CountryTransferHost, CountryTransferAgency,
   CountryTransferSubAdmin, CountryTransferCountry, CountryTransferGlobal,
@@ -36,7 +36,7 @@ export const GlobalAdminDashboard = CountryAdminDashboard
 
 /* User Management. Users is EVERY user on the platform (read-only); Hosts and the
    transfer pages are the Country Admin components over the whole tree. */
-export const GlobalUsers = () => <UsersList readOnly crumbs={[...CR, 'User Management', 'Users']} />
+export const GlobalUsers = () => <GrantableUsers crumbs={[...CR, 'User Management', 'Users']} />
 export const GlobalHosts = CountryHosts
 export const GlobalTransferHost = CountryTransferHost
 export const GlobalTransferAgency = CountryTransferAgency

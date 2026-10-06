@@ -167,6 +167,7 @@ export const NAV = {
     ]},
     { section: 'Platform', items: [
       { label: 'Live Request', icon: 'radio', to: '/global-admin/live-request' },
+      { label: 'Withdrawals', icon: 'wallet', cap: 'run_payroll', to: '/global-admin/withdrawals' },
       { label: 'Salary', icon: 'wallet', to: '/global-admin/salary' },
     ]},
     { section: 'Account', items: [
@@ -271,6 +272,7 @@ export const NAV = {
     { section: 'Platform', items: [
       { label: 'Live Request', icon: 'radio', to: '/country-admin/live-request' },
       { label: 'Salary', icon: 'wallet', to: '/country-admin/salary' },
+      { label: 'Withdrawals', icon: 'wallet', cap: 'run_payroll', to: '/country-admin/withdrawals' },
     ]},
     { section: 'Account', items: [
       { label: 'My Profile', icon: 'user', to: '/country-admin/profile' },
@@ -298,6 +300,7 @@ export const NAV = {
     { section: 'Platform', items: [
       { label: 'Live Request', icon: 'radio', to: '/sub-admin/live-request' },
       { label: 'Salary', icon: 'wallet', to: '/sub-admin/salary' },
+      { label: 'Withdrawals', icon: 'wallet', cap: 'run_payroll', to: '/sub-admin/withdrawals' },
     ]},
     { section: 'Account', items: [
       { label: 'My Profile', icon: 'user', to: '/sub-admin/profile' },
@@ -320,6 +323,7 @@ export const NAV = {
     ]},
     { section: 'Platform', items: [
       { label: 'Live Request', icon: 'radio', to: '/panel-agency/live-request' },
+      { label: 'Withdrawals', icon: 'wallet', cap: 'run_payroll', to: '/panel-agency/withdrawals' },
     ]},
     { section: 'Account', items: [
       { label: 'My Profile', icon: 'user', to: '/panel-agency/profile' },

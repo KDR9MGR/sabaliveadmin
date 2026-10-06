@@ -16,7 +16,7 @@ import {
   setStaffPermissions, masterAccountOptions,
 } from '../lib/accounts.js'
 import { ROLE_LABEL } from '../lib/admin.js'
-import { CAPABILITIES, roleBaseline, effectivePermissions } from '../lib/capabilities.js'
+import { CAPABILITIES, roleBaseline, effectivePermissions, canGrant, LOWER_ROLE_GRANTS } from '../lib/capabilities.js'
 import { AddStaffForm } from './addStaff.jsx'
 import { UsersList } from './master/users.jsx'
 import { superDashboard, listAuditLogs, securityOverview, systemPulse } from '../lib/superAdmin.js'
@@ -284,8 +284,9 @@ function PermissionsDrawer({ account, onClose, onSaved }) {
     >
       <p className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}>
         Baseline comes from the <b>{account.role}</b> role. Turning a capability <b>off</b> is enforced everywhere
-        (nav, screens and the privileged RPCs). Turning one <b>on</b> beyond the role only affects what they see —
-        the server still gates by role.
+        (menu, screens and the database). {account.roleRaw === 'admin'
+          ? <>Turning one <b>on</b> adds that menu and the database already allows a Master to do it.</>
+          : <>For this role only the features marked below can be turned <b>on</b> — each adds a menu entry and the database allows exactly that action for this account. Other switches are locked because they would change nothing. Changes reach a signed-in account within a minute.</>}
       </p>
       {groups.map((g) => (
         <div key={g} style={{ marginTop: 14 }}>
@@ -296,10 +297,12 @@ function PermissionsDrawer({ account, onClose, onSaved }) {
                 <div className="t-title">{c.label}</div>
                 <div className="t-desc">Role default: {base[c.key] ? 'allowed' : 'denied'}
                   {(!!vals[c.key] !== !!base[c.key]) && <span style={{ color: 'var(--warning)' }}> · overridden</span>}
+                  {!base[c.key] && !canGrant(account.roleRaw, c.key) && <span> · {vals[c.key] ? 'has no effect for this role — switch off to clear it' : 'not available for this role'}</span>}
+                  {!base[c.key] && account.roleRaw !== 'admin' && LOWER_ROLE_GRANTS[c.key]?.roles.includes(account.roleRaw) && <span style={{ color: 'var(--text-soft)' }}> · gives: {LOWER_ROLE_GRANTS[c.key].gives}</span>}
                 </div>
               </div>
-              <label className="toggle">
-                <input type="checkbox" checked={!!vals[c.key]} onChange={(e) => set(c.key, e.target.checked)} />
+              <label className="toggle" style={!base[c.key] && !canGrant(account.roleRaw, c.key) && !vals[c.key] ? { opacity: 0.4 } : undefined}>
+                <input type="checkbox" checked={!!vals[c.key]} disabled={!base[c.key] && !canGrant(account.roleRaw, c.key) && !vals[c.key]} onChange={(e) => set(c.key, e.target.checked)} />
                 <span className="track" /><span className="thumb" />
               </label>
             </div>
@@ -400,8 +403,9 @@ export function AccessControl() {
       <PageHeader title="Access Control" crumbs={[...CR, 'Access Control']} />
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
         Each staff account starts from its <b>role baseline</b> below. Pick a panel, then a user in it, to turn
-        individual features on or off for just that account. Turning a capability off is enforced in the UI
-        <i> and</i> the privileged RPCs; turning one on beyond the role only changes what the account sees.
+        individual features on or off for just that account. Turning a capability off is enforced in the menu
+        <i> and</i> the database. Turning one on works for every switch on a Master; for Global / Country / Sub Admin
+        and Agency accounts only Manage users and Run payroll can be turned on (the rest are locked).
       </div></Card>
 
       <Card flush title="Role baseline" sub="The starting point for every account with that role" className="mb-16" action={<span />}>

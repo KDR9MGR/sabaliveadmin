@@ -6,7 +6,7 @@
    User, and each direction has its own history. */
 import { Profile } from './shared.jsx'
 import { AgencyDashboard, AgencyHosts, AgencySalary, AgencyLiveRequests } from './agency.jsx'
-import { UsersList } from './master/users.jsx'
+import { UsersList, GrantableUsers } from './master/users.jsx'
 import { AddAgencyForm } from './addAgency.jsx'
 import { TransferCoinsPage, CoinHistoryPage, OwnedAgenciesPage, OWNED_AGENCY_KIND, USER_KIND } from './cascade.jsx'
 
@@ -18,7 +18,7 @@ export const SubAdminDashboard = () => <AgencyDashboard panel="sub-admin" />
    Admin (read-only — set_profile_status is admin-only in the database). Only
    the Agency panel stays scoped to its own hosts; a Sub Admin can own several
    agencies, so "just my hosts" was never a coherent scope here anyway. */
-export const SubAdminUsers = () => <UsersList readOnly crumbs={[...CR, 'User Management', 'Users']} />
+export const SubAdminUsers = () => <GrantableUsers crumbs={[...CR, 'User Management', 'Users']} />
 export const SubAdminHosts = AgencyHosts
 
 export const SubAdminAgencies = () => (

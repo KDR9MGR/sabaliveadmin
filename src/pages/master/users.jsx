@@ -6,6 +6,7 @@ import DataTable from '../../components/DataTable.jsx'
 import Icon from '../../components/Icon.jsx'
 import { useState } from 'react'
 import { useAsyncData } from '../../lib/useAsync.js'
+import { useAuth } from '../../lib/auth.jsx'
 import { listUsers, getUserDetail, setUserStatus, listStaff, fmtDate, ROLE_LABEL } from '../../lib/admin.js'
 import {
   listTransferRequests, decideTransfer, createTransferRequest,
@@ -54,7 +55,7 @@ export const MasterTransferGlobal = () => <CountryTransferGlobal handover />
 /* readOnly: browse-only (a Global Admin sees every user but can't change their
    status — set_profile_status is admin-only in the database — and has no
    profile page of its own), so no row click, no Live Action, no row actions. */
-export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
+export function UsersList({ readOnly = false, profileLink = true, crumbs = [...CRUMBS, 'Users'] }) {
   const nav = useNavigate()
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listUsers)
@@ -84,12 +85,12 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
       <PageHeader
         title="User Management"
         crumbs={crumbs}
-        actions={readOnly ? null : <Button icon="download" onClick={() => toast('Export coming soon')}>Export</Button>}
+        actions={readOnly || !profileLink ? null : <Button icon="download" onClick={() => toast('Export coming soon')}>Export</Button>}
       />
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
-          onRowClick={readOnly ? undefined : (r) => nav(`/admin/users/${r.id}`)}
+          onRowClick={readOnly || !profileLink ? undefined : (r) => nav(`/admin/users/${r.id}`)}
           searchKeys={['name', 'username', 'displayId', 'location']}
           searchPlaceholder="Search by name, username or user ID…"
           tabs={[
@@ -125,7 +126,7 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
               : <span className="muted">—</span> },
           ]}
           rowActions={readOnly ? undefined : (r) => [
-            { label: 'View profile', icon: 'eye', onClick: () => nav(`/admin/users/${r.id}`) },
+            ...(profileLink ? [{ label: 'View profile', icon: 'eye', onClick: () => nav(`/admin/users/${r.id}`) }] : []),
             { label: 'Restrict (ban)…', icon: 'lock', onClick: () => setBan({ user: r, kinds: ['account'] }) },
             ...(r.restricted ? [{ label: 'Lift restrictions', icon: 'check', onClick: () => liftAll(r) }] : []),
             { label: 'Set inactive', icon: 'clock', onClick: () => changeStatus(r, 'inactive') },
@@ -136,6 +137,15 @@ export function UsersList({ readOnly = false, crumbs = [...CRUMBS, 'Users'] }) {
       {ban && <BanDialog user={ban.user} defaultKinds={ban.kinds} onClose={() => setBan(null)} onDone={reload} />}
     </>
   )
+}
+
+/* The Users page of the Global / Country / Sub Admin panels. Browse-only by default;
+   if a Super Admin has granted this account "Manage users" (Access Control) it also
+   gets Restrict / Lift / Set inactive — the database re-checks that grant
+   (staff_can('manage_users')). These panels have no user profile page, so no row click. */
+export function GrantableUsers({ crumbs }) {
+  const { can } = useAuth()
+  return <UsersList readOnly={!can('manage_users')} profileLink={false} crumbs={crumbs} />
 }
 
 /* ------------------------------------------------------------------ Hosts / Creators (shares the real host table) */

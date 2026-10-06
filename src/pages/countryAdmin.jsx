@@ -19,7 +19,7 @@ import { AddAgencyForm } from './addAgency.jsx'
 import MasterDashboard from './master/Dashboard.jsx'
 import { LiveRequests, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary } from './master/platform.jsx'
 import { HostsBody } from './agency.jsx'
-import { UsersList } from './master/users.jsx'
+import { UsersList, GrantableUsers } from './master/users.jsx'
 import { TransferCoinsPage, CoinHistoryPage, USER_KIND } from './cascade.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
 import { listTransferRequests } from '../lib/workflows.js'
@@ -63,7 +63,7 @@ export const CountryAdminDashboard = MasterDashboard
    for the same reason: set_profile_status is admin-only in the database, so
    this is read-only here too). Hosts, below, stays scoped to this admin's
    own tree — that's the list they can actually act on (ban/unban). */
-export const CountryUsers = () => <UsersList readOnly crumbs={[...USER_CR, 'Users']} />
+export const CountryUsers = () => <GrantableUsers crumbs={[...USER_CR, 'Users']} />
 
 export function CountryHosts() {
   return (

@@ -235,6 +235,7 @@ export default function App() {
             <Route path="coin-management/history-user" element={<GlobalCoinHistoryUser />} />
             <Route path="live-request" element={<GlobalLiveRequest />} />
             <Route path="salary" element={<GlobalSalary />} />
+            <Route element={<RequireCap cap="run_payroll" />}><Route path="withdrawals" element={<Withdrawals />} /></Route>
             <Route path="profile" element={<GlobalProfile />} />
           </Route>
 
@@ -318,6 +319,7 @@ export default function App() {
             <Route path="coin-management/history-user" element={<CountryCoinHistoryUser />} />
             <Route path="live-request" element={<CountryLiveRequest />} />
             <Route path="salary" element={<CountrySalary />} />
+            <Route element={<RequireCap cap="run_payroll" />}><Route path="withdrawals" element={<Withdrawals />} /></Route>
             <Route path="profile" element={<CountryProfile />} />
           </Route>
 
@@ -335,6 +337,7 @@ export default function App() {
             <Route path="coin-management/history-user" element={<SubAdminCoinHistoryUser />} />
             <Route path="live-request" element={<SubAdminLiveRequests />} />
             <Route path="salary" element={<SubAdminSalary />} />
+            <Route element={<RequireCap cap="run_payroll" />}><Route path="withdrawals" element={<Withdrawals />} /></Route>
             <Route path="profile" element={<SubAdminProfile />} />
           </Route>
 
@@ -348,6 +351,7 @@ export default function App() {
             <Route path="coin-management/transfer-coins" element={<PanelAgencyTransferCoins />} />
             <Route path="coin-management/history-user" element={<PanelAgencyCoinHistoryUser />} />
             <Route path="live-request" element={<PanelAgencyLiveRequest />} />
+            <Route element={<RequireCap cap="run_payroll" />}><Route path="withdrawals" element={<Withdrawals />} /></Route>
             <Route path="profile" element={<PanelAgencyProfile />} />
           </Route>
 

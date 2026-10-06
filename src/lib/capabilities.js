@@ -75,3 +75,21 @@ export function can(staffRole, key) {
   if (staffRole.role === 'super_admin') return true
   return effectivePermissions(staffRole)[key] === true
 }
+
+/* What turning a capability ON beyond the role's default actually does, per role.
+ *  - Master (admin): every switch works — the menu/route appears and the database
+ *    already lets a Master do it (RLS / RPCs are role-gated at admin_or_above).
+ *  - Global / Country / Sub / Agency: only the features below are wired end to end
+ *    (menu entry + database permission via staff_can() — migration 20261006100000).
+ *    Any other switch would change nothing, so the UI disables it for these roles.
+ */
+export const LOWER_ROLE_GRANTS = {
+  manage_users: { roles: ['global_admin', 'country_admin', 'sub_admin'], gives: 'Restrict / lift / set inactive on the Users page' },
+  run_payroll: { roles: ['global_admin', 'country_admin', 'sub_admin', 'agency_manager'], gives: 'A Withdrawals page: see and approve / reject payouts' },
+}
+
+/* Can switching `key` ON for an account with this role have any effect? */
+export function canGrant(roleRaw, key) {
+  if (roleRaw === 'admin' || roleRaw === 'super_admin') return true
+  return !!LOWER_ROLE_GRANTS[key]?.roles.includes(roleRaw)
+}
