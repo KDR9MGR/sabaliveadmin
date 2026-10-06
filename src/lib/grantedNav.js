@@ -10,6 +10,8 @@ export function grantedMasterNav(staffRole) {
       section: g.section,
       items: g.items
         .filter((it) => it.cap && hasGrant(staffRole, it.cap))
+        // a plain item must itself be a page this grant opens (Withdrawals / Salary are served from the account's own panel)
+        .filter((it) => it.children || grantedPathAllowed(staffRole, it.to))
         .map((it) => (it.children ? { ...it, children: it.children.filter((c) => grantedPathAllowed(staffRole, c.to)) } : it))
         .filter((it) => !it.children || it.children.length),
     }))
