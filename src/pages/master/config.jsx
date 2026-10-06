@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { PageHeader, Card, Button, useToast } from '../../components/ui.jsx'
+import { PageHeader, Card, Button, ConfirmDialog, useToast } from '../../components/ui.jsx'
+import { useAuth } from '../../lib/auth.jsx'
 import { useSettings, BRAND_PRESETS, DEFAULT_SETTINGS } from '../../config/settings.jsx'
 import { AsyncView } from '../_templates.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
@@ -101,6 +102,158 @@ function PlatformSection() {
         </div>
         {v.updated_at && <div className="full muted" style={{ fontSize: 11 }}>Last updated {new Date(v.updated_at).toLocaleString()}</div>}
       </div>
+    </AsyncView>
+  )
+}
+
+/* ---- Release controls: the minimum app version and server-side switches (Super Admin only) ---- */
+const RELEASE_FLAGS = [
+  { key: 'animated_frames', title: 'Animated avatar frames', desc: 'Off: every avatar frame shows as a still picture (saves battery and data)' },
+  { key: 'speaking_waves', title: 'Speaking waves', desc: 'Off: no wave ring around whoever is talking in a live' },
+]
+
+function ReleaseSection() {
+  const toast = useToast()
+  const { staffRole } = useAuth()
+  const isSuper = staffRole?.role === 'super_admin'
+  const { data, loading, error, reload } = useAsyncData(getAppConfig)
+  const [form, setForm] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [problem, setProblem] = useState('')
+  const v = form || data || {}
+  const set = (k, val) => { setProblem(''); setForm({ ...(form || data), [k]: val }) }
+  const flags = v.feature_flags && typeof v.feature_flags === 'object' ? v.feature_flags : {}
+  const flagOn = (k) => (typeof flags[k] === 'boolean' ? flags[k] : true)
+  const columnsExist = !!data && 'min_android_version_code' in data
+  const editable = isSuper && columnsExist
+  const num = (x) => Math.max(0, Math.round(Number(x) || 0))
+  const minA = num(v.min_android_version_code), latestA = num(v.latest_android_version_code)
+  const minI = num(v.min_ios_build), latestI = num(v.latest_ios_build)
+  const blocking = minA > 0 || minI > 0
+
+  const check = () => {
+    if (minA > 0 && latestA === 0) return 'Enter the latest released Android version code first: a minimum can never be above it.'
+    if (minI > 0 && latestI === 0) return 'Enter the latest released iOS build first: a minimum can never be above it.'
+    if (latestA > 0 && minA > latestA) return 'The Android minimum cannot be higher than the latest released version.'
+    if (latestI > 0 && minI > latestI) return 'The iOS minimum cannot be higher than the latest released build.'
+    return ''
+  }
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      await updateAppConfig({
+        min_android_version_code: minA, latest_android_version_code: latestA,
+        min_ios_build: minI, latest_ios_build: latestI,
+        update_message: (v.update_message || '').trim(),
+        android_store_url: (v.android_store_url || '').trim(),
+        ios_store_url: (v.ios_store_url || '').trim(),
+        feature_flags: flags,
+      })
+      toast('Release controls saved')
+      setForm(null)
+      setConfirming(false)
+      reload()
+    } catch (e) {
+      setConfirming(false)
+      setProblem(/min_version_check/.test(e.message || '')
+        ? 'The minimum cannot be higher than the latest released version.'
+        : (e.message || 'Could not save'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onSave = () => {
+    const msg = check()
+    if (msg) { setProblem(msg); return }
+    // a minimum above 0 puts an "Update required" screen over every older build: ask first
+    if (blocking && (minA !== num(data?.min_android_version_code) || minI !== num(data?.min_ios_build))) setConfirming(true)
+    else save()
+  }
+
+  return (
+    <AsyncView loading={loading} error={error} reload={reload}>
+      <div className="form-grid">
+        {!columnsExist && (
+          <div className="full muted" style={{ fontSize: 12 }}>
+            The release controls need the database update <code>20261006090000_app_release_controls</code>, which has not been applied yet.
+          </div>
+        )}
+        {columnsExist && !isSuper && (
+          <div className="full muted" style={{ fontSize: 12 }}>Only the Super Admin can change these. You can see the current values.</div>
+        )}
+        <div className="field">
+          <label>Android: minimum version code</label>
+          <input className="input" type="number" min="0" step="1" disabled={!editable}
+            value={v.min_android_version_code ?? ''} onChange={(e) => set('min_android_version_code', e.target.value)} />
+          <span className="hint">0 = no minimum. Builds below this show "Update required".</span>
+        </div>
+        <div className="field">
+          <label>Android: latest released version code</label>
+          <input className="input" type="number" min="0" step="1" disabled={!editable}
+            value={v.latest_android_version_code ?? ''} onChange={(e) => set('latest_android_version_code', e.target.value)} />
+          <span className="hint">The +N of the newest build on Google Play. A minimum above it is refused.</span>
+        </div>
+        <div className="field">
+          <label>iOS: minimum build</label>
+          <input className="input" type="number" min="0" step="1" disabled={!editable}
+            value={v.min_ios_build ?? ''} onChange={(e) => set('min_ios_build', e.target.value)} />
+        </div>
+        <div className="field">
+          <label>iOS: latest released build</label>
+          <input className="input" type="number" min="0" step="1" disabled={!editable}
+            value={v.latest_ios_build ?? ''} onChange={(e) => set('latest_ios_build', e.target.value)} />
+        </div>
+        <div className="field full">
+          <label>Message on the update screen</label>
+          <input className="input" disabled={!editable} value={v.update_message ?? ''} maxLength={200}
+            onChange={(e) => set('update_message', e.target.value)}
+            placeholder="A newer version of SABALIVE is available. Please update to keep using the app." />
+          <span className="hint">Leave empty for the standard message (translated into the user's language).</span>
+        </div>
+        <div className="field">
+          <label>Android store link</label>
+          <input className="input" disabled={!editable} value={v.android_store_url ?? ''} onChange={(e) => set('android_store_url', e.target.value)} />
+        </div>
+        <div className="field">
+          <label>iOS store link</label>
+          <input className="input" disabled={!editable} value={v.ios_store_url ?? ''} onChange={(e) => set('ios_store_url', e.target.value)} />
+        </div>
+        <div className="full" style={{ marginTop: 4 }}>
+          <div className="t-title" style={{ marginBottom: 6 }}>Switches (take effect the next time the app opens or returns to the foreground)</div>
+          {RELEASE_FLAGS.map((f) => (
+            <div className="toggle-row" key={f.key}>
+              <div><div className="t-title">{f.title}</div><div className="t-desc">{f.desc}</div></div>
+              <label className="toggle">
+                <input type="checkbox" disabled={!editable} checked={flagOn(f.key)}
+                  onChange={(e) => set('feature_flags', { ...flags, [f.key]: e.target.checked })} />
+                <span className="track" /><span className="thumb" />
+              </label>
+            </div>
+          ))}
+        </div>
+        {problem && <div className="full" style={{ color: 'var(--danger)', fontSize: 12 }}>{problem}</div>}
+        <div className="full hstack" style={{ justifyContent: 'flex-end', gap: 10 }}>
+          {form && <Button onClick={() => { setForm(null); setProblem('') }}>Discard</Button>}
+          <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy || !form || !editable} onClick={onSave}>
+            {busy ? 'Saving…' : 'Save release controls'}
+          </Button>
+        </div>
+        {data?.updated_at && <div className="full muted" style={{ fontSize: 11 }}>Last updated {new Date(data.updated_at).toLocaleString()}</div>}
+      </div>
+      {confirming && (
+        <ConfirmDialog
+          title="Block older app versions?"
+          danger
+          confirmLabel="Yes, require the update"
+          busy={busy}
+          message={`Every Android build below ${minA || '(none)'} and every iOS build below ${minI || '(none)'} will be covered by an "Update required" screen until the person updates. Make sure that version is live in the store first. You can lower it again at any time.`}
+          onConfirm={save}
+          onClose={() => setConfirming(false)}
+        />
+      )}
     </AsyncView>
   )
 }
@@ -231,6 +384,7 @@ function Toggle({ title, desc, on }) {
 const SECTIONS = {
   Branding: BrandingSection,
   Platform: PlatformSection,
+  Release: ReleaseSection,
   General: () => (
     <div className="form-grid">
       <BrandNameField />
@@ -350,7 +504,8 @@ export default function ApplicationConfig({ crumbRoot = 'Application Configurati
   const Body = SECTIONS[sec]
   const isBranding = sec === 'Branding'
   const isPlatform = sec === 'Platform'
-  const selfManaged = isBranding || isPlatform
+  const isRelease = sec === 'Release'
+  const selfManaged = isBranding || isPlatform || isRelease
   return (
     <>
       <PageHeader
@@ -377,7 +532,9 @@ export default function ApplicationConfig({ crumbRoot = 'Application Configurati
             ? 'Rename the dashboard and set the live brand colour — applies to all panels'
             : isPlatform
               ? 'Persisted to the shared app_config record — the consumer app reads these too'
-              : 'Not wired to the backend yet — reference values only'}
+              : isRelease
+                ? 'Minimum app version and server-side switches. Super Admin only; the app checks them when it opens'
+                : 'Not wired to the backend yet — reference values only'}
         >
           <Body />
         </Card>

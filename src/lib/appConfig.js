@@ -3,7 +3,8 @@ import { supabase } from './supabase.js'
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 
 const NUM = ['coin_to_inr_rate', 'diamond_to_inr_rate', 'platform_fee_percent', 'gst_percent']
-const INT = ['min_recharge_inr', 'min_withdrawal_inr', 'min_withdrawal_diamonds']
+const INT = ['min_recharge_inr', 'min_withdrawal_inr', 'min_withdrawal_diamonds',
+  'min_android_version_code', 'latest_android_version_code', 'min_ios_build', 'latest_ios_build']
 const BOOL = ['maintenance_mode', 'allow_registrations']
 
 export async function getAppConfig() {
