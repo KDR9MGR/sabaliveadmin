@@ -332,8 +332,10 @@ export function AccessControl() {
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
         Each staff account starts from its <b>role baseline</b> below. Pick a panel, then a user in it, to turn
         individual features on or off for just that account. Turning a capability off is enforced in the menu
-        <i> and</i> the database. Turning one on works for every switch on a Master; for Global / Country / Sub Admin
-        and Agency accounts only Manage users and Run payroll can be turned on (the rest are locked).
+        <i> and</i> the database. Turning one on works for every switch on a Master. For Global / Country / Sub Admin
+        and Agency accounts every feature switch works too — it adds a <b>Granted access</b> entry to their menu and opens
+        only that feature's data — except the platform-level ones (Manage admins, Edit app config, Infrastructure,
+        System management, Audit logs, Impersonate, Live monitor), which stay locked.
       </div></Card>
 
       <Card flush title="Role baseline" sub="The starting point for every account with that role" className="mb-16" action={<span />}>

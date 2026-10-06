@@ -76,20 +76,65 @@ export function can(staffRole, key) {
   return effectivePermissions(staffRole)[key] === true
 }
 
-/* What turning a capability ON beyond the role's default actually does, per role.
- *  - Master (admin): every switch works — the menu/route appears and the database
- *    already lets a Master do it (RLS / RPCs are role-gated at admin_or_above).
- *  - Global / Country / Sub / Agency: only the features below are wired end to end
- *    (menu entry + database permission via staff_can() — migration 20261006100000).
- *    Any other switch would change nothing, so the UI disables it for these roles.
+/* What turning a capability ON beyond the role's default does, per role.
+ *  - Master (admin): every switch works — the menu/route appears and the database already lets a Master do it.
+ *  - Global / Country / Sub Admin and Agency: the switches below are wired end to end — a "Granted access" menu
+ *    entry, the Master page opened for that feature only (see GRANT_PAGES), and the database allowing exactly
+ *    that feature's data for that account (staff_can() + the "Granted <key>" policies, migrations
+ *    20261006100000 / 20261006140000). Manage users and Run payroll are served from the account's own panel.
+ *  - Platform-level switches (manage_admins, edit_config, manage_infra, manage_system, view_audit, impersonate,
+ *    monitor_lives) stay Master / Super Admin only; manage_hosts and view_dashboards are already on by default.
  */
+const ALL_LOWER = ['global_admin', 'country_admin', 'sub_admin', 'agency_manager']
 export const LOWER_ROLE_GRANTS = {
   manage_users: { roles: ['global_admin', 'country_admin', 'sub_admin'], gives: 'Restrict / lift / set inactive on the Users page' },
-  run_payroll: { roles: ['global_admin', 'country_admin', 'sub_admin', 'agency_manager'], gives: 'A Withdrawals page: see and approve / reject payouts' },
+  run_payroll: { roles: ALL_LOWER, gives: 'A Withdrawals page: see and approve / reject payouts' },
+  manage_agencies: { roles: ALL_LOWER, gives: 'Agency Management: agencies, requests, commission plans' },
+  manage_coins: { roles: ALL_LOWER, gives: 'Coin & Gift and Store pages (gifts, packages, items, Lucky IDs, transactions)' },
+  manage_live_requests: { roles: ALL_LOWER, gives: 'Live Requests: review and approve go-live requests' },
+  manage_levels: { roles: ALL_LOWER, gives: 'Levels (XP & images)' },
+  manage_support: { roles: ALL_LOWER, gives: 'Support chat' },
+  manage_lucky_box: { roles: ALL_LOWER, gives: 'Lucky Box settings' },
+  manage_badges: { roles: ALL_LOWER, gives: 'Badge management' },
+  manage_leaderboard_frame: { roles: ALL_LOWER, gives: 'Leaderboard frame' },
+  manage_profile_frames: { roles: ALL_LOWER, gives: 'Profile frames' },
+  manage_content: { roles: ALL_LOWER, gives: 'Banners, legal pages, announcements, live emojis' },
+  view_reports: { roles: ALL_LOWER, gives: 'Reports & analytics' },
 }
+
+/* The Master pages (path prefixes under /admin) a granted switch opens for a lower-role account. */
+export const GRANT_PAGES = {
+  manage_agencies: ['/admin/agencies'],
+  manage_coins: ['/admin/store', '/admin/coins/sellers', '/admin/coins/gifts', '/admin/coins/packages', '/admin/coins/transactions', '/admin/coins/gift-history'],
+  manage_live_requests: ['/admin/live'],
+  manage_levels: ['/admin/levels'],
+  manage_support: ['/admin/support'],
+  manage_lucky_box: ['/admin/lucky-box'],
+  manage_badges: ['/admin/badges'],
+  manage_leaderboard_frame: ['/admin/leaderboard'],
+  manage_profile_frames: ['/admin/frames'],
+  manage_content: ['/admin/content'],
+  view_reports: ['/admin/reports'],
+}
+
+const isMasterOrAbove = (roleRaw) => roleRaw === 'admin' || roleRaw === 'super_admin'
 
 /* Can switching `key` ON for an account with this role have any effect? */
 export function canGrant(roleRaw, key) {
-  if (roleRaw === 'admin' || roleRaw === 'super_admin') return true
+  if (isMasterOrAbove(roleRaw)) return true
   return !!LOWER_ROLE_GRANTS[key]?.roles.includes(roleRaw)
+}
+
+/* Does this lower-role account hold an explicit grant for `key` that is wired for its role? */
+export function hasGrant(staffRole, key) {
+  if (!staffRole || isMasterOrAbove(staffRole.role)) return false
+  return staffRole.permissions?.[key] === true && !!LOWER_ROLE_GRANTS[key]?.roles.includes(staffRole.role)
+}
+
+const underPrefix = (pathname, prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
+
+/* May a lower-role account open this /admin path (a Master page one of its grants unlocks)? */
+export function grantedPathAllowed(staffRole, pathname) {
+  if (!staffRole || isMasterOrAbove(staffRole.role)) return false
+  return Object.entries(GRANT_PAGES).some(([key, prefixes]) => hasGrant(staffRole, key) && prefixes.some((p) => underPrefix(pathname, p)))
 }

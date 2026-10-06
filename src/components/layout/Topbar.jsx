@@ -102,9 +102,19 @@ function PanelMenu({ panel }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const nav = useNavigate()
-  const { staffRole } = useAuth()
+  const { staffRole, panel: ownPanel } = useAuth()
   useOutside(ref, () => setOpen(false))
   const cur = PANELS[panel]
+  // a lower-role account looking at a Master page its grant opens: offer the way back, not a "Master" label
+  if (panel === 'master' && staffRole && staffRole.role !== 'admin' && staffRole.role !== 'super_admin' && PANELS[ownPanel]) {
+    const own = PANELS[ownPanel]
+    return (
+      <button className="panel-switch" onClick={() => nav(own.base)} style={{ borderColor: own.color, color: own.color }} title="Back to your panel">
+        <Icon name="chevronLeft" size={14} />
+        <span className="hide-sm">{own.label}</span>
+      </button>
+    )
+  }
   const allowed = PANELS_FOR[staffRole?.role] || [panel]
   const canSwitch = allowed.length > 1
 
@@ -150,7 +160,10 @@ function UserMenu({ panel, onNav }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useOutside(ref, () => setOpen(false))
-  const { profile, staffRole, user, signOut } = useAuth()
+  const { profile, staffRole, user, signOut, panel: ownPanel } = useAuth()
+  // a lower-role account on a granted Master page still has its own profile page in its own panel
+  const lowerRole = !!staffRole && staffRole.role !== 'admin' && staffRole.role !== 'super_admin'
+  const profilePanel = lowerRole && panel === 'master' && PANELS[ownPanel] ? PANELS[ownPanel].base.replace(/^\//, '') : (panel === 'master' ? 'admin' : panel)
   const name = profile?.name || user?.email || 'Account'
   const roleLabel = staffRole ? ROLE_LABEL[staffRole.role] || staffRole.role : ''
 
@@ -172,7 +185,7 @@ function UserMenu({ panel, onNav }) {
       </button>
       {open && (
         <div className="menu-pop">
-          <button onClick={() => { setOpen(false); onNav(`/${panel === 'master' ? 'admin' : panel}/profile`) }}>
+          <button onClick={() => { setOpen(false); onNav(`/${profilePanel}/profile`) }}>
             <Icon name="user" size={15} /> My Profile
           </button>
           <button onClick={() => { setOpen(false); onNav(`/${panel === 'master' ? 'admin' : panel}/config`) }}>

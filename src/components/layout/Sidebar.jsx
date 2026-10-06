@@ -4,13 +4,25 @@ import Icon from '../Icon.jsx'
 import { NAV, PANELS } from '../../config/nav.js'
 import { useSettings } from '../../config/settings.jsx'
 import { useAuth } from '../../lib/auth.jsx'
+import { grantedMasterNav, grantedLinks } from '../../lib/grantedNav.js'
 
 export default function Sidebar({ panel, onNavigate }) {
-  const groups = NAV[panel]
   const { pathname } = useLocation()
   const p = PANELS[panel]
   const { settings } = useSettings()
-  const { can } = useAuth()
+  const { can, staffRole, panel: ownPanel } = useAuth()
+  const lower = !!staffRole && staffRole.role !== 'admin' && staffRole.role !== 'super_admin'
+  let groups = NAV[panel]
+  if (lower && panel === 'master') {
+    // a lower-role account browsing the Master pages its grants unlock: just those, plus a way back
+    groups = [
+      { section: 'Your panel', items: [{ label: `Back to ${PANELS[ownPanel]?.label || 'my panel'}`, icon: 'chevronLeft', to: PANELS[ownPanel]?.base || '/' }] },
+      ...grantedMasterNav(staffRole),
+    ]
+  } else if (lower) {
+    const links = grantedLinks(staffRole)
+    if (links.length) groups = [...groups, { section: 'Granted access', items: links }]
+  }
 
   const visible = (item) => !item.cap || can(item.cap)
 
