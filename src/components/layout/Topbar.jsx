@@ -106,7 +106,7 @@ function PanelMenu({ panel }) {
   useOutside(ref, () => setOpen(false))
   const cur = PANELS[panel]
   // a lower-role account looking at a Master page its grant opens: offer the way back, not a "Master" label
-  if (panel === 'master' && staffRole && staffRole.role !== 'admin' && staffRole.role !== 'super_admin' && PANELS[ownPanel]) {
+  if ((panel === 'master' || panel === 'super') && staffRole && staffRole.role !== 'admin' && staffRole.role !== 'super_admin' && PANELS[ownPanel]) {
     const own = PANELS[ownPanel]
     return (
       <button className="panel-switch" onClick={() => nav(own.base)} style={{ borderColor: own.color, color: own.color }} title="Back to your panel">
@@ -163,7 +163,7 @@ function UserMenu({ panel, onNav }) {
   const { profile, staffRole, user, signOut, panel: ownPanel } = useAuth()
   // a lower-role account on a granted Master page still has its own profile page in its own panel
   const lowerRole = !!staffRole && staffRole.role !== 'admin' && staffRole.role !== 'super_admin'
-  const profilePanel = lowerRole && panel === 'master' && PANELS[ownPanel] ? PANELS[ownPanel].base.replace(/^\//, '') : (panel === 'master' ? 'admin' : panel)
+  const profilePanel = lowerRole && (panel === 'master' || panel === 'super') && PANELS[ownPanel] ? PANELS[ownPanel].base.replace(/^\//, '') : (panel === 'master' ? 'admin' : panel)
   const name = profile?.name || user?.email || 'Account'
   const roleLabel = staffRole ? ROLE_LABEL[staffRole.role] || staffRole.role : ''
 

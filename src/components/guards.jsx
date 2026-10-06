@@ -67,7 +67,7 @@ export function RequirePanel({ panel, children }) {
   const canBrowseAll = staffRole?.role === 'super_admin'
   // a lower-role account may open the Master pages its granted switches unlock, and nothing else there
   if (myPanel !== panel && !canBrowseAll) {
-    if (panel === 'master' && grantedPathAllowed(staffRole, pathname)) return children
+    if ((panel === 'master' || panel === 'super') && grantedPathAllowed(staffRole, pathname)) return children
     return <Navigate to={PANELS[myPanel]?.base ?? DEFAULT_LOGIN_PATH} replace />
   }
   return children

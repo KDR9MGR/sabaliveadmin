@@ -56,7 +56,7 @@ export default function PermissionsDrawer({ account, onClose, onSaved }) {
         Baseline comes from the <b>{account.role}</b> role. Turning a capability <b>off</b> is enforced everywhere
         (menu, screens and the database). {account.roleRaw === 'admin'
           ? <>Turning one <b>on</b> adds that menu and the database already allows a Master to do it.</>
-          : <>Each feature switch adds a <b>Granted access</b> entry to this account's menu and the database allows exactly that feature's data for this account. Platform-level switches stay locked. Changes reach a signed-in account within a minute.</>}
+          : <>The role only sets the default — turning a switch <b>on</b> gives this account that capability whatever its panel: it adds a <b>Granted access</b> entry to its menu that opens just that page, and the database allows that feature's data for this account. Changes reach a signed-in account within a minute.</>}
       </p>
       {groups.map((g) => (
         <div key={g} style={{ marginTop: 14 }}>

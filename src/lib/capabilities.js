@@ -78,13 +78,15 @@ export function can(staffRole, key) {
 }
 
 /* What turning a capability ON beyond the role's default does, per role.
- *  - Master (admin): every switch works — the menu/route appears and the database already lets a Master do it.
- *  - Global / Country / Sub Admin and Agency: the switches below are wired end to end — a "Granted access" menu
- *    entry, the Master page opened for that feature only (see GRANT_PAGES), and the database allowing exactly
- *    that feature's data for that account (staff_can() + the "Granted <key>" policies, migrations
- *    20261006100000 / 20261006140000). Manage users and Run payroll are served from the account's own panel.
- *  - Platform-level switches (manage_admins, edit_config, manage_infra, manage_system, view_audit, impersonate,
- *    monitor_lives) stay Master / Super Admin only; manage_hosts and view_dashboards are already on by default.
+ * A granted switch works for ANY staff account whatever its panel: the role only sets the default (the chart in
+ * Access Control); an explicit grant overrides it. For a Global / Country / Sub Admin or Agency account a grant
+ *  - adds a "Granted access" entry to the account's own menu that opens the matching page (Master or Super page,
+ *    see GRANT_PAGES) — and only that page, with a way back; and
+ *  - opens, in the database, exactly that feature's data (staff_can() + the "Granted <key>" policies, migrations
+ *    20261006100000 / 20261006140000 / 20261007100000).
+ * Manage users and Run payroll are served from the account's own panel (Users actions / a Withdrawals page).
+ * Manage hosts and View dashboards are already on by default for these roles. Impersonate and Export data have
+ * no feature behind them for these roles yet: they can be switched on and saved, and nothing opens.
  */
 const ALL_LOWER = ['global_admin', 'country_admin', 'sub_admin', 'agency_manager']
 export const LOWER_ROLE_GRANTS = {
@@ -101,9 +103,17 @@ export const LOWER_ROLE_GRANTS = {
   manage_profile_frames: { roles: ALL_LOWER, gives: 'Profile frames' },
   manage_content: { roles: ALL_LOWER, gives: 'Banners, legal pages, announcements, live emojis' },
   view_reports: { roles: ALL_LOWER, gives: 'Reports & analytics' },
+  manage_admins: { roles: ALL_LOWER, gives: "Admin Management pages (what each action may do is still limited by the account's own place in the ladder)" },
+  edit_config: { roles: ALL_LOWER, gives: 'Application Config (rates, fees, switches; app release controls stay Super Admin only)' },
+  manage_infra: { roles: ALL_LOWER, gives: 'System overview, Infrastructure, Integrations, Backups' },
+  manage_system: { roles: ALL_LOWER, gives: 'System Management' },
+  view_audit: { roles: ALL_LOWER, gives: 'Audit logs and Security' },
+  monitor_lives: { roles: ALL_LOWER, gives: 'Live Monitor: watch any live without being seen' },
+  export_data: { roles: ALL_LOWER, gives: 'Nothing to open yet for this role' },
+  impersonate: { roles: ALL_LOWER, gives: 'Nothing to open yet (no feature behind this switch)' },
 }
 
-/* The Master pages (path prefixes under /admin) a granted switch opens for a lower-role account. */
+/* The pages (path prefixes) a granted switch opens for a lower-role account — under /admin (Master) or /super. */
 export const GRANT_PAGES = {
   manage_agencies: ['/admin/agencies'],
   manage_coins: ['/admin/store', '/admin/coins/sellers', '/admin/coins/gifts', '/admin/coins/packages', '/admin/coins/transactions', '/admin/coins/gift-history'],
@@ -116,6 +126,12 @@ export const GRANT_PAGES = {
   manage_profile_frames: ['/admin/frames'],
   manage_content: ['/admin/content'],
   view_reports: ['/admin/reports'],
+  manage_admins: ['/admin/admins'],
+  edit_config: ['/admin/config'],
+  manage_system: ['/admin/system'],
+  monitor_lives: ['/admin/live-monitor'],
+  view_audit: ['/super/audit', '/super/security'],
+  manage_infra: ['/super/system', '/super/infrastructure', '/super/integrations', '/super/backups'],
 }
 
 const isMasterOrAbove = (roleRaw) => roleRaw === 'admin' || roleRaw === 'super_admin'
@@ -134,7 +150,7 @@ export function hasGrant(staffRole, key) {
 
 const underPrefix = (pathname, prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
 
-/* May a lower-role account open this /admin path (a Master page one of its grants unlocks)? */
+/* May a lower-role account open this /admin or /super path (a page one of its grants unlocks)? */
 export function grantedPathAllowed(staffRole, pathname) {
   if (!staffRole || isMasterOrAbove(staffRole.role)) return false
   return Object.entries(GRANT_PAGES).some(([key, prefixes]) => hasGrant(staffRole, key) && prefixes.some((p) => underPrefix(pathname, p)))

@@ -332,10 +332,9 @@ export function AccessControl() {
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
         Each staff account starts from its <b>role baseline</b> below. Pick a panel, then a user in it, to turn
         individual features on or off for just that account. Turning a capability off is enforced in the menu
-        <i> and</i> the database. Turning one on works for every switch on a Master. For Global / Country / Sub Admin
-        and Agency accounts every feature switch works too — it adds a <b>Granted access</b> entry to their menu and opens
-        only that feature's data — except the platform-level ones (Manage admins, Edit app config, Infrastructure,
-        System management, Audit logs, Impersonate, Live monitor), which stay locked.
+        <i> and</i> the database. Turning one on gives that account the capability whatever its panel: for Global / Country / Sub Admin and Agency accounts
+        it adds a <b>Granted access</b> entry to their menu that opens just that page, and the database allows that feature's
+        data for them. (Impersonate and Export data have nothing to open yet for these roles.)
       </div></Card>
 
       <Card flush title="Role baseline" sub="The starting point for every account with that role" className="mb-16" action={<span />}>
