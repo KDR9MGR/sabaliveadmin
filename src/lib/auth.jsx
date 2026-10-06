@@ -62,6 +62,31 @@ export function AuthProvider({ children }) {
     return () => { mounted = false; sub.subscription.unsubscribe() }
   }, [loadForUser])
 
+  /* Permissions are changed by a Super Admin while the grantee is signed in, so
+     re-read the staff row when the tab regains focus and every minute — a grant (or
+     a removal) then applies without a new sign-in. Only the permissions / role
+     fields are touched, and only when they actually changed. */
+  const userId = session?.user?.id
+  useEffect(() => {
+    if (!userId) return undefined
+    let alive = true
+    const refresh = async () => {
+      if (document.visibilityState === 'hidden') return
+      const { data: role, error } = await supabase.from('staff_roles').select('*').eq('user_id', userId).maybeSingle()
+      if (!alive || error) return
+      setStaffRole((cur) => (JSON.stringify(cur ?? null) === JSON.stringify(role ?? null) ? cur : (role ?? null)))
+    }
+    const timer = setInterval(refresh, 60000)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      alive = false
+      clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [userId])
+
   const signIn = useCallback(async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { error }

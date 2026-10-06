@@ -112,7 +112,7 @@ export function SuperDashboard() {
 export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, intro, crumbRoot, addPath, allowGrant = true, allowEditProfile = false, addLabel = 'Add Admin', canChangeRole = () => true, summary }) {
   const toast = useToast()
   const nav = useNavigate()
-  const { user } = useAuth()
+  const { user, staffRole } = useAuth()
   const { data: rows, loading, error, reload } = useAsyncData(() => listStaffAccounts(roles), [roles.join()])
   const { data: pickerData } = useAsyncData(async () => ({
     profiles: await grantableProfiles(),
@@ -177,14 +177,15 @@ export function StaffAccountsPage({ roles, grantRoleOpts, title, crumbLabel, int
           rowActions={(r) => [
             r.roleRaw === 'super_admin'
               ? { label: 'Full access (Super Admin)', icon: 'shield', onClick: () => {} }
-              : { label: 'Permissions', icon: 'sliders', onClick: () => setPerms(r) },
+              // only a Super Admin can write staff_roles.permissions (RLS), so a Master would just get an error
+              : (staffRole?.role === 'super_admin' ? { label: 'Permissions', icon: 'sliders', onClick: () => setPerms(r) } : null),
             ...(allowEditProfile ? [{ label: 'Edit profile', icon: 'edit', onClick: () => setEditingProfile(r) }] : []),
             ...(canChangeRole(r) ? [{ label: 'Change role', icon: 'shieldUser', onClick: () => setChanging(r) }] : []),
             { sep: true },
             r.id === user?.id
               ? { label: "Can't revoke yourself", icon: 'lock', onClick: () => {} }
               : { label: 'Revoke role', icon: 'trash', onClick: () => setRevoking(r) },
-          ]}
+          ].filter(Boolean)}
           emptyText={allowGrant ? 'No accounts with these roles yet. Use “Grant Role” to add one.' : 'No accounts with these roles yet. Use “Add Admin” to add one.'}
         />
       </AsyncView>
