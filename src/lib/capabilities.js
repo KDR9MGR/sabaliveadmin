@@ -13,6 +13,9 @@
 export const CAPABILITIES = [
   { key: 'view_dashboards', label: 'View dashboards', group: 'Overview' },
   { key: 'manage_users', label: 'Manage users', group: 'Users & staff' },
+  // Open a user's profile page (read-only: details, coins & diamonds, bag, badges, frames, followers, live history,
+  // sign-in & devices). The action buttons on it still need Manage users. On by default for a Master.
+  { key: 'view_user_profile', label: 'View user profile', group: 'Users & staff' },
   { key: 'manage_admins', label: 'Manage admins', group: 'Users & staff' },
   { key: 'manage_agencies', label: 'Manage agencies', group: 'Operations' },
   { key: 'manage_hosts', label: 'Manage hosts', group: 'Operations' },
@@ -51,7 +54,7 @@ const ALL = Object.fromEntries(CAPABILITY_KEYS.map((k) => [k, true]))
 
 export const ROLE_BASELINE = {
   super_admin: ALL,
-  admin: set('view_dashboards', 'manage_users', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support'),
+  admin: set('view_dashboards', 'manage_users', 'view_user_profile', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support'),
   agency_manager: set('view_dashboards', 'manage_hosts', 'export_data'),
   sub_admin: set('view_dashboards', 'manage_hosts'),
   country_admin: set('view_dashboards', 'manage_hosts'),
@@ -91,6 +94,7 @@ export function can(staffRole, key) {
 const ALL_LOWER = ['global_admin', 'country_admin', 'sub_admin', 'agency_manager']
 export const LOWER_ROLE_GRANTS = {
   manage_users: { roles: ['global_admin', 'country_admin', 'sub_admin'], gives: 'Restrict / lift / set inactive on the Users page' },
+  view_user_profile: { roles: ALL_LOWER, gives: "Open a user's profile page (read-only, incl. sign-in & devices); actions need Manage users" },
   run_payroll: { roles: ALL_LOWER, gives: 'A Withdrawals page: see and approve / reject payouts' },
   manage_agencies: { roles: ALL_LOWER, gives: 'Agency Management: agencies, requests, commission plans' },
   manage_coins: { roles: ALL_LOWER, gives: 'Coin & Gift and Store pages (gifts, packages, items, Lucky IDs, transactions)' },
@@ -115,6 +119,8 @@ export const LOWER_ROLE_GRANTS = {
 
 /* The pages (path prefixes) a granted switch opens for a lower-role account — under /admin (Master) or /super. */
 export const GRANT_PAGES = {
+  // exactly /admin/users/<id> — not the Users list or the other User Management pages
+  view_user_profile: [/^\/admin\/users\/[0-9a-f-]{36}$/i],
   manage_agencies: ['/admin/agencies'],
   manage_coins: ['/admin/store', '/admin/coins/sellers', '/admin/coins/gifts', '/admin/coins/packages', '/admin/coins/transactions', '/admin/coins/gift-history'],
   manage_live_requests: ['/admin/live'],
@@ -148,7 +154,7 @@ export function hasGrant(staffRole, key) {
   return staffRole.permissions?.[key] === true && !!LOWER_ROLE_GRANTS[key]?.roles.includes(staffRole.role)
 }
 
-const underPrefix = (pathname, prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
+const underPrefix = (pathname, prefix) => (prefix instanceof RegExp ? prefix.test(pathname) : pathname === prefix || pathname.startsWith(prefix + '/'))
 
 /* May a lower-role account open this /admin or /super path (a page one of its grants unlocks)? */
 export function grantedPathAllowed(staffRole, pathname) {

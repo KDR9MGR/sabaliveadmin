@@ -55,8 +55,10 @@ export const MasterTransferGlobal = () => <CountryTransferGlobal handover />
 /* readOnly: browse-only (a Global Admin sees every user but can't change their
    status — set_profile_status is admin-only in the database — and has no
    profile page of its own), so no row click, no Live Action, no row actions. */
-export function UsersList({ readOnly = false, profileLink = true, crumbs = [...CRUMBS, 'Users'] }) {
+export function UsersList({ readOnly = false, profileLink: wantProfileLink = true, crumbs = [...CRUMBS, 'Users'] }) {
   const nav = useNavigate()
+  const { can } = useAuth()
+  const profileLink = wantProfileLink && can('view_user_profile')
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listUsers)
   const [ban, setBan] = useState(null) // { user, kinds } — the Restrict dialog
@@ -90,7 +92,7 @@ export function UsersList({ readOnly = false, profileLink = true, crumbs = [...C
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
-          onRowClick={readOnly || !profileLink ? undefined : (r) => nav(`/admin/users/${r.id}`)}
+          onRowClick={profileLink ? (r) => nav(`/admin/users/${r.id}`) : undefined}
           searchKeys={['name', 'username', 'displayId', 'location']}
           searchPlaceholder="Search by name, username or user ID…"
           tabs={[
@@ -145,7 +147,8 @@ export function UsersList({ readOnly = false, profileLink = true, crumbs = [...C
    (staff_can('manage_users')). These panels have no user profile page, so no row click. */
 export function GrantableUsers({ crumbs }) {
   const { can } = useAuth()
-  return <UsersList readOnly={!can('manage_users')} profileLink={false} crumbs={crumbs} />
+  // the profile page is a granted Master page for these accounts: only with "View user profile"
+  return <UsersList readOnly={!can('manage_users')} profileLink={can('view_user_profile')} crumbs={crumbs} />
 }
 
 /* ------------------------------------------------------------------ Hosts / Creators (shares the real host table) */
@@ -443,6 +446,12 @@ function LoginInfoCard({ login }) {
 export function UserProfile() {
   const { id } = useParams()
   const toast = useToast()
+  const { can, staffRole } = useAuth()
+  // The page itself needs "View user profile". Its actions are separate: restrict / lift / status need "Manage users";
+  // editing the profile and assigning items, Lucky IDs, badges and frames are Master / Super Admin actions on the server.
+  const isMaster = staffRole?.role === 'admin' || staffRole?.role === 'super_admin'
+  const canRestrict = can('manage_users')
+  const canEdit = isMaster && canRestrict
   const { data, loading, error, reload } = useAsyncData(() => getUserDetail(id), [id])
   const { data: bans, reload: reloadBans } = useAsyncData(() => listUserBans(id), [id])
   const [banning, setBanning] = useState(null) // default kinds for the Restrict dialog
@@ -473,13 +482,13 @@ export function UserProfile() {
         crumbs={['Home', 'User Management', 'Users', u?.display_id != null ? String(u.display_id) : '…']}
         actions={<>
           <Button icon="chevronLeft" onClick={() => history.back()}>Back</Button>
-          {u && restricted && <Button icon="check" onClick={liftEverything}>Lift restrictions</Button>}
-          {u && <Button icon="edit" onClick={() => setEditing(true)}>Edit profile</Button>}
-          {u && <Button variant="danger" icon="lock" onClick={() => setBanning(['account'])}>Restrict (ban)…</Button>}
+          {u && canRestrict && restricted && <Button icon="check" onClick={liftEverything}>Lift restrictions</Button>}
+          {u && canEdit && <Button icon="edit" onClick={() => setEditing(true)}>Edit profile</Button>}
+          {u && canRestrict && <Button variant="danger" icon="lock" onClick={() => setBanning(['account'])}>Restrict (ban)…</Button>}
         </>}
       />
       <AsyncView loading={loading} error={error} reload={reload}>
-        {u ? <UserProfileBody data={data} bans={bans || []} onLift={liftOne} onStatus={changeStatus} onGranted={reload} /> : (
+        {u ? <UserProfileBody data={data} bans={bans || []} onLift={liftOne} onStatus={changeStatus} onGranted={reload} canRestrict={canRestrict} canEdit={canEdit} /> : (
           <Card><div className="card__body"><EmptyState icon="helpCircle" title="User not found" text="No profile with this ID." /></div></Card>
         )}
       </AsyncView>
@@ -489,7 +498,7 @@ export function UserProfile() {
   )
 }
 
-function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
+function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRestrict = false, canEdit = false }) {
   const u = data.profile
   const w = u.wallets || {}
   const hp = u.host_profiles
@@ -558,7 +567,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
         <Card
           title="Bag"
           sub="Entry effects, vehicles, frames and room skins this user owns — the equipped entry effect / vehicle plays when they walk into a live"
-          action={<Button size="sm" icon="userPlus" onClick={() => setAssigningItem(true)}>Assign item</Button>}
+          action={canEdit ? <Button size="sm" icon="userPlus" onClick={() => setAssigningItem(true)}>Assign item</Button> : undefined}
         >
           {data.entries.length ? (
             <div className="feed">
@@ -572,7 +581,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
                     </div>
                   </div>
                   {e.equipped && e.active ? <StatusBadge value="Equipped" /> : !e.active ? <StatusBadge value="Expired" /> : <span className="muted">Owned</span>}
-                  <Button size="sm" onClick={() => removeItem(e)}>Remove</Button>
+                  {canEdit && <Button size="sm" onClick={() => removeItem(e)}>Remove</Button>}
                 </div>
               ))}
             </div>
@@ -582,7 +591,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
         <Card
           title="Lucky ID"
           sub="A special app ID that replaces this user's own while they hold it"
-          action={lucky
+          action={!canEdit ? undefined : lucky
             ? <Button size="sm" onClick={revokeLucky}>Revoke</Button>
             : <Button size="sm" icon="userPlus" onClick={() => setAssigningLucky(true)}>Assign Lucky ID</Button>}
         >
@@ -591,7 +600,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
             : <EmptyState icon="star" title="No Lucky ID" text="They use their own app ID." />}
         </Card>
 
-        <Card title="Badges" action={<Button size="sm" icon="userPlus" onClick={() => setGranting('badge')}>Assign badge</Button>}>
+        <Card title="Badges" action={canEdit ? <Button size="sm" icon="userPlus" onClick={() => setGranting('badge')}>Assign badge</Button> : undefined}>
           {data.badges.length ? (
             <div className="hstack wrap" style={{ gap: 10 }}>
               {data.badges.map((b, i) => (
@@ -604,7 +613,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
           ) : <EmptyState icon="award" title="No badges yet" />}
         </Card>
 
-        <Card title="Profile Frame" action={<Button size="sm" icon="userPlus" onClick={() => setGranting('frame')}>Assign frame</Button>}>
+        <Card title="Profile Frame" action={canEdit ? <Button size="sm" icon="userPlus" onClick={() => setGranting('frame')}>Assign frame</Button> : undefined}>
           {data.frames.length ? (
             <div className="hstack wrap" style={{ gap: 10 }}>
               {data.frames.map((f, i) => (
@@ -678,13 +687,13 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
                       {b.state === 'Lifted' && b.liftedBy ? ` · lifted by ${b.liftedBy}` : ''}
                     </div>
                   </div>
-                  {b.state === 'Active' && <Button size="sm" onClick={() => onLift(b.id)}>Lift</Button>}
+                  {canRestrict && b.state === 'Active' && <Button size="sm" onClick={() => onLift(b.id)}>Lift</Button>}
                 </div>
               ))}
             </div>
           ) : <EmptyState icon="shield" title="No bans" text="This user has never been restricted." />}
         </Card>
-        <Card title="Account status">
+        {canRestrict && <Card title="Account status">
           <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>
             Active lifts every ban. Suspended opens the Restrict dialog (an ID ban — choose how long).
             Inactive just ends an ID ban. Other profile fields are edited by the user in-app.
@@ -696,7 +705,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted }) {
               </Button>
             ))}
           </div>
-        </Card>
+        </Card>}
       </div>
 
       {assigningItem && <AssignItemForm user={u} onClose={() => setAssigningItem(false)} onDone={() => { setAssigningItem(false); onGranted?.() }} />}

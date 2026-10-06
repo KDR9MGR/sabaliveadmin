@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { StatGrid, TableSkeleton, LoadError } from './_templates.jsx'
 import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, EmptyState, ConfirmDialog } from '../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../components/cells.jsx'
@@ -9,6 +10,7 @@ import Icon from '../components/Icon.jsx'
 import PanelChip from '../components/PanelChip.jsx'
 import { boldMd } from '../data/util.js'
 import { useAsyncData } from '../lib/useAsync.js'
+import { useAuth } from '../lib/auth.jsx'
 import { useAgencyScope, AgencyScopeBar } from '../lib/agencyScope.jsx'
 import {
   getAgency, agencyDashboard, listAgencyHosts, listAgencyApplications,
@@ -183,6 +185,9 @@ export function AgencyHosts() {
 export function AgencyHostProfiles() {
   const { agencyName } = useAgencyScope()
   const toast = useToast()
+  const nav = useNavigate()
+  const { can } = useAuth()
+  // with "View user profile" a row opens that user's (read-only) profile page
   return (
     <AgencyPage title="Users" load={listAgencyHosts}>
       {(rows, reload) => {
@@ -193,6 +198,7 @@ export function AgencyHostProfiles() {
         return (
           <DataTable
             rows={rows}
+            onRowClick={can('view_user_profile') ? (r) => nav(`/admin/users/${r.id}`) : undefined}
             searchKeys={['name', 'username', 'displayId']}
             columns={[
               personCol('name', 'username'),
@@ -203,7 +209,7 @@ export function AgencyHostProfiles() {
               { key: 'isLive', header: 'Live Status', render: (r) => r.isLive ? <StatusBadge value="Live" /> : <span className="muted">Offline</span> },
               {
                 key: 'liveAction', header: 'Live Action', render: (r) => (
-                  <div className="hstack" style={{ gap: 6 }}>
+                  <div className="hstack" style={{ gap: 6 }} onClick={(e) => e.stopPropagation()}>
                     <Button size="sm" variant="primary" disabled={r.status !== 'Banned'} onClick={() => changeStatus(r, 'active')}>Yes</Button>
                     <Button size="sm" variant="danger" disabled={r.status === 'Banned'} onClick={() => changeStatus(r, 'banned')}>No</Button>
                   </div>

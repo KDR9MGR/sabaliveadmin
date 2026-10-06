@@ -113,6 +113,8 @@ export default function App() {
               <Route path="users/transfer-sub-admin" element={<MasterTransferSubAdmin />} />
               <Route path="users/transfer-country" element={<MasterTransferCountry />} />
               <Route path="users/transfer-global" element={<MasterTransferGlobal />} />
+            </Route>
+            <Route element={<RequireCap cap="view_user_profile" />}>
               <Route path="users/:id" element={<UserProfile />} />
             </Route>
 
