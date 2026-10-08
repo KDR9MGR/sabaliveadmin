@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:staging": "vite --mode staging",
+    "build:staging": "vite build --mode staging",
     "build": "vite build",
     "preview": "vite preview",
     "build:site": "rm -rf dist-combined && npm run build:admin:zone && npm run build:landing:zone",

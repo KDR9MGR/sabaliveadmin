@@ -3,8 +3,9 @@
    in sabalive/lib/config/supabase_client.dart; every table it can touch is
    gated by Row Level Security. */
 
-const SUPABASE_URL = 'https://sfehzhtqtpuobnrvzvzp.supabase.co'
-const SUPABASE_ANON_KEY = 'sb_publishable_vdDsGi-wEgeJm_BpQE7MlA_Z5ZusWOi'
+// production unless a staging build sets VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://sfehzhtqtpuobnrvzvzp.supabase.co'
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_vdDsGi-wEgeJm_BpQE7MlA_Z5ZusWOi'
 
 /* Logs an account-deletion request. Always resolves — the Edge Function
    itself never reveals whether the email matches a real account, so a
