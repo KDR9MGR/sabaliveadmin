@@ -18,6 +18,7 @@ import {
 import { ROLE_LABEL } from '../lib/admin.js'
 import { CAPABILITIES, roleBaseline, effectivePermissions } from '../lib/capabilities.js'
 import PermissionsDrawer from '../components/PermissionsDrawer.jsx'
+import SystemKpis from '../components/SystemKpis.jsx'
 import { AddStaffForm } from './addStaff.jsx'
 import { UsersList } from './master/users.jsx'
 import { superDashboard, listAuditLogs, securityOverview, systemPulse } from '../lib/superAdmin.js'
@@ -708,12 +709,13 @@ export function SystemOverview() {
           <>
             <StatGrid stats={d.metrics} />
             <Card className="mt-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-              These are live counts from the last 24 hours. Infrastructure health (uptime, latency, error rate, incidents) isn't in the
-              product database — see your hosting/monitoring dashboards, and the <b>Infrastructure</b> screen for the resource inventory.
+              The counts above are from the last 24 hours in the product database. Below: live Supabase (production and staging) and
+              Agora numbers from the <code>system-ops</code> function.
             </div></Card>
           </>
         )}
       </AsyncView>
+      <div className="mt-24"><SystemKpis /></div>
     </>
   )
 }
