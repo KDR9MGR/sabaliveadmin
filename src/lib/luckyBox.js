@@ -9,13 +9,15 @@ const unwrap = ({ data, error }) => { if (error) throw error; return data }
    A cron job grants the reward automatically; this is just the two knobs. */
 export async function getLuckyBoxConfig() {
   return unwrap(await supabase.from('lucky_box_config')
-    .select('duration_minutes, reward_diamonds, updated_at')
+    .select('duration_minutes, reward_diamonds, cooldown_hours, updated_at')
     .eq('id', true).single())
 }
 
-export async function updateLuckyBoxConfig({ duration_minutes, reward_diamonds }) {
+export async function updateLuckyBoxConfig({ duration_minutes, reward_diamonds, cooldown_hours }) {
+  const cooldown = Number(cooldown_hours ?? 24)
+  if (!Number.isInteger(cooldown) || cooldown < 0 || cooldown > 720) throw new Error('Cooldown must be a whole number of hours between 0 and 720')
   return unwrap(await supabase.from('lucky_box_config')
-    .update({ duration_minutes: Number(duration_minutes), reward_diamonds: Number(reward_diamonds) })
+    .update({ duration_minutes: Number(duration_minutes), reward_diamonds: Number(reward_diamonds), cooldown_hours: cooldown })
     .eq('id', true).select().single())
 }
 

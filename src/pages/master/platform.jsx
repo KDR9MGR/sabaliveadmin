@@ -378,7 +378,7 @@ export function LuckyBox() {
   const save = async () => {
     setBusy(true)
     try {
-      await updateLuckyBoxConfig({ duration_minutes: v.duration_minutes, reward_diamonds: v.reward_diamonds })
+      await updateLuckyBoxConfig({ duration_minutes: v.duration_minutes, reward_diamonds: v.reward_diamonds, cooldown_hours: v.cooldown_hours })
       toast('Lucky Box settings saved')
       setForm(null)
       reloadConfig()
@@ -402,6 +402,11 @@ export function LuckyBox() {
             <div className="field">
               <label>Reward (diamonds)</label>
               <input className="input" type="number" min="1" value={v.reward_diamonds ?? ''} onChange={(e) => set('reward_diamonds', e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Cooldown (hours)</label>
+              <input className="input" type="number" min="0" max="720" step="1" value={v.cooldown_hours ?? ''} onChange={(e) => set('cooldown_hours', e.target.value)} />
+              <span className="hint">A host who was paid in the last this-many hours is not paid again, even by a new live (a live that drops and restarts counts as the same stretch). 0 = no limit. Pulling a reward back does not reset it.</span>
             </div>
           </div>
           <div className="hstack" style={{ marginTop: 14 }}>
