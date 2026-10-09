@@ -19,6 +19,13 @@ export async function updateLuckyBoxConfig({ duration_minutes, reward_diamonds }
     .eq('id', true).select().single())
 }
 
+/* Take a paid reward back out of the host's wallet (a Master action). The database refuses when the host has
+   already spent the diamonds, or when the reward was pulled back before, and says why. */
+export async function pullBackLuckyBox(ledgerId) {
+  const { error } = await supabase.rpc('lucky_box_pull_back', { p_ledger_id: ledgerId })
+  if (error) throw error
+}
+
 /* Every reward granted so far — one wallet_ledger row per win, tagged
    note='lucky_box' by grant_lucky_box_rewards(). */
 export async function listLuckyBoxHistory() {
@@ -27,7 +34,15 @@ export async function listLuckyBoxHistory() {
     .eq('note', 'lucky_box')
     .order('created_at', { ascending: false })
     .limit(500))
+  // wins that were taken back again (lucky_box_pull_back writes a reversal row that points at the win)
+  const reversals = unwrap(await supabase.from('wallet_ledger')
+    .select('reference_id')
+    .eq('kind', 'grant_reversal').eq('reference_table', 'wallet_ledger')
+    .order('created_at', { ascending: false })
+    .limit(500))
+  const pulledBack = new Set(reversals.map((x) => x.reference_id))
   return rows.map((r) => ({
+    pulledBack: pulledBack.has(r.id),
     id: r.id, idShort: shortId(r.id),
     user: r.profiles?.name || '—',
     username: r.profiles?.username,
