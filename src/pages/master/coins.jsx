@@ -12,7 +12,8 @@ import {
   createCoinGrant, listMyCoinHistory, pullBackCoinGrant, profileOptions,
   GIFT_CATEGORIES, PLATFORMS,
 } from '../../lib/coins.js'
-import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
+import { uploadMedia, UPLOAD_ACCEPT, AUDIO_ACCEPT, AUDIO_HINT } from '../../lib/storage.js'
+import { SPEED_FIELD, soundField, speedLabel } from '../../lib/effectFields.js'
 import {
   globalAdminOptions, scopeCountryAdminOptions, scopeSubAdminOptions, scopeAgencyManagerOptions,
 } from '../../lib/country.js'
@@ -47,6 +48,8 @@ export function GiftSettings() {
     { name: 'category', label: 'Category', type: 'select', options: CAT_OPTS, required: true },
     { name: 'status', label: 'Status', type: 'select', options: STATUS_OPTS },
     { name: 'has_effect', label: 'Full-screen animation', type: 'toggle', full: true },
+    SPEED_FIELD,
+    soundField((file) => uploadMedia('gift-assets', 'gift-sounds', file), AUDIO_ACCEPT, AUDIO_HINT),
   ]
 
   return (
@@ -85,6 +88,7 @@ export function GiftSettings() {
             numCol('price', 'Price (coins)'),
             { key: 'category', header: 'Category', render: (r) => <Tag>{r.category}</Tag> },
             { key: 'hasEffect', header: 'Animation', render: (r) => r.hasEffect ? <StatusBadge value="Yes" /> : <span className="muted">No</span> },
+            { key: 'playSpeed', header: 'Speed / sound', render: (r) => <span className="muted">{speedLabel(r.playSpeed)}{r.soundUrl ? ' · 🔊' : ''}</span> },
             statusCol(),
           ]}
           rowActions={(r) => [
@@ -108,6 +112,7 @@ export function GiftSettings() {
           initial={{
             name: editing.name, emoji: editing.emoji, icon_url: editing.iconUrl || '', price_coins: editing.price,
             category: editing.category.toLowerCase(), status: editing.status.toLowerCase(), has_effect: editing.hasEffect,
+            play_speed: editing.playSpeed ?? '', sound_url: editing.soundUrl || '',
           }}
           fields={giftFields} />
       )}

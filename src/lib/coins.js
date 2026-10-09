@@ -2,6 +2,7 @@ import { supabase } from './supabase.js'
 import { shortId, fmtDate, ROLE_LABEL } from './admin.js'
 import { relativeTime } from './format.js'
 import { notifyCoinsChanged } from './balance.js'
+import { checkSpeed } from './effectFields.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -25,11 +26,12 @@ export async function profileOptions() {
 /* ---------------------------------------------------------------- gifts */
 export async function listGifts() {
   const rows = unwrap(await supabase.from('gifts')
-    .select('id, name, emoji, icon_url, price_coins, category, has_effect, status, sort_order')
+    .select('id, name, emoji, icon_url, price_coins, category, has_effect, status, sort_order, play_speed, sound_url')
     .order('sort_order').order('price_coins'))
   return rows.map((g) => ({
     id: g.id, idShort: shortId(g.id),
     name: g.name, emoji: g.emoji, iconUrl: g.icon_url,
+    playSpeed: g.play_speed == null ? null : Number(g.play_speed), soundUrl: g.sound_url,
     price: g.price_coins,
     category: titleCase(g.category),
     hasEffect: g.has_effect,
@@ -37,8 +39,10 @@ export async function listGifts() {
   }))
 }
 export async function createGift(v) {
+  const play_speed = checkSpeed(v.play_speed)
   return unwrap(await supabase.from('gifts').insert({
     name: v.name, emoji: v.emoji || '🎁', icon_url: v.icon_url || null,
+    play_speed, sound_url: v.sound_url || null,
     price_coins: num(v.price_coins),
     category: (v.category || 'basic').toLowerCase(),
     has_effect: !!v.has_effect,
@@ -48,6 +52,8 @@ export async function createGift(v) {
 export async function updateGift(id, v) {
   const p = lc({ name: v.name, emoji: v.emoji, category: v.category, status: v.status }, ['category', 'status'])
   if (v.icon_url !== undefined) p.icon_url = v.icon_url || null
+  if (v.play_speed !== undefined) p.play_speed = checkSpeed(v.play_speed)
+  if (v.sound_url !== undefined) p.sound_url = v.sound_url || null
   if (v.price_coins != null) p.price_coins = num(v.price_coins)
   if (v.has_effect != null) p.has_effect = !!v.has_effect
   return unwrap(await supabase.from('gifts').update(p).eq('id', id).select().single())

@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { shortId } from './admin.js'
+import { checkSpeed } from './effectFields.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const num = (v) => (v === '' || v == null ? undefined : Number(v))
@@ -39,6 +40,8 @@ const row = (r) => ({
   name: r.name,
   emoji: r.emoji,
   assetUrl: r.asset_url,
+  playSpeed: r.play_speed == null ? null : Number(r.play_speed),
+  soundUrl: r.sound_url,
   price: r.price_coins,
   days: r.duration_days,
   status: r.status === 'active' ? 'Active' : 'Inactive',
@@ -47,7 +50,7 @@ const row = (r) => ({
 
 export async function listStoreItems(category) {
   const rows = unwrap(await supabase.from('store_items')
-    .select('id, category, name, emoji, asset_url, price_coins, duration_days, status, sort_order')
+    .select('id, category, name, emoji, asset_url, price_coins, duration_days, status, sort_order, play_speed, sound_url')
     .eq('category', category)
     .order('sort_order').order('price_coins'))
   return rows.map(row)
@@ -63,8 +66,11 @@ const validate = (v) => {
 
 export async function createStoreItem(category, v) {
   validate(v)
+  const play_speed = checkSpeed(v.play_speed)
   return unwrap(await supabase.from('store_items').insert({
     category,
+    play_speed,
+    sound_url: v.sound_url || null,
     name: v.name.trim(),
     emoji: (v.emoji || '').trim() || '🎁',
     asset_url: v.asset_url || null,
@@ -80,6 +86,8 @@ export async function updateStoreItem(id, v) {
   if (v.name !== undefined) patch.name = String(v.name).trim()
   if (v.emoji !== undefined) patch.emoji = String(v.emoji).trim() || '🎁'
   if (v.asset_url !== undefined) patch.asset_url = v.asset_url || null
+  if (v.play_speed !== undefined) patch.play_speed = checkSpeed(v.play_speed)
+  if (v.sound_url !== undefined) patch.sound_url = v.sound_url || null
   if (v.price_coins !== undefined) patch.price_coins = num(v.price_coins)
   if (v.duration_days !== undefined) patch.duration_days = num(v.duration_days)
   if (v.status !== undefined) patch.status = String(v.status).toLowerCase()

@@ -7,7 +7,7 @@ import SvgaPlayer from './SvgaPlayer.jsx'
    url, then stores the returned URL as the field's value (same as any other
    field). Shows an image/video preview once a value exists; f.accept sets the
    file picker filter (defaults to plain images). */
-function ImageUploadField({ value, onChange, onUpload, accept = 'image/*' }) {
+function ImageUploadField({ value, onChange, onUpload, accept = 'image/*', clearable = false }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const pick = async (e) => {
@@ -38,6 +38,9 @@ function ImageUploadField({ value, onChange, onUpload, accept = 'image/*' }) {
           <SvgaPlayer url={value} size={140} fallback={<span className="muted" style={{ fontSize: 12.5 }}>SVGA uploaded (preview unavailable).</span>} />
         </div>
       )}
+      {value && kind === 'audio' && (
+        <audio src={value} controls preload="none" style={{ width: '100%' }} />
+      )}
       {value && kind === 'other' && (
         <div className="muted" style={{ fontSize: 12.5 }}>File uploaded (no in-browser preview for this format).</div>
       )}
@@ -45,14 +48,18 @@ function ImageUploadField({ value, onChange, onUpload, accept = 'image/*' }) {
         {busy ? 'Uploading…' : value ? 'Replace file' : 'Upload file'}
         <input type="file" accept={accept} onChange={pick} disabled={busy} style={{ display: 'none' }} />
       </label>
+      {value && clearable && !busy && (
+        <button type="button" className="btn" onClick={() => onChange('')}>Remove file</button>
+      )}
       {error && <span style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</span>}
     </div>
   )
 }
 
 /* Schema-driven form rendered inside a Drawer.
-   fields: [{ name, label, type: text|email|number|select|textarea|toggle|image, options?, required?, hint?, full?, placeholder?, autoComplete?, onUpload? }]
-   type: 'image' needs onUpload: (file) => Promise<url>.
+   fields: [{ name, label, type: text|email|number|select|textarea|toggle|image, options?, required?, hint?, full?, placeholder?, autoComplete?, onUpload?, clearable?, step?, min?, max? }]
+   type: 'image' needs onUpload: (file) => Promise<url> (it also carries sounds: pass an audio `accept`;
+   `clearable` adds a "Remove file" button). step / min / max are for number fields.
    onSubmit(values): optional async persister. If given, its result drives success/error;
    without it the form just toasts (used by screens still on mock data). */
 export default function EntityForm({ title, fields, initial = {}, onClose, onSubmit, onChange, submitLabel = 'Save', savedMessage }) {
@@ -113,7 +120,7 @@ export default function EntityForm({ title, fields, initial = {}, onClose, onSub
               <label>{f.label} {f.required && <span className="req">*</span>}</label>
             )}
             {f.type === 'image' ? (
-              <ImageUploadField value={values[f.name]} onChange={(url) => set(f.name, url)} onUpload={f.onUpload} accept={f.accept} />
+              <ImageUploadField value={values[f.name]} onChange={(url) => set(f.name, url)} onUpload={f.onUpload} accept={f.accept} clearable={f.clearable} />
             ) : f.type === 'select' ? (
               <select className="select" value={values[f.name]} onChange={(e) => set(f.name, e.target.value)}>
                 <option value="">Select…</option>
@@ -139,6 +146,7 @@ export default function EntityForm({ title, fields, initial = {}, onClose, onSub
             ) : (
               <input
                 className="input" type={f.type || 'text'} placeholder={f.placeholder} autoComplete={f.autoComplete}
+                step={f.step} min={f.min} max={f.max}
                 value={values[f.name]} onChange={(e) => set(f.name, e.target.value)}
               />
             )}

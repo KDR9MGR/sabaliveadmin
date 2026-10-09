@@ -6,7 +6,8 @@ import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
 import MediaPreview from '../../components/MediaPreview.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
-import { uploadMedia, UPLOAD_ACCEPT, UPLOAD_HINT } from '../../lib/storage.js'
+import { uploadMedia, UPLOAD_ACCEPT, UPLOAD_HINT, AUDIO_ACCEPT, AUDIO_HINT } from '../../lib/storage.js'
+import { SPEED_FIELD, soundField, speedLabel } from '../../lib/effectFields.js'
 import {
   STORE_CATEGORIES, STORE_STATUSES,
   listStoreItems, createStoreItem, updateStoreItem, deleteStoreItem, countOwners,
@@ -28,10 +29,16 @@ export function StoreItems({ category }) {
   const [busy, setBusy] = useState(false)
   const list = rows || []
 
+  // entry effects and vehicles are played on screen for the whole room: they get a speed and a sound
+  const playsOnScreen = category === 'entry_effect' || category === 'vehicle'
   const fields = [
     { name: 'name', label: `${meta.singular} name`, required: true },
     { name: 'asset_url', label: 'Artwork / animation file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
       onUpload: (file) => uploadMedia('gift-assets', `store/${category}`, file), hint: UPLOAD_HINT },
+    ...(playsOnScreen ? [
+      SPEED_FIELD,
+      soundField((file) => uploadMedia('gift-assets', `store-sounds/${category}`, file), AUDIO_ACCEPT, AUDIO_HINT),
+    ] : []),
     { name: 'emoji', label: 'Emoji (shown until the file loads, or if there is none)', placeholder: '🎁' },
     { name: 'price_coins', label: 'Price (coins)', type: 'number', required: true, hint: 'Must be greater than 0' },
     { name: 'duration_days', label: 'Lasts (days)', type: 'number', required: true, hint: 'How long a purchase lasts; buying again extends it' },
@@ -81,6 +88,7 @@ export function StoreItems({ category }) {
             { key: 'name', header: meta.singular, sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.assetUrl} emoji={r.emoji} size={18} /><b>{r.name}</b></span> },
             numCol('price', 'Price (coins)'),
             numCol('days', 'Lasts (days)'),
+            ...(playsOnScreen ? [{ key: 'playSpeed', header: 'Speed / sound', render: (r) => <span className="muted">{speedLabel(r.playSpeed)}{r.soundUrl ? ' · 🔊' : ''}</span> }] : []),
             numCol('sort', 'Order'),
             statusCol(),
           ]}
@@ -108,6 +116,7 @@ export function StoreItems({ category }) {
           initial={{
             name: editing.name, emoji: editing.emoji, asset_url: editing.assetUrl || '', price_coins: editing.price,
             duration_days: editing.days, sort_order: editing.sort, status: editing.status.toLowerCase(),
+            play_speed: editing.playSpeed ?? '', sound_url: editing.soundUrl || '',
           }}
           fields={fields} />
       )}

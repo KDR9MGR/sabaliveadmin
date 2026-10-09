@@ -23,7 +23,7 @@ import {
   profileOptions,
   BADGE_STATUSES, FRAME_STATUSES, FRAME_UNLOCK_TYPES, LBF_SCOPES, LBF_PERIODS, LBF_STATUSES,
 } from '../../lib/gamification.js'
-import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory } from '../../lib/luckyBox.js'
+import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory, pullBackLuckyBox } from '../../lib/luckyBox.js'
 import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
 import MediaPreview from '../../components/MediaPreview.jsx'
 
@@ -357,8 +357,23 @@ export function LuckyBox() {
   const { data: history, loading: historyLoading, error: historyError, reload: reloadHistory } = useAsyncData(listLuckyBoxHistory)
   const [form, setForm] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [pulling, setPulling] = useState(null) // the win being confirmed for pull back
   const v = form || config || {}
   const set = (k, val) => setForm({ ...(form || config), [k]: val })
+
+  const pullBack = async () => {
+    setBusy(true)
+    try {
+      await pullBackLuckyBox(pulling.id)
+      toast(`${pulling.diamonds} diamonds pulled back from ${pulling.user}`)
+      setPulling(null)
+      reloadHistory()
+    } catch (e) {
+      toast(e.message || 'Could not pull back')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const save = async () => {
     setBusy(true)
@@ -405,11 +420,26 @@ export function LuckyBox() {
               numCol('diamonds', 'Diamonds'),
               { key: 'streamIdShort', header: 'Stream', render: (r) => <span className="mono muted">{r.streamIdShort}</span> },
               { key: 'date', header: 'Won', sortable: true },
+              { key: 'pulledBack', header: 'Status', render: (r) => (r.pulledBack ? <StatusBadge value="Pulled back" /> : <span className="muted">Paid</span>) },
             ]}
+            rowActions={(r) => (r.pulledBack ? [] : [
+              { label: 'Pull back', icon: 'refresh', onClick: () => setPulling(r) },
+            ])}
             emptyText="No Lucky Box rewards granted yet."
           />
         </AsyncView>
       </Card>
+      {pulling && (
+        <ConfirmDialog
+          title={`Pull back ${pulling.diamonds} diamonds from ${pulling.user}?`}
+          danger
+          busy={busy}
+          confirmLabel="Pull back"
+          message="The diamonds are taken out of the host's wallet again and the host is told. It only works while they still have them, and it can be done once per win. The same live is not paid a second time."
+          onConfirm={pullBack}
+          onClose={() => setPulling(null)}
+        />
+      )}
     </>
   )
 }
