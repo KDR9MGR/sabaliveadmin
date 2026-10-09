@@ -15,6 +15,7 @@ import {
 } from '../../lib/salary.js'
 import { listLiveRequests, decideLiveRequest } from '../../lib/workflows.js'
 import ActiveRoomsGrid from '../../components/ActiveRoomsGrid.jsx'
+import SystemKpis from '../../components/SystemKpis.jsx'
 import {
   listBadges, createBadge, updateBadge, setBadgeStatus, grantBadge,
   listFrames, createFrame, updateFrame, setFrameStatus,
@@ -623,12 +624,7 @@ export function SystemManagement() {
         crumbs={['Home', 'Platform', 'System Management']}
         actions={<Button icon="refresh" onClick={() => toast('Cache cleared')}>Clear cache</Button>}
       />
-      <StatGrid stats={[
-        { key: 'App version', value: '3.1.0', icon: 'cpu', tile: 'tile-purple' },
-        { key: 'API status', value: 'Healthy', icon: 'activity', tile: 'tile-green' },
-        { key: 'Queued jobs', value: '38', icon: 'layers', tile: 'tile-orange' },
-        { key: 'Error rate (24h)', value: '0.12%', icon: 'flag', tile: 'tile-red' },
-      ]} />
+      <SystemKpis />
       <div className="grid cols-2 mt-16">
         <Card title="Feature flags">
           {['New wallet UI', 'AI moderation v2', 'Guest checkout', 'Story replies', 'Regional leaderboards'].map((f, i) => (
