@@ -14,6 +14,7 @@ import { useSettings } from '../config/settings.jsx'
 import { landingPath } from '../components/guards.jsx'
 import { PANELS } from '../config/nav.js'
 import { Button } from '../components/ui.jsx'
+import { EnvironmentNotice } from '../components/EnvironmentSwitch.jsx'
 
 function PanelLoginPage({ panelKey, quickLinks = [] }) {
   const nav = useNavigate()
@@ -57,7 +58,8 @@ function PanelLoginPage({ panelKey, quickLinks = [] }) {
           <p style={{ fontSize: 13, opacity: 0.7, margin: 0, color: '#fff' }}>Sign in to start your session</p>
         </div>
 
-        <div className="vstack" style={{ gap: 14, marginTop: 28 }}>
+        <div style={{ marginTop: 22 }}><EnvironmentNotice dark /></div>
+        <div className="vstack" style={{ gap: 14, marginTop: 6 }}>
           <input
             className="input" type="email" placeholder="Email" required autoComplete="username"
             value={email} onChange={(e) => setEmail(e.target.value)}

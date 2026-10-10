@@ -36,3 +36,10 @@ Deploys via one Vercel project (`npm run build:site`, panel under /admin/).
 user detail Bag assign / Lucky ID / Edit profile in `pages/master/users.jsx`, helpers in `lib/{levels,
 coinSellers,support,luckyIds,handover,userTools}.js`. Global and Country menus intentionally have no
 Badge / Profile Frame / Leaderboard entries; Country has no Add Agency.
+
+## Environment switch (production <-> staging)
+`src/lib/environments.js` picks the Supabase project; `components/EnvironmentSwitch.jsx` is the top-bar pill (Master and
+Super Admin only), the orange STAGING strip and the sign-in notice. A normal build is "home = production" and gets the switch
+only when `VITE_STAGING_SUPABASE_URL` / `_ANON_KEY` are set (public values; in Vercel too). A `--mode staging` build is staging
+only and can never reach production (guard in `supabase.js`). Each project keeps its own session, so switching signs nobody
+out; the page reloads and you sign in once with that project's own account. `npm test` runs the pure selection logic.

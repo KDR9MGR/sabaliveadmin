@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:staging": "vite --mode staging",
+    "build:staging": "vite build --mode staging",
     "build": "vite build",
     "preview": "vite preview",
     "build:site": "rm -rf dist-combined && npm run build:admin:zone && npm run build:landing:zone",
     "build:admin:zone": "vite build --base /admin/ --outDir dist-combined/admin",
-    "build:landing:zone": "npm --prefix landing install && npm --prefix landing run build -- --outDir ../dist-combined --emptyOutDir false"
+    "build:landing:zone": "npm --prefix landing install && npm --prefix landing run build -- --outDir ../dist-combined --emptyOutDir false",
+    "test": "node --test src/lib/environments.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",
