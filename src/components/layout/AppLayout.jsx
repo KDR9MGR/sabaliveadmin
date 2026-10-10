@@ -7,6 +7,7 @@ import { useAuth } from '../../lib/auth.jsx'
 import { useSystemStatus, useTick } from '../../lib/useSystemStatus.js'
 import { isLockedForStaff, adminSessionRevoked, formatCountdown } from '../../lib/maintenance.js'
 import MaintenanceLock from '../MaintenanceLock.jsx'
+import { StagingBanner } from '../EnvironmentSwitch.jsx'
 import { Link } from 'react-router-dom'
 
 export default function AppLayout({ panel }) {
@@ -46,6 +47,7 @@ export default function AppLayout({ panel }) {
       <div className="sidebar-backdrop" onClick={() => setMobileOpen(false)} />
       <Sidebar panel={panel} onNavigate={() => setMobileOpen(false)} />
       <div className="main-col">
+        <StagingBanner />
         <Topbar panel={panel} onToggleSidebar={toggle} />
         {role === 'super_admin' && status && status.status !== 'online' && (
           <SuperBanner status={status} serverNow={serverNow} />

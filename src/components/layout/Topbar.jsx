@@ -4,6 +4,7 @@ import Icon from '../Icon.jsx'
 import { PANELS, DEFAULT_LOGIN_PATH } from '../../config/nav.js'
 import { useAuth } from '../../lib/auth.jsx'
 import { myBalances, COINS_CHANGED } from '../../lib/balance.js'
+import { EnvironmentSwitch } from '../EnvironmentSwitch.jsx'
 
 const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Admin', global_admin: 'Global Admin', country_admin: 'Country Admin', sub_admin: 'Sub Admin', agency_manager: 'Agency Manager' }
 
@@ -23,6 +24,8 @@ export default function Topbar({ panel, onToggleSidebar }) {
       <div className="topbar__spacer" />
 
       <CoinBalance />
+
+      <EnvironmentSwitch />
 
       <PanelMenu panel={panel} />
 

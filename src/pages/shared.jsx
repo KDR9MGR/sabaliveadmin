@@ -5,6 +5,7 @@ import Icon from '../components/Icon.jsx'
 import { useSettings } from '../config/settings.jsx'
 import { useAuth, ROLE_LABEL } from '../lib/auth.jsx'
 import { landingPath } from '../components/guards.jsx'
+import { EnvironmentNotice } from '../components/EnvironmentSwitch.jsx'
 
 /* ------------------------------------------------------------------ My Profile */
 export function Profile({ panel = 'Master / Admin' }) {
@@ -226,6 +227,7 @@ export function Login() {
         <form className="card" style={{ width: 'min(380px, 100%)', padding: 32 }} onSubmit={submit}>
           <h1 style={{ fontSize: 20, marginBottom: 4 }}>Admin sign in</h1>
           <p className="muted" style={{ fontSize: 13, marginBottom: 22 }}>Authorized personnel only.</p>
+          <EnvironmentNotice />
           <div className="vstack" style={{ gap: 14 }}>
             <div className="field">
               <label>Email</label>
