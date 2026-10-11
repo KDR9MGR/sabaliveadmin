@@ -109,6 +109,7 @@ export function Support() {
                 </div>
                 <div className="hstack" style={{ gap: 8 }}>
                   {cur.assignedTo !== user?.id && <Button size="sm" disabled={busy} onClick={() => run(() => assignThread(cur.id, user.id), 'Assigned to you')}>Assign to me</Button>}
+                  {cur.assignedTo && <Button size="sm" disabled={busy} onClick={() => run(() => assignThread(cur.id, null), 'Unassigned')}>Unassign</Button>}
                   {cur.status === 'open'
                     ? <Button size="sm" disabled={busy} onClick={() => run(() => setThreadStatus(cur.id, 'closed'), 'Conversation closed')}>Close</Button>
                     : <Button size="sm" disabled={busy} onClick={() => run(() => setThreadStatus(cur.id, 'open'), 'Reopened')}>Reopen</Button>}

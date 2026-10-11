@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ListPage, StatGrid, AsyncView } from '../_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, EmptyState } from '../../components/ui.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, EmptyState, ConfirmDialog } from '../../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
@@ -10,7 +10,7 @@ import { useAsyncData } from '../../lib/useAsync.js'
 import { listHosts, getHostDetail, updateHost, fmtDate } from '../../lib/admin.js'
 import {
   listHostApplications, decideHostApplication, markHostApplicationUnderReview,
-  listAssignments, createAssignment, updateAssignment,
+  listAssignments, createAssignment, updateAssignment, deleteAssignment,
   listKycReviews, decideKyc,
   hostOptions, subAdminOptions,
 } from '../../lib/workflows.js'
@@ -200,7 +200,15 @@ export function HostAssignment() {
   const { data: rows, loading, error, reload } = useAsyncData(listAssignments)
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [removing, setRemoving] = useState(null)
+  const [busy, setBusy] = useState(false)
 
+  const remove = async () => {
+    setBusy(true)
+    try { await deleteAssignment(removing.id); toast(`${removing.host}'s assignment removed`); setRemoving(null); reload() }
+    catch (e) { toast(e.message || 'Could not remove the assignment') }
+    finally { setBusy(false) }
+  }
   const create = async (v) => { await createAssignment(v); reload() }
   const edit = async (v) => {
     await updateAssignment(editing.id, { shift: v.shift, status: v.status, target_hours: v.target_hours, done_hours: v.done_hours })
@@ -237,11 +245,24 @@ export function HostAssignment() {
           ]}
           rowActions={(r) => [
             { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
+            { sep: true },
+            { label: 'Remove assignment', icon: 'trash', onClick: () => setRemoving(r) },
           ]}
           emptyText="No assignments yet. Assign a host to a sub-admin with “New Assignment”."
         />
       </AsyncView>
 
+      {removing && (
+        <ConfirmDialog
+          title="Remove this assignment?"
+          danger
+          busy={busy}
+          confirmLabel="Remove"
+          message={`${removing.host} will no longer be assigned to ${removing.subAdmin}. The host and the sub admin are not changed.`}
+          onConfirm={remove}
+          onClose={() => setRemoving(null)}
+        />
+      )}
       {creating && <NewAssignmentDrawer onClose={() => setCreating(false)} onSubmit={create} />}
       {editing && (
         <EntityForm

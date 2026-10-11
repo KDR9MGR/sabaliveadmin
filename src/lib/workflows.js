@@ -121,6 +121,13 @@ export async function updateAssignment(id, patch) {
   return unwrap(await supabase.from('assignments').update(clean).eq('id', id).select().single())
 }
 
+/* Remove an assignment. Row-level security answers "0 rows" for one you may not delete, so check it. */
+export async function deleteAssignment(id) {
+  const { data, error } = await supabase.from('assignments').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data || !data.length) throw new Error('That assignment could not be removed')
+}
+
 /* ------------------------------------------------------------ withdrawals */
 export async function listWithdrawals() {
   const rows = unwrap(await supabase
