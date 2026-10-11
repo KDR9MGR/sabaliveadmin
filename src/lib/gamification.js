@@ -77,6 +77,17 @@ export async function grantUserFrame(profileId, frameId) {
     .select())
 }
 
+/* Take a badge / frame back from a user (admin_remove_user_badge / admin_remove_user_frame). */
+export async function removeUserBadge(profileId, badgeId) {
+  const { error } = await supabase.rpc('admin_remove_user_badge', { p_profile: profileId, p_badge: badgeId })
+  if (error) throw error
+}
+
+export async function removeUserFrame(profileId, frameId) {
+  const { error } = await supabase.rpc('admin_remove_user_frame', { p_profile: profileId, p_frame: frameId })
+  if (error) throw error
+}
+
 /* ---------------------------------------------------------------- profile frames */
 export async function listFrames() {
   const [frames, owners] = await Promise.all([

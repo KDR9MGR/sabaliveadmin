@@ -13,9 +13,10 @@
 export const CAPABILITIES = [
   { key: 'view_dashboards', label: 'View dashboards', group: 'Overview' },
   { key: 'manage_users', label: 'Manage users', group: 'Users & staff' },
-  // Open a user's profile page (read-only: details, coins & diamonds, bag, badges, frames, followers, live history,
-  // sign-in & devices). The action buttons on it still need Manage users. On by default for a Master.
-  { key: 'view_user_profile', label: 'View user profile', group: 'Users & staff' },
+  // Open a user's profile page (details, coins & diamonds, bag, badges, frames, followers, live history, sign-in &
+  // devices) AND assign / remove what is on it: Bag items, Lucky ID, badges, frames. Restrict / lift / status on the
+  // page still need Manage users; Edit profile stays Master-only. On by default for a Master.
+  { key: 'view_user_profile', label: 'View user profile & assign items', group: 'Users & staff' },
   { key: 'manage_admins', label: 'Manage admins', group: 'Users & staff' },
   { key: 'manage_agencies', label: 'Manage agencies', group: 'Operations' },
   { key: 'manage_hosts', label: 'Manage hosts', group: 'Operations' },
@@ -94,7 +95,7 @@ export function can(staffRole, key) {
 const ALL_LOWER = ['global_admin', 'country_admin', 'sub_admin', 'agency_manager']
 export const LOWER_ROLE_GRANTS = {
   manage_users: { roles: ['global_admin', 'country_admin', 'sub_admin'], gives: 'Restrict / lift / set inactive on the Users page' },
-  view_user_profile: { roles: ALL_LOWER, gives: "Open a user's profile page (read-only, incl. sign-in & devices); actions need Manage users" },
+  view_user_profile: { roles: ALL_LOWER, gives: "Open a user's profile page (incl. sign-in & devices) and assign / remove Bag items, Lucky ID, badges and frames; restrict / lift need Manage users" },
   run_payroll: { roles: ALL_LOWER, gives: 'A Withdrawals page: see and approve / reject payouts' },
   manage_agencies: { roles: ALL_LOWER, gives: 'Agency Management: agencies, requests, commission plans' },
   manage_coins: { roles: ALL_LOWER, gives: 'Coin & Gift and Store pages (gifts, packages, items, Lucky IDs, transactions)' },

@@ -18,7 +18,7 @@ import BanDialog from '../../components/BanDialog.jsx'
 import { liftUserBans, liftBan, listUserBans } from '../../lib/bans.js'
 import { relativeTime } from '../../lib/format.js'
 import { HostsTable } from './hosts.jsx'
-import { listBadges, listFrames, grantBadge, grantUserFrame } from '../../lib/gamification.js'
+import { listBadges, listFrames, grantBadge, grantUserFrame, removeUserBadge, removeUserFrame } from '../../lib/gamification.js'
 import { listStoreItems } from '../../lib/store.js'
 import { assignStoreItem, removeUserItem, updateUserProfile } from '../../lib/userTools.js'
 import { userLuckyId, availableLuckyOptions, assignLuckyId, revokeLuckyId } from '../../lib/luckyIds.js'
@@ -447,10 +447,11 @@ export function UserProfile() {
   const { id } = useParams()
   const toast = useToast()
   const { can, staffRole } = useAuth()
-  // The page itself needs "View user profile". Its actions are separate: restrict / lift / status need "Manage users";
-  // editing the profile and assigning items, Lucky IDs, badges and frames are Master / Super Admin actions on the server.
+  // The page needs "View user profile", and so does assigning / removing what is on it (Bag items, Lucky ID, badges, frames).
+  // Restrict / lift / status need "Manage users"; editing the profile itself stays a Master / Super Admin action.
   const isMaster = staffRole?.role === 'admin' || staffRole?.role === 'super_admin'
   const canRestrict = can('manage_users')
+  const canAssign = can('view_user_profile')
   const canEdit = isMaster && canRestrict
   const { data, loading, error, reload } = useAsyncData(() => getUserDetail(id), [id])
   const { data: bans, reload: reloadBans } = useAsyncData(() => listUserBans(id), [id])
@@ -488,7 +489,7 @@ export function UserProfile() {
         </>}
       />
       <AsyncView loading={loading} error={error} reload={reload}>
-        {u ? <UserProfileBody data={data} bans={bans || []} onLift={liftOne} onStatus={changeStatus} onGranted={reload} canRestrict={canRestrict} canEdit={canEdit} /> : (
+        {u ? <UserProfileBody data={data} bans={bans || []} onLift={liftOne} onStatus={changeStatus} onGranted={reload} canRestrict={canRestrict} canAssign={canAssign} /> : (
           <Card><div className="card__body"><EmptyState icon="helpCircle" title="User not found" text="No profile with this ID." /></div></Card>
         )}
       </AsyncView>
@@ -498,7 +499,7 @@ export function UserProfile() {
   )
 }
 
-function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRestrict = false, canEdit = false }) {
+export function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRestrict = false, canAssign = false }) {
   const u = data.profile
   const w = u.wallets || {}
   const hp = u.host_profiles
@@ -510,6 +511,14 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRestrict 
   const [assigningLucky, setAssigningLucky] = useState(false)
   const { data: lucky, reload: reloadLucky } = useAsyncData(() => userLuckyId(u.id), [u.id])
   const toast = useToast()
+  const dropBadge = async (b) => {
+    try { await removeUserBadge(u.id, b.badges.id); toast(`${b.badges.name} removed`); onGranted?.() }
+    catch (e) { toast(e.message || 'Could not remove the badge') }
+  }
+  const dropFrame = async (f) => {
+    try { await removeUserFrame(u.id, f.frames.id); toast(`${f.frames.name} removed`); onGranted?.() }
+    catch (e) { toast(e.message || 'Could not remove the frame') }
+  }
   const { data: catalog } = useAsyncData(async () => ({
     badges: await listBadges(),
     frames: await listFrames(),
@@ -567,7 +576,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRestrict 
         <Card
           title="Bag"
           sub="Entry effects, vehicles, frames and room skins this user owns — the equipped entry effect / vehicle plays when they walk into a live"
-          action={canEdit ? <Button size="sm" icon="userPlus" onClick={() => setAssigningItem(true)}>Assign item</Button> : undefined}
+          action={canAssign ? <Button size="sm" icon="userPlus" onClick={() => setAssigningItem(true)}>Assign item</Button> : undefined}
         >
           {data.entries.length ? (
             <div className="feed">
@@ -581,7 +590,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRestrict 
                     </div>
                   </div>
                   {e.equipped && e.active ? <StatusBadge value="Equipped" /> : !e.active ? <StatusBadge value="Expired" /> : <span className="muted">Owned</span>}
-                  {canEdit && <Button size="sm" onClick={() => removeItem(e)}>Remove</Button>}
+                  {canAssign && <Button size="sm" onClick={() => removeItem(e)}>Remove</Button>}
                 </div>
               ))}
             </div>
@@ -591,7 +600,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRestrict 
         <Card
           title="Lucky ID"
           sub="A special app ID that replaces this user's own while they hold it"
-          action={!canEdit ? undefined : lucky
+          action={!canAssign ? undefined : lucky
             ? <Button size="sm" onClick={revokeLucky}>Revoke</Button>
             : <Button size="sm" icon="userPlus" onClick={() => setAssigningLucky(true)}>Assign Lucky ID</Button>}
         >
@@ -600,20 +609,21 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRestrict 
             : <EmptyState icon="star" title="No Lucky ID" text="They use their own app ID." />}
         </Card>
 
-        <Card title="Badges" action={canEdit ? <Button size="sm" icon="userPlus" onClick={() => setGranting('badge')}>Assign badge</Button> : undefined}>
+        <Card title="Badges" action={canAssign ? <Button size="sm" icon="userPlus" onClick={() => setGranting('badge')}>Assign badge</Button> : undefined}>
           {data.badges.length ? (
             <div className="hstack wrap" style={{ gap: 10 }}>
               {data.badges.map((b, i) => (
                 <span key={i} className="hstack" style={{ gap: 6, background: 'var(--surface-2)', padding: '6px 10px', borderRadius: 8 }}>
                   <span style={{ fontSize: 16 }}>{b.badges?.emoji}</span>
                   <b style={{ fontSize: 12.5 }}>{b.badges?.name}</b>
+                  {canAssign && b.badges?.id && <button type="button" className="x-btn" style={{ width: 22, height: 22, marginLeft: 2 }} title="Remove badge" aria-label={`Remove ${b.badges?.name}`} onClick={() => dropBadge(b)}><Icon name="x" size={14} /></button>}
                 </span>
               ))}
             </div>
           ) : <EmptyState icon="award" title="No badges yet" />}
         </Card>
 
-        <Card title="Profile Frame" action={canEdit ? <Button size="sm" icon="userPlus" onClick={() => setGranting('frame')}>Assign frame</Button> : undefined}>
+        <Card title="Profile Frame" action={canAssign ? <Button size="sm" icon="userPlus" onClick={() => setGranting('frame')}>Assign frame</Button> : undefined}>
           {data.frames.length ? (
             <div className="hstack wrap" style={{ gap: 10 }}>
               {data.frames.map((f, i) => (
@@ -621,6 +631,7 @@ function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRestrict 
                   <span style={{ fontSize: 16 }}>{f.frames?.emoji}</span>
                   <b style={{ fontSize: 12.5 }}>{f.frames?.name}</b>
                   {f.equipped && <StatusBadge value="Active" />}
+                  {canAssign && f.frames?.id && <button type="button" className="x-btn" style={{ width: 22, height: 22, marginLeft: 2 }} title="Remove frame" aria-label={`Remove ${f.frames?.name}`} onClick={() => dropFrame(f)}><Icon name="x" size={14} /></button>}
                 </span>
               ))}
             </div>
