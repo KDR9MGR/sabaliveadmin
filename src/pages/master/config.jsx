@@ -6,6 +6,31 @@ import { AsyncView } from '../_templates.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { getAppConfig, updateAppConfig } from '../../lib/appConfig.js'
 import Icon from '../../components/Icon.jsx'
+import { appPalette } from '../../lib/appPalette.js'
+
+/* What the app will look like with the colours typed above: the same derivation the app uses. */
+function BrandingPreview({ brand, accent }) {
+  const p = appPalette(brand || '#7c3aed', accent || '#F5279B')
+  if (!p) return <span className="hint">Enter colours like #7c3aed to see a preview.</span>
+  const chip = (label, bg, fg = '#f6f3ff') => (
+    <div key={label} style={{ flex: '1 1 0', minWidth: 64, padding: '10px 6px', borderRadius: 8, background: bg, color: fg, fontSize: 11, textAlign: 'center' }}>{label}</div>
+  )
+  return (
+    <div style={{ marginTop: 8, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border, #0002)', background: p.bg }}>
+      <div style={{ display: 'flex', gap: 6, padding: 8 }}>
+        {chip('Background', p.bg)}
+        {chip('Panels', p.surface)}
+        {chip('Cards', p.card)}
+        {chip('Lines', p.stroke)}
+      </div>
+      <div style={{ display: 'flex', gap: 6, padding: '0 8px 8px' }}>
+        <div style={{ flex: 2, padding: '10px 6px', borderRadius: 8, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#fff',
+          background: `linear-gradient(90deg, ${p.primaryBright}, ${p.primaryDeep})` }}>Buttons</div>
+        <div style={{ flex: 1, padding: '10px 6px', borderRadius: 8, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#fff', background: p.accent }}>Accent</div>
+      </div>
+    </div>
+  )
+}
 
 /* ---- Platform section: real, persisted to public.app_config ---- */
 const PLATFORM_FIELDS = [
@@ -57,6 +82,15 @@ function PlatformSection() {
               value={v[f.key] ?? ''} onChange={(e) => set(f.key, e.target.value)} />
           </div>
         ))}
+        <div className="field full">
+          <h4 style={{ margin: '10px 0 0', fontSize: 13.5 }}>Site / Branding: the look of the app</h4>
+          <span className="hint">
+            Colours and font here recolour the consumer app on every phone (and the website): the brand colour, the accent and the dark
+            backgrounds, which are the brand colour's hue turned down to almost black. Running apps pick a change up within a minute,
+            or when they are next opened. The default violet + pink keeps the app's original colours.
+          </span>
+          <BrandingPreview brand={v.brand_color} accent={v.accent_color} />
+        </div>
         <div className="field">
           <label>Brand colour (shared / consumer app)</label>
           <div className="hstack" style={{ gap: 10 }}>
@@ -75,7 +109,7 @@ function PlatformSection() {
           <label>Font family (shared / consumer app)</label>
           <input className="input" value={v.font_family || ''} onChange={(e) => set('font_family', e.target.value)} placeholder="Poppins" />
           <span className="hint">
-            Must be a valid <a href="https://fonts.google.com" target="_blank" rel="noopener noreferrer">Google Fonts</a> family name (e.g. "Poppins", "Inter", "Manrope") — the app fetches it live via <code>google_fonts</code>, so anything not on fonts.google.com won't resolve.
+            Must be a valid <a href="https://fonts.google.com" target="_blank" rel="noopener noreferrer">Google Fonts</a> family name (e.g. "Poppins", "Inter", "Manrope") — the app fetches it live. A name that doesn't exist on fonts.google.com is ignored and the app keeps Poppins; it never breaks the app.
           </span>
         </div>
         <div className="full" style={{ marginTop: 4 }}>
@@ -110,6 +144,10 @@ function PlatformSection() {
 const RELEASE_FLAGS = [
   { key: 'animated_frames', title: 'Animated avatar frames', desc: 'Off: every avatar frame shows as a still picture (saves battery and data)' },
   { key: 'speaking_waves', title: 'Speaking waves', desc: 'Off: no wave ring around whoever is talking in a live' },
+  {
+    key: 'screen_protection', def: false, title: 'Block screenshots and screen recording',
+    desc: 'On: Android phones show a black picture instead of the app to screenshots, screen recorders, casting and the recent-apps list. iPhones cannot block screenshots, so this does nothing there. Off by default.',
+  },
 ]
 
 function ReleaseSection() {
@@ -124,7 +162,8 @@ function ReleaseSection() {
   const v = form || data || {}
   const set = (k, val) => { setProblem(''); setForm({ ...(form || data), [k]: val }) }
   const flags = v.feature_flags && typeof v.feature_flags === 'object' ? v.feature_flags : {}
-  const flagOn = (k) => (typeof flags[k] === 'boolean' ? flags[k] : true)
+  // a switch nobody has touched yet is on, except the ones that say otherwise (`def: false`), which match the app's own default
+  const flagOn = (k) => (typeof flags[k] === 'boolean' ? flags[k] : (RELEASE_FLAGS.find((f) => f.key === k)?.def ?? true))
   const columnsExist = !!data && 'min_android_version_code' in data
   const editable = isSuper && columnsExist
   const num = (x) => Math.max(0, Math.round(Number(x) || 0))

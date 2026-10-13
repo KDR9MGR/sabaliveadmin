@@ -128,7 +128,7 @@ export function StoreItems({ category }) {
   )
 }
 
-/* ------------------------------------------------------------------ Live-chat emoji / GIF catalog */
+/* ------------------------------------------------------------------ Live-chat emote / GIF catalog */
 export function LiveEmojis() {
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listLiveEmojis)
@@ -141,9 +141,9 @@ export function LiveEmojis() {
   const fields = [
     { name: 'kind', label: 'Type', type: 'select', required: true,
       options: Object.entries(EMOJI_KINDS).map(([value, label]) => ({ value, label })),
-      hint: 'Emoji is typed into chat as text; GIF / animated is sent as its own picture.' },
+      hint: 'An emote is an emoji; GIF / animated is a picture. Both play over the sender\'s picture circle in the live.' },
     { name: 'label', label: 'Label', required: true, hint: 'Shown as the picture\'s caption if it can\'t load' },
-    { name: 'emoji', label: 'Emoji character', placeholder: '😀', hint: 'Required for an emoji; optional stand-in for a GIF' },
+    { name: 'emoji', label: 'Emoji character', placeholder: '😀', hint: 'Required for an emote; optional stand-in for a GIF' },
     { name: 'asset_url', label: 'GIF / animation file', type: 'image', accept: UPLOAD_ACCEPT, full: true,
       onUpload: (file) => uploadMedia('gift-assets', 'emojis', file), hint: `${UPLOAD_HINT} — for a GIF / animated entry` },
     { name: 'sort_order', label: 'Order in the picker', type: 'number', hint: 'Lower numbers show first' },
@@ -159,10 +159,10 @@ export function LiveEmojis() {
 
   return (
     <>
-      <PageHeader title="Emoji & GIFs" crumbs={['Home', 'Content / Settings', 'Emoji & GIFs']}
-        actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Add Emoji / GIF</Button>} />
+      <PageHeader title="Emotes & GIFs" crumbs={['Home', 'Content / Settings', 'Emotes & GIFs']}
+        actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Add Emote / GIF</Button>} />
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-        What users can pick from in the chat box of audio and video lives. Changes show up in the app the next time the picker is opened.
+        What users can pick from in the chat box of audio and video lives. An emote plays over the sender's picture circle (their seat, or the host's name pill). Changes show up in the app the next time the picker is opened.
       </div></Card>
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
@@ -173,7 +173,7 @@ export function LiveEmojis() {
             { label: 'Status', options: ['Active', 'Inactive'], get: (r) => r.status },
           ]}
           columns={[
-            { key: 'label', header: 'Emoji / GIF', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.assetUrl} emoji={r.emoji} size={18} /><b>{r.label}</b></span> },
+            { key: 'label', header: 'Emote / GIF', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.assetUrl} emoji={r.emoji} size={18} /><b>{r.label}</b></span> },
             { key: 'kindLabel', header: 'Type' },
             numCol('sort', 'Order'),
             statusCol(),
@@ -187,12 +187,12 @@ export function LiveEmojis() {
             { sep: true },
             { label: 'Delete', icon: 'trash', onClick: () => setDeleting(r) },
           ]}
-          emptyText="Nothing here — the app's emoji picker will be empty until you add some."
+          emptyText="Nothing here — the app's emote picker will be empty until you add some."
         />
       </AsyncView>
 
       {adding && (
-        <EntityForm title="Add Emoji / GIF" onClose={() => setAdding(false)} savedMessage="Added"
+        <EntityForm title="Add Emote / GIF" onClose={() => setAdding(false)} savedMessage="Added"
           onSubmit={async (v) => { await createLiveEmoji(v); reload() }}
           initial={{ kind: 'emoji', status: 'active', sort_order: 0 }} fields={fields} />
       )}

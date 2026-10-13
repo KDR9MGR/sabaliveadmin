@@ -128,7 +128,7 @@ export const NAV = {
         { label: 'Banners', to: '/admin/content/banners' },
         { label: 'Legal Pages', to: '/admin/content/pages' },
         { label: 'Announcements', to: '/admin/content/announcements' },
-        { label: 'Emoji & GIFs', to: '/admin/content/emojis' },
+        { label: 'Emotes & GIFs', to: '/admin/content/emojis' },
       ]},
       { label: 'Application Config', icon: 'sliders', cap: 'edit_config', to: '/admin/config' },
       { label: 'System Management', icon: 'server', cap: 'manage_system', to: '/admin/system' },

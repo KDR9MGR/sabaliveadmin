@@ -4,11 +4,12 @@ import { shortId } from './admin.js'
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const num = (v) => (v === '' || v == null ? undefined : Number(v))
 
-/* The emoji / GIF picker in the app's live chat (audio and video rooms) —
-   live_emojis, see sabalive migration 20261002130000. kind 'emoji' is typed into
-   chat as text; kind 'gif' is an animated picture (GIF / WebP / SVGA / MP4) sent
-   as its own chat message. */
-export const EMOJI_KINDS = { emoji: 'Emoji', gif: 'GIF / animated' }
+/* The emote picker in the app's live chat (audio and video rooms) —
+   live_emojis, see sabalive migration 20261002130000. kind 'emoji' is an emoji sent as a
+   message; kind 'gif' is an animated picture (GIF / WebP / SVGA / MP4) sent as its own
+   message. Either way the app plays it over the sender's picture circle (their seat, or the
+   host's name pill) and only a sender without one on screen gets a chat line. */
+export const EMOJI_KINDS = { emoji: 'Emote', gif: 'GIF / animated' }
 
 const row = (r) => ({
   id: r.id,
