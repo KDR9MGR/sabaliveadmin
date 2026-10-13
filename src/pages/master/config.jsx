@@ -144,6 +144,14 @@ function PlatformSection() {
 const RELEASE_FLAGS = [
   { key: 'animated_frames', title: 'Animated avatar frames', desc: 'Off: every avatar frame shows as a still picture (saves battery and data)' },
   { key: 'speaking_waves', title: 'Speaking waves', desc: 'Off: no wave ring around whoever is talking in a live' },
+  {
+    key: 'games_enabled', def: false, title: 'Games',
+    desc: 'On: the Games tab shows the platform\'s games (Android) and the server accepts the game platform\'s calls. Off by default; turning it off stops all game bets and lookups at once. Limits and reports are on the Games page.',
+  },
+  {
+    key: 'screen_protection', def: false, title: 'Block screenshots and screen recording',
+    desc: 'On: Android phones show a black picture instead of the app to screenshots, screen recorders, casting and the recent-apps list. iPhones cannot block screenshots, so this does nothing there. Off by default.',
+  },
 ]
 
 function ReleaseSection() {
@@ -158,7 +166,8 @@ function ReleaseSection() {
   const v = form || data || {}
   const set = (k, val) => { setProblem(''); setForm({ ...(form || data), [k]: val }) }
   const flags = v.feature_flags && typeof v.feature_flags === 'object' ? v.feature_flags : {}
-  const flagOn = (k) => (typeof flags[k] === 'boolean' ? flags[k] : true)
+  // a switch nobody has touched yet is on, except the ones that say otherwise (`def: false`), which match the app's own default
+  const flagOn = (k) => (typeof flags[k] === 'boolean' ? flags[k] : (RELEASE_FLAGS.find((f) => f.key === k)?.def ?? true))
   const columnsExist = !!data && 'min_android_version_code' in data
   const editable = isSuper && columnsExist
   const num = (x) => Math.max(0, Math.round(Number(x) || 0))

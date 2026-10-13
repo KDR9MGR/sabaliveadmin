@@ -36,6 +36,7 @@ import { LuckyIds } from './pages/master/luckyIds.jsx'
 import { StoreItems, LiveEmojis } from './pages/master/store.jsx'
 import { STORE_CATEGORY_KEYS } from './lib/store.js'
 import ApplicationConfig from './pages/master/config.jsx'
+import { Games } from './pages/master/games.jsx'
 import { LiveRequests, LuckyBox, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary, Reports, SystemManagement } from './pages/master/platform.jsx'
 import { Withdrawals } from './pages/master/withdrawals.jsx'
 
@@ -185,6 +186,8 @@ export default function App() {
             </Route>
             <Route element={<RequireCap cap="manage_lucky_box" />}>
               <Route path="lucky-box" element={<LuckyBox />} />
+              {/* games share the economy switch: limits and watch reports (the on/off switch is in Release controls) */}
+              <Route path="games" element={<Games />} />
             </Route>
             <Route element={<RequireCap cap="manage_badges" />}>
               <Route path="badges" element={<BadgeManagement />} />
