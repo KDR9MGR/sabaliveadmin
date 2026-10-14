@@ -56,3 +56,37 @@ export async function listLuckyBoxHistory() {
     when: relativeTime(r.created_at),
   }))
 }
+
+/* Every live of the last 7 days with the Lucky Box outcome and, when it didn't open, why — the same rules the cron job
+   applies (see lucky_box_history, migration 20261014100000). The server caps the window at 7 days, so older lives
+   drop off on their own. */
+export const LB_RESULTS = {
+  paid: { label: 'Paid', tone: 'success', hint: 'The box opened and was paid.' },
+  pulled_back: { label: 'Pulled back', tone: 'warning', hint: 'Paid, then taken back by a Master.' },
+  in_progress: { label: 'In progress', tone: 'info', hint: 'Still live, has not reached the duration yet.' },
+  too_short: { label: 'Too short', tone: 'muted', hint: 'Ended (or stopped sending) before the duration.' },
+  audio_room: { label: 'Audio room', tone: 'violet', hint: 'Audio rooms never earn the Lucky Box.' },
+  cooldown: { label: 'Cooldown', tone: 'warning', hint: 'The host was paid within the cooldown before this box would have opened.' },
+  eligible_unpaid: { label: 'Not paid — should have', tone: 'danger', hint: 'Met every rule but has no payout. Worth a look.' },
+}
+
+export async function listLuckyBoxLives() {
+  const { data, error } = await supabase.rpc('lucky_box_history', { p_days: 7 })
+  if (error) throw error
+  return (data || []).map((r) => ({
+    id: r.stream_id,
+    hostId: r.host_id,
+    host: r.host_name || '—',
+    username: r.host_username,
+    displayId: r.host_display_id,
+    mode: r.mode === 'audio' ? 'Audio' : 'Video',
+    status: r.status,
+    started: fmtDate(r.started_at),
+    startedAt: r.started_at,
+    when: relativeTime(r.started_at),
+    minutes: r.live_minutes,
+    reward: r.reward_diamonds,
+    result: r.result,
+    restHours: r.rest_hours != null ? Number(r.rest_hours) : null,
+  }))
+}

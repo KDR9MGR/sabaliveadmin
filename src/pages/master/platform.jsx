@@ -23,7 +23,7 @@ import {
   profileOptions,
   BADGE_STATUSES, FRAME_STATUSES, FRAME_UNLOCK_TYPES, LBF_SCOPES, LBF_PERIODS, LBF_STATUSES,
 } from '../../lib/gamification.js'
-import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory, pullBackLuckyBox } from '../../lib/luckyBox.js'
+import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory, pullBackLuckyBox, listLuckyBoxLives, LB_RESULTS } from '../../lib/luckyBox.js'
 import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
 import MediaPreview from '../../components/MediaPreview.jsx'
 
@@ -351,10 +351,77 @@ export function ProfileFrame() {
 }
 
 /* ------------------------------------------------------------------ Lucky Box (real: lucky_box_config + wallet_ledger) */
+/* Every live of the last 7 days and what its Lucky Box did — the answer to "I stayed live and got nothing". Older lives
+   drop off by themselves (the server only returns 7 days). */
+export function LuckyBoxLives({ lives, loading, error, reload, duration }) {
+  const rows = lives || []
+  const reached = rows.filter((r) => ['paid', 'pulled_back', 'audio_room', 'cooldown', 'eligible_unpaid'].includes(r.result))
+  const count = (k) => rows.filter((r) => r.result === k).length
+  const needsUpdate = /lucky_box_history|schema cache|does not exist/i.test(String(error?.message || error || ''))
+  return (
+    <Card
+      title="Live history — last 7 days"
+      sub={`Every live of the last 7 days and whether its box opened, with the reason when it didn't. Older lives drop off on their own.${duration ? ` The box needs ${duration} unbroken minutes in a video live.` : ''}`}
+      className="mb-16"
+      action={<Button size="sm" icon="refresh" onClick={reload}>Refresh</Button>}
+    >
+      {needsUpdate ? (
+        <div className="card__body muted" style={{ fontSize: 13 }}>This needs the database update <code>20261014100000_lucky_box_history</code>, which has not been applied yet.</div>
+      ) : (
+        <AsyncView loading={loading} error={error} reload={reload}>
+          <div className="card__body">
+            <div className="hstack wrap" style={{ gap: 8, marginBottom: 12 }}>
+              <Badge tone="muted">{rows.length} lives</Badge>
+              <Badge tone="muted">{reached.length} reached the box</Badge>
+              <Badge tone="success">{count('paid')} paid</Badge>
+              <Badge tone="violet">{count('audio_room')} audio rooms (never earn it)</Badge>
+              <Badge tone="warning">{count('cooldown')} in cooldown</Badge>
+              <Badge tone="danger">{count('eligible_unpaid')} not paid but should have been</Badge>
+            </div>
+          </div>
+          <DataTable
+            rows={rows}
+            pageSize={10}
+            searchKeys={['host', 'username', 'displayId']}
+            searchPlaceholder="Search by host or ID…"
+            tabs={[
+              { label: 'All', value: 'all', filter: () => true },
+              { label: 'Paid', value: 'p', filter: (r) => r.result === 'paid' || r.result === 'pulled_back' },
+              { label: 'Audio rooms', value: 'a', filter: (r) => r.result === 'audio_room' },
+              { label: 'Cooldown', value: 'c', filter: (r) => r.result === 'cooldown' },
+              { label: 'Not paid — should have', value: 'u', filter: (r) => r.result === 'eligible_unpaid' },
+              { label: 'Too short / in progress', value: 's', filter: (r) => r.result === 'too_short' || r.result === 'in_progress' },
+            ]}
+            columns={[
+              personCol('host', 'username'),
+              { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+              { key: 'mode', header: 'Type', render: (r) => <Tag>{r.mode}</Tag> },
+              { key: 'startedAt', header: 'Started', sortable: true, render: (r) => <div>{r.started}<div className="muted" style={{ fontSize: 12 }}>{r.when}</div></div> },
+              { key: 'minutes', header: 'Live time', sortable: true, align: 'right', render: (r) => <span className="mono">{r.minutes} min</span> },
+              { key: 'result', header: 'Result', render: (r) => {
+                const m = LB_RESULTS[r.result] || { label: r.result, tone: 'muted', hint: '' }
+                return (
+                  <div title={m.hint}>
+                    <Badge tone={m.tone}>{m.label}</Badge>
+                    {r.result === 'cooldown' && r.restHours != null && <div className="muted" style={{ fontSize: 12 }}>last paid {r.restHours} h earlier</div>}
+                    {r.reward != null && <div className="muted" style={{ fontSize: 12 }}>{num(r.reward)} diamonds</div>}
+                  </div>
+                )
+              } },
+            ]}
+            emptyText="No lives in the last 7 days."
+          />
+        </AsyncView>
+      )}
+    </Card>
+  )
+}
+
 export function LuckyBox() {
   const toast = useToast()
   const { data: config, loading: configLoading, error: configError, reload: reloadConfig } = useAsyncData(getLuckyBoxConfig)
   const { data: history, loading: historyLoading, error: historyError, reload: reloadHistory } = useAsyncData(listLuckyBoxHistory)
+  const { data: lives, loading: livesLoading, error: livesError, reload: reloadLives } = useAsyncData(listLuckyBoxLives)
   const [form, setForm] = useState(null)
   const [busy, setBusy] = useState(false)
   const [pulling, setPulling] = useState(null) // the win being confirmed for pull back
@@ -414,6 +481,7 @@ export function LuckyBox() {
           </div>
         </AsyncView>
       </Card>
+      <LuckyBoxLives lives={lives} loading={livesLoading} error={livesError} reload={reloadLives} duration={v.duration_minutes} />
       <Card title="Reward history" sub="Every Lucky Box win so far.">
         <AsyncView loading={historyLoading} error={historyError} reload={reloadHistory}>
           <DataTable
