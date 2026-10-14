@@ -23,7 +23,7 @@ import {
   profileOptions,
   BADGE_STATUSES, FRAME_STATUSES, FRAME_UNLOCK_TYPES, LBF_SCOPES, LBF_PERIODS, LBF_STATUSES,
 } from '../../lib/gamification.js'
-import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory, pullBackLuckyBox, listLuckyBoxLives, LB_RESULTS } from '../../lib/luckyBox.js'
+import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory, pullBackLuckyBox, listLuckyBoxLives, payLuckyBoxNow, LB_RESULTS } from '../../lib/luckyBox.js'
 import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
 import MediaPreview from '../../components/MediaPreview.jsx'
 
@@ -353,7 +353,23 @@ export function ProfileFrame() {
 /* ------------------------------------------------------------------ Lucky Box (real: lucky_box_config + wallet_ledger) */
 /* Every live of the last 7 days and what its Lucky Box did — the answer to "I stayed live and got nothing". Older lives
    drop off by themselves (the server only returns 7 days). */
-export function LuckyBoxLives({ lives, loading, error, reload, duration }) {
+export function LuckyBoxLives({ lives, loading, error, reload, duration, reward, onPaid }) {
+  const toast = useToast()
+  const [paying, setPaying] = useState(null) // the live being confirmed for Pay now
+  const [busy, setBusy] = useState(false)
+  const payNow = async () => {
+    setBusy(true)
+    try {
+      const r = await payLuckyBoxNow(paying.id)
+      toast(`${num(r?.diamonds ?? reward ?? 0)} diamonds paid to ${paying.host}`)
+      setPaying(null)
+      onPaid?.()
+    } catch (e) {
+      toast(e.message || 'Could not pay')
+    } finally {
+      setBusy(false)
+    }
+  }
   const rows = lives || []
   const reached = rows.filter((r) => ['paid', 'pulled_back', 'audio_room', 'cooldown', 'eligible_unpaid'].includes(r.result))
   const count = (k) => rows.filter((r) => r.result === k).length
@@ -409,9 +425,20 @@ export function LuckyBoxLives({ lives, loading, error, reload, duration }) {
                 )
               } },
             ]}
+            rowActions={(r) => (r.result === 'eligible_unpaid' ? [{ label: 'Pay now', icon: 'coins', onClick: () => setPaying(r) }] : [])}
             emptyText="No lives in the last 7 days."
           />
         </AsyncView>
+      )}
+      {paying && (
+        <ConfirmDialog
+          title={`Pay ${reward != null ? num(reward) + ' ' : ''}diamonds to ${paying.host}?`}
+          busy={busy}
+          confirmLabel="Pay now"
+          message={`${paying.host}'s live on ${paying.started} ran ${paying.minutes} minutes and met every Lucky Box rule but was never paid. This pays the reward once, the host gets the usual "Lucky Box" notification, and you can pull it back later. The database re-checks the rules and refuses if anything doesn't hold.`}
+          onConfirm={payNow}
+          onClose={() => setPaying(null)}
+        />
       )}
     </Card>
   )
@@ -481,7 +508,7 @@ export function LuckyBox() {
           </div>
         </AsyncView>
       </Card>
-      <LuckyBoxLives lives={lives} loading={livesLoading} error={livesError} reload={reloadLives} duration={v.duration_minutes} />
+      <LuckyBoxLives lives={lives} loading={livesLoading} error={livesError} reload={reloadLives} duration={v.duration_minutes} reward={v.reward_diamonds} onPaid={() => { reloadLives(); reloadHistory() }} />
       <Card title="Reward history" sub="Every Lucky Box win so far.">
         <AsyncView loading={historyLoading} error={historyError} reload={reloadHistory}>
           <DataTable

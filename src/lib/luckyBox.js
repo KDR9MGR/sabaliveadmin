@@ -70,6 +70,14 @@ export const LB_RESULTS = {
   eligible_unpaid: { label: 'Not paid — should have', tone: 'danger', hint: 'Met every rule but has no payout. Worth a look.' },
 }
 
+/* Pay one missed live by hand (Master). The database re-checks every rule — video, the host's own signal proves the
+   duration, not already paid, not inside the cooldown, last 7 days — and refuses with the reason if one fails. */
+export async function payLuckyBoxNow(streamId) {
+  const { data, error } = await supabase.rpc('lucky_box_pay_now', { p_stream_id: streamId })
+  if (error) throw error
+  return data
+}
+
 export async function listLuckyBoxLives() {
   const { data, error } = await supabase.rpc('lucky_box_history', { p_days: 7 })
   if (error) throw error
