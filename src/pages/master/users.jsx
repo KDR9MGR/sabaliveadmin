@@ -15,7 +15,7 @@ import {
 import EntityForm from '../../components/EntityForm.jsx'
 import MediaPreview from '../../components/MediaPreview.jsx'
 import BanDialog from '../../components/BanDialog.jsx'
-import { liftUserBans, liftBan, listUserBans } from '../../lib/bans.js'
+import { liftUserBans, liftBan, listUserBans, getLinkedAccounts } from '../../lib/bans.js'
 import { relativeTime } from '../../lib/format.js'
 import { HostsTable } from './hosts.jsx'
 import { listBadges, listFrames, grantBadge, grantUserFrame, removeUserBadge, removeUserFrame } from '../../lib/gamification.js'
@@ -376,6 +376,40 @@ function NewTransferDrawer({ onClose, onDone, defaultType }) {
   )
 }
 
+/* ------------------------------------------------------------------ Linked accounts */
+const LINK_LABEL = { device: 'Same phone', ip: 'Same network', identity: 'Same login' }
+
+/* Accounts that share a phone, a network or a login identity with this user — to spot someone who came back after a ban. */
+export function LinkedAccountsCard({ userId }) {
+  const nav = useNavigate()
+  const { data, loading, error } = useAsyncData(() => getLinkedAccounts(userId), [userId])
+  const rows = data || []
+  return (
+    <Card title="Linked accounts" sub="Other accounts on the same phone, the same network (last 30 days) or the same email / phone number. A shared network can be a household or a mobile carrier, so it is a hint, not proof.">
+      <AsyncView loading={loading} error={error && !data ? error : ''}>
+        {rows.length === 0 ? (
+          <EmptyState icon="users" title="No linked accounts" text="No other account shares this user's phone, network or login." />
+        ) : (
+          <DataTable
+            rows={rows}
+            pageSize={8}
+            onRowClick={(r) => nav(`/admin/users/${r.id}`)}
+            columns={[
+              personCol('name', 'username'),
+              { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+              { key: 'link', header: 'Link', render: (r) => <Tag>{LINK_LABEL[r.link] || r.link}</Tag> },
+              { key: 'detail', header: 'Detail', render: (r) => <span className="mono muted" style={{ fontSize: 12 }}>{String(r.detail).length > 28 ? `${String(r.detail).slice(0, 26)}…` : r.detail}</span> },
+              { key: 'banned', header: 'Banned', render: (r) => (r.banned ? <StatusBadge value="Banned" /> : <span className="muted">—</span>) },
+              { key: 'seen', header: 'Last seen' },
+            ]}
+            emptyText="No linked accounts."
+          />
+        )}
+      </AsyncView>
+    </Card>
+  )
+}
+
 /* ------------------------------------------------------------------ Sign-in & devices */
 const METHOD_LABEL = {
   email: 'Email & password', phone: 'Phone & password', phone_otp: 'Phone OTP', signup: 'New sign-up',
@@ -658,6 +692,7 @@ export function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRe
 
       <div className="vstack" style={{ gap: 16 }}>
         <LoginInfoCard login={data.login} />
+        <LinkedAccountsCard userId={u.id} />
         <Card title="Roles & KYC">
           <KV rows={[
             ['Platform role', <Tag role>{role}</Tag>],

@@ -18,11 +18,11 @@ export const BAN_KINDS = {
   },
   account: {
     label: 'ID ban', short: 'ID',
-    blurb: 'The account is signed out and can\'t sign in on any device. Every device it has used is banned too.',
+    blurb: 'The account is signed out and can\'t sign in. Every device it has used is banned too, its Google / Apple / email / phone identities can\'t open a new account (even after the account is deleted), and new sign-ups from its network are blocked for 24 hours.',
   },
   device: {
     label: 'Device ban', short: 'Device',
-    blurb: 'The phone(s) the user has used are blocked for any account. Their account still works on another phone.',
+    blurb: 'The phone(s) the user has used are blocked for any account, including after a factory reset (the app also tracks a hardware id), and their identities and network are blocked for new sign-ups as for an ID ban. Their account still works on another phone.',
   },
 }
 export const BAN_KIND_KEYS = Object.keys(BAN_KINDS)
@@ -126,4 +126,23 @@ export async function listUserBans(userId) {
     .eq('user_id', userId)
     .order('created_at', { ascending: false }))
   return rows.map(banRow)
+}
+
+/* Other accounts that share a phone, a network (IP, last 30 days) or a login identity (same email / phone number) with
+   this user — see admin_linked_accounts (migration 20261015100000). Needs the "View user profile" switch. */
+export async function getLinkedAccounts(userId) {
+  const { data, error } = await supabase.rpc('admin_linked_accounts', { p_user: userId })
+  if (error) throw error
+  return (data || []).map((r) => ({
+    id: r.user_id,
+    key: `${r.user_id}-${r.link}-${r.detail}`,
+    name: r.name || '—',
+    username: r.username,
+    displayId: r.display_id,
+    status: r.status,
+    link: r.link,
+    detail: r.detail,
+    banned: !!r.banned,
+    seen: r.last_seen ? relativeTime(r.last_seen) : '—',
+  }))
 }
