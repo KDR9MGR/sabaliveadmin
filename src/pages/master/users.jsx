@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { AsyncView } from '../_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, KV, useToast, EmptyState } from '../../components/ui.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, KV, useToast, EmptyState, Modal } from '../../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import Icon from '../../components/Icon.jsx'
@@ -20,7 +20,7 @@ import { relativeTime } from '../../lib/format.js'
 import { HostsTable } from './hosts.jsx'
 import { listBadges, listFrames, grantBadge, grantUserFrame, removeUserBadge, removeUserFrame } from '../../lib/gamification.js'
 import { listStoreItems } from '../../lib/store.js'
-import { assignStoreItem, removeUserItem, updateUserProfile } from '../../lib/userTools.js'
+import { assignStoreItem, removeUserItem, updateUserProfile, pullBackAllCoins } from '../../lib/userTools.js'
 import { userLuckyId, availableLuckyOptions, assignLuckyId, revokeLuckyId } from '../../lib/luckyIds.js'
 import { uploadMedia } from '../../lib/storage.js'
 import {
@@ -487,10 +487,12 @@ export function UserProfile() {
   const canRestrict = can('manage_users')
   const canAssign = can('view_user_profile')
   const canEdit = isMaster && canRestrict
+  const canPullBack = isMaster && can('manage_coins') // Master / Super Admin with the coins switch (enforced again in SQL)
   const { data, loading, error, reload } = useAsyncData(() => getUserDetail(id), [id])
   const { data: bans, reload: reloadBans } = useAsyncData(() => listUserBans(id), [id])
   const [banning, setBanning] = useState(null) // default kinds for the Restrict dialog
   const [editing, setEditing] = useState(false)
+  const [pullingBack, setPullingBack] = useState(false)
   const refresh = () => { reload(); reloadBans() }
 
   const changeStatus = async (status) => {
@@ -519,6 +521,7 @@ export function UserProfile() {
           <Button icon="chevronLeft" onClick={() => history.back()}>Back</Button>
           {u && canRestrict && restricted && <Button icon="check" onClick={liftEverything}>Lift restrictions</Button>}
           {u && canEdit && <Button icon="edit" onClick={() => setEditing(true)}>Edit profile</Button>}
+          {u && canPullBack && <Button variant="danger" icon="coins" onClick={() => setPullingBack(true)}>Pull back all coins…</Button>}
           {u && canRestrict && <Button variant="danger" icon="lock" onClick={() => setBanning(['account'])}>Restrict (ban)…</Button>}
         </>}
       />
@@ -529,6 +532,7 @@ export function UserProfile() {
       </AsyncView>
       {banning && u && <BanDialog user={{ id, name: u.name }} defaultKinds={banning} onClose={() => setBanning(null)} onDone={refresh} />}
       {editing && u && <EditUserProfile user={u} onClose={() => setEditing(false)} onDone={refresh} />}
+      {pullingBack && u && <PullBackCoinsDialog user={u} onClose={() => setPullingBack(false)} onDone={refresh} />}
     </>
   )
 }
@@ -827,6 +831,71 @@ function AssignLuckyForm({ user, onClose, onDone }) {
 }
 
 /* Edit an ordinary user's profile from the panel. */
+/* Take a user's whole coin balance back. The reason is required (kept in the ledger note and the audit log) and the user ID must be
+   typed to confirm, because this moves real money. Coins only; diamonds stay. The user is told by push that an admin reclaimed them. */
+function PullBackCoinsDialog({ user, onClose, onDone }) {
+  const toast = useToast()
+  const coins = Number(user.wallets?.coins || 0)
+  const [reason, setReason] = useState('')
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const idOk = typed.trim() === String(user.display_id)
+  const ready = coins > 0 && reason.trim().length >= 3 && idOk
+
+  const submit = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const r = await pullBackAllCoins(user.id, reason.trim())
+      toast(`${Number(r?.coins ?? coins).toLocaleString()} coins pulled back from ${user.name}`)
+      onDone?.()
+      onClose()
+    } catch (e) {
+      setError(e?.message || 'Could not pull the coins back')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal
+      title={`Pull back all coins from ${user.name}`}
+      onClose={busy ? () => {} : onClose}
+      footer={<>
+        <Button onClick={onClose} disabled={busy}>Cancel</Button>
+        <Button variant="danger" icon={busy ? 'refresh' : 'coins'} disabled={busy || !ready} onClick={submit}>
+          {busy ? 'Pulling back…' : `Pull back ${coins.toLocaleString()} coins`}
+        </Button>
+      </>}
+    >
+      {error && (
+        <div className="badge badge--danger" style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 14 }}>{error}</div>
+      )}
+      <KV rows={[
+        ['User', `${user.name} (@${user.username || '—'})`],
+        ['User ID', <span className="mono">{user.display_id}</span>],
+        ['Coins to take', <b>{coins.toLocaleString()}</b>],
+        ['Diamonds', <span>{Number(user.wallets?.diamonds || 0).toLocaleString()} — not touched</span>],
+      ]} />
+      <div className="hint" style={{ margin: '12px 0 16px' }}>
+        The whole coin balance is taken in one step, whatever it holds when you press the button. The user gets a notification that an
+        admin reclaimed the coins, and the action is written to the audit log with your name. It cannot be undone from here; coins
+        can only be given back with a normal grant.
+      </div>
+      {coins <= 0 && <div className="hint" style={{ marginBottom: 12 }}>This user has no coins to pull back.</div>}
+      <div className="field" style={{ marginBottom: 16 }}>
+        <label>Reason (internal)</label>
+        <textarea className="textarea" placeholder="Why — kept in the audit log" value={reason} onChange={(e) => setReason(e.target.value)} disabled={busy} />
+      </div>
+      <div className="field">
+        <label>Type the user ID <span className="mono">{user.display_id}</span> to confirm</label>
+        <input className="input" inputMode="numeric" value={typed} onChange={(e) => setTyped(e.target.value)} disabled={busy} placeholder={String(user.display_id)} />
+      </div>
+    </Modal>
+  )
+}
+
 function EditUserProfile({ user, onClose, onDone }) {
   return (
     <EntityForm
