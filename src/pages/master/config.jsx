@@ -144,6 +144,7 @@ function PlatformSection() {
 const RELEASE_FLAGS = [
   { key: 'animated_frames', title: 'Animated avatar frames', desc: 'Off: every avatar frame shows as a still picture (saves battery and data)' },
   { key: 'speaking_waves', title: 'Speaking waves', desc: 'Off: no wave ring around whoever is talking in a live' },
+  { key: 'pk_battles', title: 'PK Battles', desc: 'Off: PK Battles go back to "coming soon" (Go Live\'s PK tab and the host tools). On by default. Takes effect when the app opens or returns to the foreground; a PK that is already running is not stopped.' },
   {
     key: 'games_enabled', def: false, title: 'Games',
     desc: 'On: the Games tab shows the platform\'s games (Android) and the server accepts the game platform\'s calls. Off by default; turning it off stops all game bets and lookups at once. Limits and reports are on the Games page.',
