@@ -122,6 +122,7 @@ export const NAV = {
       { label: 'Support', icon: 'mail', cap: 'manage_support', to: '/admin/support' },
       { label: 'Lucky Box', icon: 'gift', cap: 'manage_lucky_box', to: '/admin/lucky-box' },
       { label: 'Games', icon: 'radio', cap: 'manage_lucky_box', to: '/admin/games' },
+      { label: 'PK Battles', icon: 'flag', cap: 'manage_lucky_box', to: '/admin/pk' },
       { label: 'Badge Management', icon: 'award', cap: 'manage_badges', to: '/admin/badges' },
       { label: 'Leaderboard Frame', icon: 'trophy', cap: 'manage_leaderboard_frame', to: '/admin/leaderboard' },
       { label: 'Profile Frame', icon: 'frame', cap: 'manage_profile_frames', to: '/admin/frames' },
