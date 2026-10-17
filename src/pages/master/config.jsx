@@ -149,6 +149,10 @@ const RELEASE_FLAGS = [
     desc: 'On: PK Battles are available (Go Live\'s PK tab and the host tools). Off by default: until it is on, PK says "coming soon" in the app. Takes effect when the app opens or returns to the foreground; a PK that is already running is not stopped. Needs an app build that has PK.',
   },
   {
+    key: 'pk_layer', def: true, title: 'PK battle layer (new PK)',
+    desc: 'On (default): PK runs inside a normal audio live: Go Live → PK opens an audio live with the PK invite, and Invite PK / Random PK in the host tools work. Off: Go Live → PK opens the old standalone PK screen instead (an emergency fallback, no release needed). Counts only while PK Battles is on.',
+  },
+  {
     key: 'pk_video', def: false, title: 'Video PK',
     desc: 'On: Video PK can be started, as well as audio PK. Counts only while PK Battles is on. Off by default until its Agora cost and reliability have been measured.',
   },
