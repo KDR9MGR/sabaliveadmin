@@ -1,6 +1,8 @@
 import { supabase } from './supabase.js'
 import { relativeTime } from './format.js'
 import { checkPkRules, minutesLabel } from './pkStats.js'
+import { checkPkTheme, readPkTheme } from './pkTheme.js'
+import { updateAppConfig } from './appConfig.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 
@@ -51,6 +53,33 @@ export async function savePkRules(v) {
       throw new Error('The server function that saves these rules is not installed yet (it comes with the PK database work).')
     }
     throw error
+  }
+}
+
+/* The PK look (colours, animations, intro, lose badge): app_config.pk_theme, sabalive migration 20261020100000. { available: false } while the
+   column is not on this project, so the page can say so instead of failing. */
+export async function getPkTheme() {
+  const { data, error } = await supabase.from('app_config').select('pk_theme').eq('id', true).maybeSingle()
+  if (error) {
+    if (/pk_theme|column|schema cache/i.test(error.message || '')) return { available: false, theme: readPkTheme(null) }
+    throw error
+  }
+  return { available: true, theme: readPkTheme(data?.pk_theme) }
+}
+
+/* Saves the look. The built-in look is saved as nothing (it clears the column), so the apps use their own colours. Master / Super Admin
+   (the app_config update policy); anyone else gets a sentence, not a stack trace. */
+export async function savePkTheme(form) {
+  const checked = checkPkTheme(form)
+  if (checked.error) throw new Error(checked.error)
+  try {
+    await updateAppConfig({ pk_theme: checked.theme })
+  } catch (e) {
+    const m = e?.message || ''
+    if (/pk_theme|column|schema cache/i.test(m)) throw new Error('The PK look is not installed on this project yet (it needs the database update 20261020100000).')
+    if (e?.code === 'PGRST116' || /no rows|multiple \(or no\) rows/i.test(m)) throw new Error('Only a Master or Super Admin can change the PK look.')
+    if (/check constraint/i.test(m)) throw new Error('The server refused that value. Check the colours.')
+    throw e
   }
 }
 
