@@ -7,6 +7,8 @@ import { useAsyncData } from '../../lib/useAsync.js'
 import { getAppConfig, updateAppConfig } from '../../lib/appConfig.js'
 import Icon from '../../components/Icon.jsx'
 import { appPalette } from '../../lib/appPalette.js'
+import { getLiveWarning, saveLiveWarning } from '../../lib/liveWarningApi.js'
+import { DEFAULT_LIVE_WARNING, LIVE_WARNING_MAX, shownText } from '../../lib/liveWarning.js'
 
 /* What the app will look like with the colours typed above: the same derivation the app uses. */
 function BrandingPreview({ brand, accent }) {
@@ -136,6 +138,73 @@ function PlatformSection() {
         </div>
         {v.updated_at && <div className="full muted" style={{ fontSize: 11 }}>Last updated {new Date(v.updated_at).toLocaleString()}</div>}
       </div>
+    </AsyncView>
+  )
+}
+
+/* ---- Live welcome: the warning every new arrival sees in their own chat in a video live and in video PK ---- */
+function LiveWelcomeSection() {
+  const toast = useToast()
+  const { data, loading, error, reload } = useAsyncData(getLiveWarning)
+  const [form, setForm] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const v = form || data?.value || { enabled: true, text: '' }
+  const set = (k, val) => setForm({ ...v, [k]: val })
+  const chars = (v.text || '').trim().length
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      await saveLiveWarning(v)
+      toast('Live welcome saved. Running apps pick it up within a minute.')
+      setForm(null)
+      reload()
+    } catch (e) {
+      toast(e.message || 'Could not save')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <AsyncView loading={loading} error={error} reload={reload}>
+      {data?.available === false ? (
+        <div className="muted">The live welcome is not installed on this project yet: it needs the small database update 20261020110000. Until then phones show the built-in warning.</div>
+      ) : (
+        <>
+          <span className="hint">
+            When someone arrives in a VIDEO live or a video PK battle, their own chat opens with their "joined" line and, under it, this warning.
+            Only that person sees it (nobody else's chat gets it at each join), and ghost accounts see nothing. Audio rooms are not affected. Running apps pick a change up within a minute.
+          </span>
+          <div className="toggle-row" style={{ marginTop: 10 }}>
+            <div><div className="t-title">Show the warning</div><div className="t-desc">Off: a new arrival's chat starts empty, as before.</div></div>
+            <label className="toggle">
+              <input type="checkbox" checked={!!v.enabled} onChange={(e) => set('enabled', e.target.checked)} />
+              <span className="track" /><span className="thumb" />
+            </label>
+          </div>
+          <div className="field full" style={{ marginTop: 10 }}>
+            <label>Text</label>
+            <textarea className="input" rows={5} maxLength={LIVE_WARNING_MAX + 200} value={v.text} onChange={(e) => set('text', e.target.value)} placeholder={DEFAULT_LIVE_WARNING} />
+            <span className="hint" style={chars > LIVE_WARNING_MAX ? { color: 'var(--danger, #e5484d)' } : undefined}>
+              {chars} / {LIVE_WARNING_MAX} characters. Leave it empty to use the built-in text, which the app shows in the player's own language (Hindi, Arabic, Bangla, Nepali, Urdu, Filipino, Portuguese and English).
+              A text you write here is shown exactly as you wrote it, to everyone: it is not translated.
+            </span>
+          </div>
+          <div className="field full">
+            <label>Preview: what a new arrival's chat looks like</label>
+            <div style={{ maxWidth: 360, padding: 12, borderRadius: 12, background: 'linear-gradient(180deg, #33104f, #0b1636)', opacity: v.enabled ? 1 : 0.45 }}>
+              <div style={{ display: 'inline-block', padding: '5px 10px', borderRadius: 14, marginBottom: 6, background: 'rgba(0,0,0,.42)', border: '1px solid #c78bff99', color: '#fff', fontSize: 12, fontWeight: 800 }}>Xyz ⭐ joined</div>
+              <div style={{ padding: '8px 12px', borderRadius: 14, background: 'rgba(0,0,0,.38)', border: '1px solid #ffc93c59', color: '#ffc93c', fontSize: 11.5, lineHeight: 1.35, fontWeight: 600 }}>{shownText(v)}</div>
+            </div>
+          </div>
+          <div className="hstack" style={{ marginTop: 14 }}>
+            <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy || !form || chars > LIVE_WARNING_MAX} onClick={save}>{busy ? 'Saving…' : 'Save'}</Button>
+            {form && <Button onClick={() => setForm(null)}>Discard</Button>}
+            <Button onClick={() => setForm({ enabled: true, text: '' })}>Use the built-in text</Button>
+          </div>
+        </>
+      )}
     </AsyncView>
   )
 }
@@ -439,6 +508,7 @@ function Toggle({ title, desc, on }) {
 const SECTIONS = {
   Branding: BrandingSection,
   Platform: PlatformSection,
+  Welcome: LiveWelcomeSection,
   Release: ReleaseSection,
   General: () => (
     <div className="form-grid">
@@ -560,7 +630,8 @@ export default function ApplicationConfig({ crumbRoot = 'Application Configurati
   const isBranding = sec === 'Branding'
   const isPlatform = sec === 'Platform'
   const isRelease = sec === 'Release'
-  const selfManaged = isBranding || isPlatform || isRelease
+  const isWelcome = sec === 'Welcome'
+  const selfManaged = isBranding || isPlatform || isRelease || isWelcome
   return (
     <>
       <PageHeader
@@ -576,18 +647,20 @@ export default function ApplicationConfig({ crumbRoot = 'Application Configurati
           <div className="settings-nav" style={{ padding: 10 }}>
             {KEYS.map((k) => (
               <button key={k} className={sec === k ? 'active' : ''} onClick={() => setSec(k)}>
-                {k === 'Branding' ? 'Site / Branding' : `${k} Settings`}
+                {k === 'Branding' ? 'Site / Branding' : k === 'Welcome' ? 'Live welcome' : `${k} Settings`}
               </button>
             ))}
           </div>
         </Card>
         <Card
-          title={isBranding ? 'Site / Branding' : `${sec} Settings`}
+          title={isBranding ? 'Site / Branding' : isWelcome ? 'Live welcome' : `${sec} Settings`}
           sub={isBranding
             ? 'Rename the dashboard and set the live brand colour — applies to all panels'
             : isPlatform
               ? 'Persisted to the shared app_config record — the consumer app reads these too'
-              : isRelease
+              : isWelcome
+                ? 'The house-rules warning a new arrival sees in a video live and in video PK. Master or Super Admin'
+                : isRelease
                 ? 'Minimum app version and server-side switches. Super Admin only; the app checks them when it opens'
                 : 'Not wired to the backend yet — reference values only'}
         >

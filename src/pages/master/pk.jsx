@@ -57,6 +57,11 @@ function PkLookPreview({ theme }) {
   const mb = barColors(mine, 'mine')
   const tb = barColors(theirs, 'theirs')
   const gold = accentGradient(accent)
+  const bgTop = normalizeHex(theme.bg_top) || PK_THEME_DEFAULT.bg_top
+  const bgBottom = normalizeHex(theme.bg_bottom) || PK_THEME_DEFAULT.bg_bottom
+  const frame = (c, name) => (
+    <div style={{ flex: 1, height: 96, borderRadius: 8, border: `2px solid ${c}`, background: 'rgba(0,0,0,.45)', color: '#fff', fontSize: 11, display: 'flex', alignItems: 'flex-end', padding: 5 }}>{name}</div>
+  )
   const half = (a, b, name) => (
     <div style={{ flex: 1, padding: '14px 6px', textAlign: 'center', background: `linear-gradient(180deg, ${a}, ${b})`, color: '#fff', fontSize: 12, fontWeight: 600 }}>
       <div style={{ width: 38, height: 38, borderRadius: '50%', margin: '0 auto 6px', background: 'rgba(255,255,255,.18)' }} />
@@ -65,7 +70,9 @@ function PkLookPreview({ theme }) {
   )
   const pill = (c, v) => <div style={{ flex: 1, padding: '6px 8px', borderRadius: 10, background: 'rgba(255,255,255,.05)', border: `1px solid ${c}73`, color: '#fff', fontSize: 12, textAlign: 'right' }}>{v}</div>
   return (
-    <div style={{ borderRadius: 12, overflow: 'hidden', background: '#140f24', border: '1px solid var(--border, #0002)', maxWidth: 340 }}>
+    <div className="hstack" style={{ gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+    <div style={{ borderRadius: 12, overflow: 'hidden', background: '#140f24', border: '1px solid var(--border, #0002)', width: 300 }}>
+      <div style={{ padding: '4px 8px', fontSize: 10.5, color: '#bbb' }}>Audio PK</div>
       <div style={{ display: 'flex' }}>{half(m1, m2, 'You')}{half(t1, t2, 'Opponent')}</div>
       <div style={{ padding: '10px 10px 4px' }}>
         <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
@@ -78,6 +85,19 @@ function PkLookPreview({ theme }) {
         <div style={{ padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 800, color: '#3a1a5e', background: `linear-gradient(135deg, ${gold[0]}, ${gold[1]}, ${gold[2]})` }}>PK 04:12</div>
         {pill(theirs, '860')}
       </div>
+    </div>
+    <div style={{ borderRadius: 12, overflow: 'hidden', background: `linear-gradient(180deg, ${bgTop}, ${bgBottom})`, border: '1px solid var(--border, #0002)', width: 300, padding: 8 }}>
+      <div style={{ fontSize: 10.5, color: '#ddd', marginBottom: 6 }}>Video PK (the gradient fills the space around the frames)</div>
+      <div style={{ position: 'relative', display: 'flex', gap: 3 }}>
+        {frame(mine, 'You')}{frame(theirs, 'Opponent')}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', padding: '3px 9px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#3a1a5e', background: `linear-gradient(135deg, ${gold[0]}, ${gold[1]}, ${gold[2]})` }}>VS</div>
+      </div>
+      <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', margin: '8px 0 4px' }}>
+        <div style={{ width: '62%', background: `linear-gradient(90deg, ${mb[0]}, ${mb[1]})` }} />
+        <div style={{ flex: 1, background: `linear-gradient(90deg, ${tb[0]}, ${tb[1]})` }} />
+      </div>
+      <div style={{ height: 70 }} />
+    </div>
     </div>
   )
 }
@@ -152,6 +172,8 @@ export function PkBattles() {
                 <ColorField label="My side (the host of the live being watched)" hint="The red side by default: its half of the audio arena, its score bar and sword, its video frame." value={lv.mine} onChange={(x) => setLook('mine', x)} />
                 <ColorField label="Opponent side" hint="The blue side by default." value={lv.theirs} onChange={(x) => setLook('theirs', x)} />
                 <ColorField label="Accent" hint="The clock pill, the VS and Starting labels, the WIN label. Gold by default." value={lv.accent} onChange={(x) => setLook('accent', x)} />
+                <ColorField label="Video PK background (top)" hint="The gradient behind the two video frames, from the top of the screen. Deep violet by default (it used to be plain black)." value={lv.bg_top} onChange={(x) => setLook('bg_top', x)} />
+                <ColorField label="Video PK background (bottom)" hint="… to the bottom, above the chat. Dark navy by default. Use the same colour twice for a flat background." value={lv.bg_bottom} onChange={(x) => setLook('bg_bottom', x)} />
                 <div className="field">
                   <label>Lose badge</label>
                   <select className="input" value={lv.lose_style} onChange={(e) => setLook('lose_style', e.target.value)}>

@@ -1,5 +1,5 @@
 /* The PK look the panel sets (PK Battles -> Look and colours): the colour of each side, an accent, whether the PK animations play, an
-   optional big intro, and the style of the lose badge. Stored as one small JSON object in app_config.pk_theme (sabalive migration
+   optional big intro, the style of the lose badge, and the two colours of the gradient behind the VIDEO PK stage. Stored as one small JSON object in app_config.pk_theme (sabalive migration
    20261020100000); the consumer app reads it live. Pure functions only (the page and the tests use them); the colour maths is the SAME
    as the app's (sabalive/lib/state/pk_theme_store.dart) so the preview here shows what phones will show. */
 
@@ -7,6 +7,8 @@ export const PK_THEME_DEFAULT = Object.freeze({
   mine: '#ff2d55',
   theirs: '#2d6bff',
   accent: '#ffc93c',
+  bg_top: '#33104f',
+  bg_bottom: '#0b1636',
   animations: true,
   hero_intro: false,
   lose_style: 'shield',
@@ -37,6 +39,8 @@ export function readPkTheme(json) {
     mine: normalizeHex(json.mine) || d.mine,
     theirs: normalizeHex(json.theirs) || d.theirs,
     accent: normalizeHex(json.accent) || d.accent,
+    bg_top: normalizeHex(json.bg_top) || d.bg_top,
+    bg_bottom: normalizeHex(json.bg_bottom) || d.bg_bottom,
     animations: typeof json.animations === 'boolean' ? json.animations : d.animations,
     hero_intro: typeof json.hero_intro === 'boolean' ? json.hero_intro : d.hero_intro,
     lose_style: json.lose_style === 'emoji' ? 'emoji' : 'shield',
@@ -45,13 +49,13 @@ export function readPkTheme(json) {
 
 export const isDefaultTheme = (t) => {
   const d = PK_THEME_DEFAULT
-  return t.mine === d.mine && t.theirs === d.theirs && t.accent === d.accent && t.animations === d.animations && t.hero_intro === d.hero_intro && t.lose_style === d.lose_style
+  return t.mine === d.mine && t.theirs === d.theirs && t.accent === d.accent && t.bg_top === d.bg_top && t.bg_bottom === d.bg_bottom && t.animations === d.animations && t.hero_intro === d.hero_intro && t.lose_style === d.lose_style
 }
 
 /* The form's values -> what to save: { theme } (null = the built-in look, which clears the column) or { error } naming the field. */
 export function checkPkTheme(v) {
   const out = {}
-  for (const [key, label] of [['mine', 'My side colour'], ['theirs', 'Opponent side colour'], ['accent', 'Accent colour']]) {
+  for (const [key, label] of [['mine', 'My side colour'], ['theirs', 'Opponent side colour'], ['accent', 'Accent colour'], ['bg_top', 'Video background (top) colour'], ['bg_bottom', 'Video background (bottom) colour']]) {
     const hex = normalizeHex(v?.[key])
     if (!hex) return { error: `${label} must be a colour like #ff2d55.` }
     out[key] = hex

@@ -31,8 +31,8 @@ test('the built-in look is the default and saves as nothing (it clears the colum
 })
 
 test('a changed look is checked and returned whole, normalised', () => {
-  const r = checkPkTheme({ mine: '#00C853', theirs: '#2D6BFF', accent: 'ffc93c', animations: false, hero_intro: true, lose_style: 'emoji' })
-  assert.deepEqual(r, { theme: { mine: '#00c853', theirs: '#2d6bff', accent: '#ffc93c', animations: false, hero_intro: true, lose_style: 'emoji' } })
+  const r = checkPkTheme({ mine: '#00C853', theirs: '#2D6BFF', accent: 'ffc93c', bg_top: '#112233', bg_bottom: '#445566', animations: false, hero_intro: true, lose_style: 'emoji' })
+  assert.deepEqual(r, { theme: { mine: '#00c853', theirs: '#2d6bff', accent: '#ffc93c', bg_top: '#112233', bg_bottom: '#445566', animations: false, hero_intro: true, lose_style: 'emoji' } })
 })
 
 test('a bad colour or style is refused with a sentence that names it', () => {
@@ -75,4 +75,17 @@ test('a chosen colour gets a lighter top and a darker bottom of its own hue; the
   const g = accentGradient('#aa00ff')
   assert.equal(g.length, 3)
   assert.equal(g[1], '#aa00ff')
+})
+
+test('the video background gradient: violet into navy by default, read leniently, checked, and a change alone is a saved look', () => {
+  assert.equal(PK_THEME_DEFAULT.bg_top, '#33104f')
+  assert.equal(PK_THEME_DEFAULT.bg_bottom, '#0b1636')
+  assert.deepEqual(readPkTheme({ bg_top: '#112233', bg_bottom: 'blue' }).bg_top, '#112233')
+  assert.equal(readPkTheme({ bg_top: '#112233', bg_bottom: 'blue' }).bg_bottom, PK_THEME_DEFAULT.bg_bottom, 'unreadable = the default')
+  assert.equal(readPkTheme({ mine: '#00ff00' }).bg_top, PK_THEME_DEFAULT.bg_top, 'a look saved before the backdrop existed keeps the default')
+  assert.match(checkPkTheme({ ...PK_THEME_DEFAULT, bg_top: 'red' }).error, /Video background \(top\)/)
+  assert.match(checkPkTheme({ ...PK_THEME_DEFAULT, bg_bottom: '#12' }).error, /Video background \(bottom\)/)
+  const only = checkPkTheme({ ...PK_THEME_DEFAULT, bg_bottom: '#000000' })
+  assert.equal(only.theme.bg_bottom, '#000000')
+  assert.equal(isDefaultTheme(only.theme), false)
 })
