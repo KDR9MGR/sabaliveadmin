@@ -7,8 +7,8 @@ import { useAsyncData } from '../../lib/useAsync.js'
 import { getAppConfig, updateAppConfig } from '../../lib/appConfig.js'
 import Icon from '../../components/Icon.jsx'
 import { appPalette } from '../../lib/appPalette.js'
-import { getLiveWarning, saveLiveWarning } from '../../lib/liveWarningApi.js'
-import { DEFAULT_LIVE_WARNING, LIVE_WARNING_MAX, shownText } from '../../lib/liveWarning.js'
+import { getLiveWarnings, saveLiveWarnings } from '../../lib/liveWarningApi.js'
+import { DEFAULT_WARNINGS, LIVE_WARNING_MAX, shownText } from '../../lib/liveWarning.js'
 
 /* What the app will look like with the colours typed above: the same derivation the app uses. */
 function BrandingPreview({ brand, accent }) {
@@ -142,20 +142,26 @@ function PlatformSection() {
   )
 }
 
-/* ---- Live welcome: the warning every new arrival sees in their own chat in a video live and in video PK ---- */
+/* ---- Live welcome: the warnings every new arrival sees in their own chat (one for video lives and video PK, one for audio lives and audio PK) ---- */
+const WELCOME_KINDS = [
+  { kind: 'video', title: 'Video lives and video PK', placeholder: DEFAULT_WARNINGS.video, backdrop: 'linear-gradient(180deg, #33104f, #0b1636)' },
+  { kind: 'audio', title: 'Audio lives and audio PK', placeholder: DEFAULT_WARNINGS.audio, backdrop: 'linear-gradient(180deg, #2a1650, #0f0b24)' },
+]
+
 function LiveWelcomeSection() {
   const toast = useToast()
-  const { data, loading, error, reload } = useAsyncData(getLiveWarning)
+  const { data, loading, error, reload } = useAsyncData(getLiveWarnings)
   const [form, setForm] = useState(null)
   const [busy, setBusy] = useState(false)
-  const v = form || data?.value || { enabled: true, text: '' }
-  const set = (k, val) => setForm({ ...v, [k]: val })
-  const chars = (v.text || '').trim().length
+  const v = form || data?.value || { video: { enabled: true, text: '' }, audio: { enabled: true, text: '' } }
+  const set = (kind, k, val) => setForm({ ...v, [kind]: { ...v[kind], [k]: val } })
+  const chars = (kind) => (v[kind].text || '').trim().length
+  const tooLong = chars('video') > LIVE_WARNING_MAX || chars('audio') > LIVE_WARNING_MAX
 
   const save = async () => {
     setBusy(true)
     try {
-      await saveLiveWarning(v)
+      await saveLiveWarnings(v)
       toast('Live welcome saved. Running apps pick it up within a minute.')
       setForm(null)
       reload()
@@ -169,39 +175,45 @@ function LiveWelcomeSection() {
   return (
     <AsyncView loading={loading} error={error} reload={reload}>
       {data?.available === false ? (
-        <div className="muted">The live welcome is not installed on this project yet: it needs the small database update 20261020110000. Until then phones show the built-in warning.</div>
+        <div className="muted">The live welcome is not installed on this project yet: it needs the small database update 20261020110000. Until then phones show the built-in warnings.</div>
       ) : (
         <>
           <span className="hint">
-            When someone arrives in a VIDEO live or a video PK battle, their own chat opens with their "joined" line and, under it, this warning.
-            Only that person sees it (nobody else's chat gets it at each join), and ghost accounts see nothing. Audio rooms are not affected. Running apps pick a change up within a minute.
+            When someone arrives in a live, their own chat opens with their "joined" line and, under it, a warning. Only that person sees it (nobody else's chat gets it at
+            each join), and ghost accounts see nothing. Video lives and video PK battles have one message, audio lives and audio PK battles another, each with its own switch
+            and text. Running apps pick a change up within a minute.
           </span>
-          <div className="toggle-row" style={{ marginTop: 10 }}>
-            <div><div className="t-title">Show the warning</div><div className="t-desc">Off: a new arrival's chat starts empty, as before.</div></div>
-            <label className="toggle">
-              <input type="checkbox" checked={!!v.enabled} onChange={(e) => set('enabled', e.target.checked)} />
-              <span className="track" /><span className="thumb" />
-            </label>
-          </div>
-          <div className="field full" style={{ marginTop: 10 }}>
-            <label>Text</label>
-            <textarea className="input" rows={5} maxLength={LIVE_WARNING_MAX + 200} value={v.text} onChange={(e) => set('text', e.target.value)} placeholder={DEFAULT_LIVE_WARNING} />
-            <span className="hint" style={chars > LIVE_WARNING_MAX ? { color: 'var(--danger, #e5484d)' } : undefined}>
-              {chars} / {LIVE_WARNING_MAX} characters. Leave it empty to use the built-in text, which the app shows in the player's own language (Hindi, Arabic, Bangla, Nepali, Urdu, Filipino, Portuguese and English).
-              A text you write here is shown exactly as you wrote it, to everyone: it is not translated.
-            </span>
-          </div>
-          <div className="field full">
-            <label>Preview: what a new arrival's chat looks like</label>
-            <div style={{ maxWidth: 360, padding: 12, borderRadius: 12, background: 'linear-gradient(180deg, #33104f, #0b1636)', opacity: v.enabled ? 1 : 0.45 }}>
-              <div style={{ display: 'inline-block', padding: '5px 10px', borderRadius: 14, marginBottom: 6, background: 'rgba(0,0,0,.42)', border: '1px solid #c78bff99', color: '#fff', fontSize: 12, fontWeight: 800 }}>Xyz ⭐ joined</div>
-              <div style={{ padding: '8px 12px', borderRadius: 14, background: 'rgba(0,0,0,.38)', border: '1px solid #ffc93c59', color: '#ffc93c', fontSize: 11.5, lineHeight: 1.35, fontWeight: 600 }}>{shownText(v)}</div>
+          {WELCOME_KINDS.map(({ kind, title, placeholder, backdrop }) => (
+            <div key={kind} style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border, #0002)' }}>
+              <div className="t-title" style={{ marginBottom: 6 }}>{title}</div>
+              <div className="toggle-row">
+                <div><div className="t-title">Show this warning</div><div className="t-desc">Off: a new arrival's chat here starts empty, as before.</div></div>
+                <label className="toggle">
+                  <input type="checkbox" checked={!!v[kind].enabled} onChange={(e) => set(kind, 'enabled', e.target.checked)} />
+                  <span className="track" /><span className="thumb" />
+                </label>
+              </div>
+              <div className="field full" style={{ marginTop: 10 }}>
+                <label>Text</label>
+                <textarea className="input" rows={4} maxLength={LIVE_WARNING_MAX + 200} value={v[kind].text} onChange={(e) => set(kind, 'text', e.target.value)} placeholder={placeholder} />
+                <span className="hint" style={chars(kind) > LIVE_WARNING_MAX ? { color: 'var(--danger, #e5484d)' } : undefined}>
+                  {chars(kind)} / {LIVE_WARNING_MAX} characters. Leave it empty to use the built-in text, which the app shows in the player's own language (Hindi, Arabic, Bangla, Nepali, Urdu, Filipino,
+                  Portuguese and English). A text you write here is shown exactly as you wrote it, to everyone: it is not translated.
+                </span>
+              </div>
+              <div className="field full">
+                <label>Preview: what a new arrival's chat looks like</label>
+                <div style={{ maxWidth: 360, padding: 12, borderRadius: 12, background: backdrop, opacity: v[kind].enabled ? 1 : 0.45 }}>
+                  <div style={{ display: 'inline-block', padding: '5px 10px', borderRadius: 14, marginBottom: 6, background: 'rgba(0,0,0,.42)', border: '1px solid #c78bff99', color: '#fff', fontSize: 12, fontWeight: 800 }}>Xyz ⭐ joined</div>
+                  <div style={{ padding: '8px 12px', borderRadius: 14, background: 'rgba(0,0,0,.38)', border: '1px solid #ffc93c59', color: '#ffc93c', fontSize: 11.5, lineHeight: 1.35, fontWeight: 600 }}>{shownText(v[kind], kind)}</div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="hstack" style={{ marginTop: 14 }}>
-            <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy || !form || chars > LIVE_WARNING_MAX} onClick={save}>{busy ? 'Saving…' : 'Save'}</Button>
+          ))}
+          <div className="hstack" style={{ marginTop: 18 }}>
+            <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy || !form || tooLong} onClick={save}>{busy ? 'Saving…' : 'Save both'}</Button>
             {form && <Button onClick={() => setForm(null)}>Discard</Button>}
-            <Button onClick={() => setForm({ enabled: true, text: '' })}>Use the built-in text</Button>
+            <Button onClick={() => setForm({ video: { enabled: true, text: '' }, audio: { enabled: true, text: '' } })}>Use the built-in texts</Button>
           </div>
         </>
       )}
@@ -659,7 +671,7 @@ export default function ApplicationConfig({ crumbRoot = 'Application Configurati
             : isPlatform
               ? 'Persisted to the shared app_config record — the consumer app reads these too'
               : isWelcome
-                ? 'The house-rules warning a new arrival sees in a video live and in video PK. Master or Super Admin'
+                ? 'The house-rules warnings a new arrival sees in a video or an audio live (and in PK). Master or Super Admin'
                 : isRelease
                 ? 'Minimum app version and server-side switches. Super Admin only; the app checks them when it opens'
                 : 'Not wired to the backend yet — reference values only'}
