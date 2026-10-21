@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { StatGrid, TableSkeleton, LoadError } from './_templates.jsx'
-import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, EmptyState, ConfirmDialog } from '../components/ui.jsx'
+import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, EmptyState, ConfirmDialog, PillTabs } from '../components/ui.jsx'
 import { personCol, statusCol, numCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
@@ -22,6 +22,7 @@ import { decideHostApplication, markHostApplicationUnderReview, createAssignment
 import { createSalaryPayment, setSalaryStatus, updateSalaryPayment, SALARY_ROLES } from '../lib/salary.js'
 import { HostCodesShell } from './master/hostCodes.jsx'
 import { num } from '../data/index.js'
+import { SalaryReport, SalarySlabs, SALARY_TABS } from '../components/SalaryReport.jsx'
 
 const CR = ['Home', 'Agency']
 const opt = (v) => ({ value: v, label: v.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') })
@@ -498,6 +499,7 @@ export function AgencyEarnings() {
 export function AgencySalary() {
   const { agencyId } = useAgencyScope()
   const toast = useToast()
+  const [tab, setTab] = useState('payslips') // payslips | report | slabs
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null)
   const { data: payees } = useAsyncData(async () => {
@@ -519,7 +521,7 @@ export function AgencySalary() {
     <AgencyPage
       title="Salary"
       load={listAgencySalary}
-      actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>New Payslip</Button>}
+      actions={tab === 'payslips' ? <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>New Payslip</Button> : null}
     >
       {(rows, reload) => {
         const setStatus = async (r, status) => {
@@ -528,6 +530,10 @@ export function AgencySalary() {
         }
         return (
           <>
+            <div className="mb-16"><PillTabs tabs={SALARY_TABS} value={tab} onChange={setTab} /></div>
+            {tab === 'report' && <SalaryReport agencyId={agencyId} onAssigned={reload} />}
+            {tab === 'slabs' && <SalarySlabs canEdit={false} />}
+            {tab === 'payslips' && (<>
             <StatGrid stats={[
               { key: 'Payslips', value: String(rows.length), icon: 'users', tile: 'tile-purple' },
               { key: 'Gross', value: '₹' + num(rows.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
@@ -576,6 +582,7 @@ export function AgencySalary() {
                 initial={{ period: editing.period, role: editing.role.toLowerCase().replace(' ', '_'), base_amount: editing.base, bonus_amount: editing.bonus, deductions: editing.deductions }}
                 fields={fields.filter((f) => f.name !== 'payee_id')} />
             )}
+            </>)}
           </>
         )
       }}

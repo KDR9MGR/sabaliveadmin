@@ -9,6 +9,8 @@ import Icon from '../../components/Icon.jsx'
 import { loadReports } from '../../lib/reports.js'
 import { AGENCIES, num } from '../../data/util.js'
 import { useAsyncData } from '../../lib/useAsync.js'
+import { useAuth } from '../../lib/auth.jsx'
+import { SalaryReport, SalarySlabs, SALARY_TABS } from '../../components/SalaryReport.jsx'
 import {
   listSalary, createSalaryPayment, updateSalaryPayment, setSalaryStatus,
   payeeOptions, agencyOptions, SALARY_ROLES, SALARY_STATUSES,
@@ -669,6 +671,9 @@ const SALARY_ROLE_OPTS = SALARY_ROLES.map((r) => ({ value: r, label: r.split('_'
 
 export function Salary() {
   const toast = useToast()
+  const { staffRole } = useAuth()
+  const [tab, setTab] = useState('payslips') // payslips | report | slabs
+  const canEditSlabs = staffRole?.role === 'admin' || staffRole?.role === 'super_admin'
   const { data: rows, loading, error, reload } = useAsyncData(listSalary)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -694,12 +699,15 @@ export function Salary() {
       <PageHeader
         title="Salary"
         crumbs={['Home', 'Monetisation', 'Salary']}
-        actions={<>
+        actions={tab === 'payslips' ? <>
           <Button icon="download" onClick={() => toast('Export coming soon')}>Export</Button>
           <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>New Payslip</Button>
-        </>}
+        </> : null}
       />
-      <AsyncView loading={loading} error={error} reload={reload}>
+      <div className="mb-16"><PillTabs tabs={SALARY_TABS} value={tab} onChange={setTab} /></div>
+      {tab === 'report' && <SalaryReport onAssigned={reload} />}
+      {tab === 'slabs' && <SalarySlabs canEdit={canEditSlabs} />}
+      {tab === 'payslips' && <AsyncView loading={loading} error={error} reload={reload}>
         <StatGrid stats={[
           { key: 'Payslips', value: String(list.length), icon: 'users', tile: 'tile-purple' },
           { key: 'Gross', value: '₹' + num(list.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
@@ -739,10 +747,10 @@ export function Salary() {
               ...(r.status !== 'On Hold' ? [{ label: 'Put on hold', icon: 'lock', onClick: () => setStatus(r, 'on_hold') }] : []),
               ...(r.status !== 'Processing' ? [{ label: 'Back to processing', icon: 'refresh', onClick: () => setStatus(r, 'processing') }] : []),
             ]}
-            emptyText="No payslips yet. Create one with “New Payslip”."
+            emptyText="No payslips yet. Create one with “New Payslip”, or use Monthly report → Assign Salary Reward."
           />
         </div>
-      </AsyncView>
+      </AsyncView>}
 
       {adding && <SalaryDrawer title="New Payslip" fieldsFor={salaryFields} onClose={() => setAdding(false)}
         onSubmit={async (v) => { await createSalaryPayment(v); reload() }} savedMessage="Payslip created" />}
