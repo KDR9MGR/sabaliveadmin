@@ -1,4 +1,5 @@
 import { Person, StatusBadge, Tag } from './ui.jsx'
+import { usd } from '../lib/money.js'
 import { num } from '../data/util.js'
 
 export const personCol = (nameKey = 'name', metaKey) => ({
@@ -14,6 +15,12 @@ export const statusCol = (key = 'status', header = 'Status') => ({
 
 export const roleCol = (key = 'role') => ({
   key, header: 'Role', sortable: true, render: (r) => <Tag role>{r[key]}</Tag>,
+})
+
+/* A dollar amount ("$1,250.00"); a missing value is a dash */
+export const moneyCol = (key, header) => ({
+  key, header, sortable: true, align: 'right',
+  render: (r) => (r[key] == null ? <span className="muted">—</span> : <span className="mono">{usd(r[key])}</span>),
 })
 
 export const numCol = (key, header, opts = {}) => ({

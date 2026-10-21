@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { StatGrid, TableSkeleton, LoadError } from './_templates.jsx'
 import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, KV, useToast, EmptyState, ConfirmDialog, PillTabs } from '../components/ui.jsx'
-import { personCol, statusCol, numCol } from '../components/cells.jsx'
+import { personCol, statusCol, numCol, moneyCol } from '../components/cells.jsx'
 import DataTable from '../components/DataTable.jsx'
 import EntityForm from '../components/EntityForm.jsx'
 import { AreaChart, BarChart } from '../components/charts.jsx'
@@ -22,7 +22,9 @@ import { decideHostApplication, markHostApplicationUnderReview, createAssignment
 import { createSalaryPayment, setSalaryStatus, updateSalaryPayment, SALARY_ROLES } from '../lib/salary.js'
 import { HostCodesShell } from './master/hostCodes.jsx'
 import { num } from '../data/index.js'
-import { SalaryReport, SalarySlabs, SALARY_TABS } from '../components/SalaryReport.jsx'
+import { SalaryReport, SalarySlabs, SALARY_TABS, exportPayslips } from '../components/SalaryReport.jsx'
+import ExportButtons from '../components/ExportButtons.jsx'
+import { usd } from '../lib/money.js'
 
 const CR = ['Home', 'Agency']
 const opt = (v) => ({ value: v, label: v.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') })
@@ -500,6 +502,8 @@ export function AgencySalary() {
   const { agencyId } = useAgencyScope()
   const toast = useToast()
   const [tab, setTab] = useState('payslips') // payslips | report | slabs
+  const { can } = useAuth()
+  const canExport = can('export_data')
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null)
   const { data: payees } = useAsyncData(async () => {
@@ -512,9 +516,9 @@ export function AgencySalary() {
     { name: 'payee_id', label: 'Payee', type: 'select', required: true, options: payees || [] },
     { name: 'role', label: 'Role', type: 'select', required: true, options: SALARY_ROLE_OPTS },
     { name: 'period', label: 'Period', required: true, placeholder: 'e.g. Sep 2026' },
-    { name: 'base_amount', label: 'Base (₹)', type: 'number', required: true },
-    { name: 'bonus_amount', label: 'Bonus (₹)', type: 'number' },
-    { name: 'deductions', label: 'Deductions (₹)', type: 'number' },
+    { name: 'base_amount', label: 'Base (USD)', type: 'number', required: true, step: 0.01 },
+    { name: 'bonus_amount', label: 'Bonus (USD)', type: 'number', step: 0.01 },
+    { name: 'deductions', label: 'Deductions (USD)', type: 'number', step: 0.01 },
   ]
 
   return (
@@ -534,10 +538,11 @@ export function AgencySalary() {
             {tab === 'report' && <SalaryReport agencyId={agencyId} onAssigned={reload} />}
             {tab === 'slabs' && <SalarySlabs canEdit={false} />}
             {tab === 'payslips' && (<>
+            <div className="hstack mb-16" style={{ justifyContent: 'flex-end' }}><ExportButtons show={canExport} disabled={!rows.length} onExport={(f) => exportPayslips(f, rows)} /></div>
             <StatGrid stats={[
               { key: 'Payslips', value: String(rows.length), icon: 'users', tile: 'tile-purple' },
-              { key: 'Gross', value: '₹' + num(rows.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
-              { key: 'Net payable', value: '₹' + num(rows.reduce((s, r) => s + r.net, 0)), icon: 'wallet', tile: 'tile-blue' },
+              { key: 'Gross', value: usd(rows.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
+              { key: 'Net payable', value: usd(rows.reduce((s, r) => s + r.net, 0)), icon: 'wallet', tile: 'tile-blue' },
               { key: 'On hold', value: String(rows.filter((r) => r.status === 'On Hold').length), icon: 'lock', tile: 'tile-red' },
             ]} />
             <div className="mt-16">
@@ -554,10 +559,10 @@ export function AgencySalary() {
                   personCol('payee', 'username'),
                   { key: 'role', header: 'Role', render: (r) => <Tag>{r.role}</Tag> },
                   { key: 'period', header: 'Period', sortable: true },
-                  numCol('base', 'Base', { prefix: '₹' }),
-                  numCol('bonus', 'Bonus', { prefix: '₹' }),
-                  numCol('deductions', 'Deductions', { prefix: '₹' }),
-                  numCol('net', 'Net', { prefix: '₹' }),
+                  moneyCol('base', 'Base'),
+                  moneyCol('bonus', 'Bonus'),
+                  moneyCol('deductions', 'Deductions'),
+                  moneyCol('net', 'Net'),
                   { key: 'paidAt', header: 'Paid on' },
                   statusCol(),
                 ]}
