@@ -9,15 +9,23 @@ const unwrap = ({ data, error }) => { if (error) throw error; return data }
    A cron job grants the reward automatically; this is just the two knobs. */
 export async function getLuckyBoxConfig() {
   return unwrap(await supabase.from('lucky_box_config')
-    .select('duration_minutes, reward_diamonds, cooldown_hours, updated_at')
+    .select('duration_minutes, reward_diamonds, cooldown_hours, cooldown_mode, updated_at')
     .eq('id', true).single())
 }
 
-export async function updateLuckyBoxConfig({ duration_minutes, reward_diamonds, cooldown_hours }) {
+/* Cooldown: 'ist_day' = one box per host per India (IST) calendar day, resetting at midnight IST; 'hours' = a rolling window of cooldown_hours
+   (0 = no cooldown). sabalive migration 20261021150000. */
+export const COOLDOWN_MODES = [
+  { value: 'ist_day', label: 'Once per day — resets at midnight India time (IST)' },
+  { value: 'hours', label: 'Rolling hours after the last box' },
+]
+export async function updateLuckyBoxConfig({ duration_minutes, reward_diamonds, cooldown_hours, cooldown_mode }) {
   const cooldown = Number(cooldown_hours ?? 24)
-  if (!Number.isInteger(cooldown) || cooldown < 0 || cooldown > 720) throw new Error('Cooldown must be a whole number of hours between 0 and 720')
+  if (!Number.isInteger(cooldown) || cooldown < 0 || cooldown > 720) throw new Error('Cooldown hours must be a whole number between 0 and 720')
+  const mode = cooldown_mode || 'ist_day'
+  if (!COOLDOWN_MODES.some((m) => m.value === mode)) throw new Error('Pick a cooldown type')
   return unwrap(await supabase.from('lucky_box_config')
-    .update({ duration_minutes: Number(duration_minutes), reward_diamonds: Number(reward_diamonds), cooldown_hours: cooldown })
+    .update({ duration_minutes: Number(duration_minutes), reward_diamonds: Number(reward_diamonds), cooldown_hours: cooldown, cooldown_mode: mode })
     .eq('id', true).select().single())
 }
 
@@ -66,7 +74,7 @@ export const LB_RESULTS = {
   in_progress: { label: 'In progress', tone: 'info', hint: 'Still live, has not reached the duration yet.' },
   too_short: { label: 'Too short', tone: 'muted', hint: 'Ended (or stopped sending) before the duration.' },
   audio_room: { label: 'Audio room', tone: 'violet', hint: 'Audio rooms never earn the Lucky Box.' },
-  cooldown: { label: 'Cooldown', tone: 'warning', hint: 'The host was paid within the cooldown before this box would have opened.' },
+  cooldown: { label: 'Cooldown', tone: 'warning', hint: 'The host already had a box that keeps this one from opening: the same India (IST) day, or inside the rolling hours, depending on the cooldown setting.' },
   eligible_unpaid: { label: 'Not paid — should have', tone: 'danger', hint: 'Met every rule but has no payout. Worth a look.' },
 }
 

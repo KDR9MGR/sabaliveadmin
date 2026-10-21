@@ -27,7 +27,7 @@ import {
   profileOptions,
   BADGE_STATUSES, FRAME_STATUSES, FRAME_UNLOCK_TYPES, LBF_SCOPES, LBF_PERIODS, LBF_STATUSES,
 } from '../../lib/gamification.js'
-import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory, pullBackLuckyBox, listLuckyBoxLives, payLuckyBoxNow, listExtraLuckyBoxes, pullBackExtraLuckyBoxes, LB_RESULTS } from '../../lib/luckyBox.js'
+import { getLuckyBoxConfig, updateLuckyBoxConfig, COOLDOWN_MODES, listLuckyBoxHistory, pullBackLuckyBox, listLuckyBoxLives, payLuckyBoxNow, listExtraLuckyBoxes, pullBackExtraLuckyBoxes, LB_RESULTS } from '../../lib/luckyBox.js'
 import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
 import MediaPreview from '../../components/MediaPreview.jsx'
 
@@ -423,7 +423,9 @@ export function LuckyBoxLives({ lives, loading, error, reload, duration, reward,
                 return (
                   <div title={m.hint}>
                     <Badge tone={m.tone}>{m.label}</Badge>
-                    {r.result === 'cooldown' && r.restHours != null && <div className="muted" style={{ fontSize: 12 }}>last paid {r.restHours} h earlier</div>}
+                    {r.result === 'cooldown' && (r.restHours != null
+                      ? <div className="muted" style={{ fontSize: 12 }}>last paid {r.restHours} h earlier</div>
+                      : <div className="muted" style={{ fontSize: 12 }}>already got a box that India day</div>)}
                     {r.reward != null && <div className="muted" style={{ fontSize: 12 }}>{num(r.reward)} diamonds</div>}
                   </div>
                 )
@@ -595,7 +597,7 @@ export function LuckyBox() {
   const save = async () => {
     setBusy(true)
     try {
-      await updateLuckyBoxConfig({ duration_minutes: v.duration_minutes, reward_diamonds: v.reward_diamonds, cooldown_hours: v.cooldown_hours })
+      await updateLuckyBoxConfig({ duration_minutes: v.duration_minutes, reward_diamonds: v.reward_diamonds, cooldown_hours: v.cooldown_hours, cooldown_mode: v.cooldown_mode })
       toast('Lucky Box settings saved')
       setForm(null)
       reloadConfig()
@@ -621,10 +623,21 @@ export function LuckyBox() {
               <input className="input" type="number" min="1" value={v.reward_diamonds ?? ''} onChange={(e) => set('reward_diamonds', e.target.value)} />
             </div>
             <div className="field">
-              <label>Cooldown (hours)</label>
-              <input className="input" type="number" min="0" max="720" step="1" value={v.cooldown_hours ?? ''} onChange={(e) => set('cooldown_hours', e.target.value)} />
-              <span className="hint">A host who was paid in the last this-many hours is not paid again, even by a new live (a live that drops and restarts counts as the same stretch). 0 = no limit. Pulling a reward back does not reset it.</span>
+              <label>Cooldown</label>
+              <select className="input" value={v.cooldown_mode || 'ist_day'} onChange={(e) => set('cooldown_mode', e.target.value)}>
+                {COOLDOWN_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+              {(v.cooldown_mode || 'ist_day') === 'ist_day'
+                ? <span className="hint">One box per host per India (IST) calendar day; the day resets at midnight IST. The day is the one the box opens on (live start + the duration above), so a live that starts at 23:30 opens its box on the next day. A host who already has a box that day gets none from a restart or a second live. Pulling a reward back does not free the day.</span>
+                : <span className="hint">A host who was paid in the last this-many hours (below) is not paid again, even by a new live (a live that drops and restarts counts as the same stretch). Pulling a reward back does not reset it.</span>}
             </div>
+            {(v.cooldown_mode || 'ist_day') === 'hours' && (
+              <div className="field">
+                <label>Cooldown (hours)</label>
+                <input className="input" type="number" min="0" max="720" step="1" value={v.cooldown_hours ?? ''} onChange={(e) => set('cooldown_hours', e.target.value)} />
+                <span className="hint">0 = no cooldown at all.</span>
+              </div>
+            )}
           </div>
           <div className="hstack" style={{ marginTop: 14 }}>
             <Button variant="primary" icon={busy ? 'refresh' : 'check'} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</Button>
