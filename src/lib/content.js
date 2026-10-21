@@ -107,7 +107,7 @@ export const setLegalStatus = (id, status) => updateLegalPage(id, { status })
 /* ---------------------------------------------------------------- announcements */
 export async function listAnnouncements() {
   const rows = unwrap(await supabase.from('announcements')
-    .select('id, title, body, audience, channel, status, sent_at, created_at')
+    .select('id, title, body, audience, channel, status, sent_at, send_at, recipients, last_error, created_at')
     .order('created_at', { ascending: false }))
   return rows.map((a) => ({
     id: a.id, idShort: shortId(a.id),
@@ -116,6 +116,10 @@ export async function listAnnouncements() {
     channel: titleCase(a.channel),
     status: titleCase(a.status),
     sent: a.sent_at ? fmtDate(a.sent_at) : '—',
+    sendAt: a.send_at || null,
+    sendAtLabel: a.send_at ? fmtDate(a.send_at) : '—',
+    recipients: a.recipients,
+    lastError: a.last_error || null,
     created: fmtDate(a.created_at),
   }))
 }
@@ -143,16 +147,25 @@ export async function markAnnouncementSent(id) {
     .eq('id', id).select().single())
 }
 
-// Fans an announcement out to a notifications row per targeted user via the
-// broadcast_notification RPC, then marks the announcement sent. Returns the
-// recipient count.
-export async function broadcastAnnouncement(row) {
-  const { data, error } = await supabase.rpc('broadcast_notification', {
-    p_kind: 'announcement',
-    p_body: row.body || '',
-    p_audience: String(row.audience || 'all').toLowerCase().replace(/ /g, '_'),
-  })
+/* Delivery (sabalive migration 20261021170000). The old "broadcast" wrote a notification per user in ONE statement and hit the 8 second API
+   timeout, so nothing ever arrived. Now: sendAnnouncementNow queues it and delivers the first 150 users at once (the rest follow within a few
+   minutes, 300 a minute), scheduleAnnouncement sets a future time (checked every minute), cancelAnnouncement takes a scheduled one back to draft.
+   A Master / Super Admin with the Content / settings switch only. `at` is anything new Date() reads (a datetime-local value is the computer's own
+   time zone). */
+export async function sendAnnouncementNow(id) {
+  const { data, error } = await supabase.rpc('announcement_send_now', { p_id: id })
   if (error) throw error
-  await markAnnouncementSent(row.id)
+  return data // { delivered_now, status }
+}
+export async function scheduleAnnouncement(id, at) {
+  const when = new Date(at)
+  if (Number.isNaN(when.getTime())) throw new Error('Pick a date and time')
+  const { data, error } = await supabase.rpc('announcement_schedule', { p_id: id, p_send_at: when.toISOString() })
+  if (error) throw error
+  return data
+}
+export async function cancelAnnouncement(id) {
+  const { data, error } = await supabase.rpc('announcement_cancel', { p_id: id })
+  if (error) throw error
   return data
 }
