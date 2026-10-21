@@ -85,3 +85,24 @@ export async function assignSalaryRewards(month, agencyId) {
   if (error) throw error
   return data
 }
+
+/* One row per IST month, newest first (the current month, then back; at most 24): hosts earning, diamonds earned, hosts that reached a slab and
+   what their rewards add up to, the payslips that exist and how much of them is paid. Built from salary_report, so the numbers match the
+   per-host table, with the same scope. sabalive migration 20261021140000. */
+export async function getSalaryMonths(months = 12, agencyId) {
+  const { data, error } = await supabase.rpc('salary_month_summary', { p_months: months, p_agency: agencyId || null })
+  if (error) throw error
+  return (data || []).map((r) => ({
+    id: r.month,
+    month: r.month,
+    period: r.period,
+    ended: !!r.month_ended,
+    hostsEarning: Number(r.hosts_earning),
+    earned: Number(r.diamonds_earned),
+    hostsWithSlab: Number(r.hosts_with_slab),
+    reward: Number(r.reward_total),
+    payslips: Number(r.payslips),
+    payslipsInr: Number(r.payslips_inr),
+    paidInr: Number(r.paid_inr),
+  }))
+}

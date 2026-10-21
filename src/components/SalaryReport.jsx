@@ -5,9 +5,11 @@ import { personCol, numCol } from './cells.jsx'
 import DataTable from './DataTable.jsx'
 import EntityForm from './EntityForm.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
+import { useAuth } from '../lib/auth.jsx'
+import { downloadCsv } from '../lib/csv.js'
 import { agencyOptions } from '../lib/salary.js'
 import {
-  istMonth, getSalaryReport, assignSalaryRewards,
+  istMonth, getSalaryReport, getSalaryMonths, assignSalaryRewards,
   listSalarySlabs, saveSalarySlab, setSalarySlabActive, deleteSalarySlab,
 } from '../lib/salaryReport.js'
 import { num } from '../data/util.js'
@@ -37,6 +39,9 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
   const { data: agencies } = useAsyncData(async () => (fixedAgency ? [] : agencyOptions()), [fixedAgency])
   const agencyId = fixedAgency || agency || null
   const { data, loading, error, reload } = useAsyncData(() => getSalaryReport(month, agencyId), [month, agencyId])
+  const { data: months, loading: monthsLoading, error: monthsError, reload: reloadMonths } = useAsyncData(() => getSalaryMonths(12, agencyId), [agencyId])
+  const { can } = useAuth()
+  const canExport = can('export_data')
 
   const rows = data || []
   const eligible = rows.filter((r) => r.slabId && !r.payslipId && !r.blocked)
@@ -53,6 +58,7 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
       toast(`${num(r?.assigned || 0)} payslips created (₹${num(r?.total_inr || 0)}) for ${r?.period || monthLabel(month)}`)
       setConfirming(false)
       reload()
+      reloadMonths()
       onAssigned?.()
     } catch (e) {
       toast(e.message || 'Could not assign')
@@ -61,6 +67,36 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
       setBusy(false)
     }
   }
+
+  const scopeName = fixedAgency ? 'agency' : (agencyId ? ((agencies || []).find((a) => a.value === agencyId)?.label || 'agency') : 'all-agencies')
+  const slug = String(scopeName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'report'
+  const downloadHosts = () => downloadCsv(`salary-report-${month}-${slug}.csv`, [
+    { header: 'Month', value: (r) => r.period },
+    { header: 'User ID', value: (r) => r.displayId },
+    { header: 'Name', value: (r) => r.host },
+    { header: 'Username', value: (r) => r.username },
+    { header: 'Agency', value: (r) => r.agency },
+    { header: 'Diamonds earned', value: (r) => r.earned },
+    { header: 'Live hours', value: (r) => r.hours },
+    { header: 'Live days', value: (r) => r.days },
+    { header: 'Withdrawn diamonds', value: (r) => r.withdrawn },
+    { header: 'Available diamonds', value: (r) => r.available },
+    { header: 'Slab', value: (r) => r.slab || '' },
+    { header: 'Reward (INR)', value: (r) => (r.reward != null ? r.reward : '') },
+    { header: 'Payslip', value: (r) => (r.payslipId ? String(r.payslipStatus || '').replace('_', ' ') : '') },
+    { header: 'Blocked', value: (r) => r.blocked || '' },
+  ], rows)
+  const downloadMonths = () => downloadCsv(`salary-months-${slug}.csv`, [
+    { header: 'Month', value: (r) => r.period },
+    { header: 'Month over', value: (r) => (r.ended ? 'yes' : 'no (live preview)') },
+    { header: 'Hosts earning', value: (r) => r.hostsEarning },
+    { header: 'Diamonds earned', value: (r) => r.earned },
+    { header: 'Hosts reaching a slab', value: (r) => r.hostsWithSlab },
+    { header: 'Reward total (INR)', value: (r) => r.reward },
+    { header: 'Payslips', value: (r) => r.payslips },
+    { header: 'Payslips net (INR)', value: (r) => r.payslipsInr },
+    { header: 'Paid (INR)', value: (r) => r.paidInr },
+  ], months || [])
 
   return (
     <Card
@@ -88,14 +124,47 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
                 </div>
               )}
               <div className="grow" />
+              {canExport && <Button icon="download" disabled={!rows.length || loading} onClick={downloadHosts}>Download this month (CSV)</Button>}
               <Button variant="primary" icon="coins" disabled={!eligible.length || notEnded || loading} onClick={() => setConfirming(true)}>
                 {`Assign Salary Reward${eligible.length ? ` (${num(eligible.length)})` : ''}…`}
               </Button>
             </div>
             {notEnded && <div className="hint" style={{ marginBottom: 10 }}>{monthLabel(month)} is not over yet, so this is a live preview. Rewards can be assigned once the month has ended.</div>}
           </div>
+          <div className="card__body" style={{ paddingTop: 0 }}>
+            <div className="hstack" style={{ marginBottom: 8, alignItems: 'center' }}>
+              <b style={{ fontSize: 13.5 }}>By month</b>
+              <span className="muted" style={{ fontSize: 12.5, marginLeft: 8 }}>Click a month to open its hosts below.</span>
+              <div className="grow" />
+              {canExport && <Button size="sm" icon="download" disabled={!(months || []).length} onClick={downloadMonths}>Download all months (CSV)</Button>}
+            </div>
+            {/needs the database update|salary_month_summary|schema cache|does not exist/i.test(String(monthsError?.message || monthsError || '')) ? (
+              <div className="muted" style={{ fontSize: 13 }}>The month-by-month table needs the database update <code>20261021140000_salary_month_summary</code>, which has not been applied yet.</div>
+            ) : (
+              <AsyncView loading={monthsLoading} error={monthsError} reload={reloadMonths}>
+                <DataTable
+                  rows={months || []}
+                  pageSize={12}
+                  onRowClick={(r) => setMonth(r.month)}
+                  columns={[
+                    { key: 'period', header: 'Month', render: (r) => <span style={{ fontWeight: r.month === month ? 700 : 500 }}>{r.period}{r.month === month ? ' ◂' : ''}</span> },
+                    { key: 'ended', header: 'Status', render: (r) => (r.ended ? <Badge tone="muted">Over</Badge> : <Badge tone="info">In progress</Badge>) },
+                    numCol('hostsEarning', 'Hosts earning'),
+                    numCol('earned', 'Diamonds earned'),
+                    numCol('hostsWithSlab', 'Reached a slab'),
+                    numCol('reward', 'Reward total', { prefix: '₹' }),
+                    { key: 'payslips', header: 'Payslips', sortable: true, align: 'right', render: (r) => <span className="mono">{num(r.payslips)}{r.payslips ? ` · ₹${num(r.payslipsInr)}` : ''}</span> },
+                    numCol('paidInr', 'Paid', { prefix: '₹' }),
+                  ]}
+                  emptyText="No months yet."
+                />
+              </AsyncView>
+            )}
+          </div>
           <AsyncView loading={loading} error={error} reload={reload}>
             <div className="card__body">
+              <b style={{ fontSize: 13.5 }}>Hosts — {monthLabel(month)}</b>
+              <div style={{ height: 8 }} />
               <StatGrid stats={[
                 { key: 'Hosts with earnings', value: num(rows.filter((r) => r.earned > 0).length), icon: 'users', tile: 'tile-purple' },
                 { key: 'Diamonds earned', value: num(rows.reduce((t, r) => t + r.earned, 0)), icon: 'coins', tile: 'tile-blue' },
