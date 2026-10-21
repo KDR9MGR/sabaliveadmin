@@ -98,3 +98,31 @@ export async function listLuckyBoxLives() {
     restHours: r.rest_hours != null ? Number(r.rest_hours) : null,
   }))
 }
+
+/* Extra boxes in one day (migration 20261021100000): per host and IST day the first box stays, every further one can be taken back.
+   `from` / `to` are 'YYYY-MM-DD' IST days, both included. The preview lists them; the pull-back skips any host who no longer holds
+   the diamonds and says who. */
+export async function listExtraLuckyBoxes(from, to) {
+  const { data, error } = await supabase.rpc('lucky_box_extra_wins', { p_from: from, p_to: to })
+  if (error) throw error
+  return (data || []).map((r) => ({
+    id: r.ledger_id,
+    hostId: r.host_id,
+    host: r.host_name || '—',
+    username: r.host_username,
+    displayId: r.host_display_id,
+    wonAt: r.won_at,
+    won: fmtDate(r.won_at),
+    day: r.win_day,
+    winsThatDay: r.wins_that_day,
+    diamonds: Number(r.diamonds),
+    balance: Number(r.host_balance),
+    canCover: !!r.can_cover,
+  }))
+}
+
+export async function pullBackExtraLuckyBoxes(from, to) {
+  const { data, error } = await supabase.rpc('lucky_box_pull_back_extras', { p_from: from, p_to: to })
+  if (error) throw error
+  return data // { pulled, diamonds, hosts, skipped: [{ host, diamonds, balance, ... }] }
+}

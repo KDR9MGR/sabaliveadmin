@@ -23,7 +23,7 @@ import {
   profileOptions,
   BADGE_STATUSES, FRAME_STATUSES, FRAME_UNLOCK_TYPES, LBF_SCOPES, LBF_PERIODS, LBF_STATUSES,
 } from '../../lib/gamification.js'
-import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory, pullBackLuckyBox, listLuckyBoxLives, payLuckyBoxNow, LB_RESULTS } from '../../lib/luckyBox.js'
+import { getLuckyBoxConfig, updateLuckyBoxConfig, listLuckyBoxHistory, pullBackLuckyBox, listLuckyBoxLives, payLuckyBoxNow, listExtraLuckyBoxes, pullBackExtraLuckyBoxes, LB_RESULTS } from '../../lib/luckyBox.js'
 import { uploadMedia, UPLOAD_ACCEPT } from '../../lib/storage.js'
 import MediaPreview from '../../components/MediaPreview.jsx'
 
@@ -444,6 +444,125 @@ export function LuckyBoxLives({ lives, loading, error, reload, duration, reward,
   )
 }
 
+/* One box per host per IST day is fine; every further box that day can be taken back at once. Preview first, then confirm. Hosts who no
+   longer hold the diamonds are skipped by the database and listed afterwards (nothing is ever taken below zero). */
+const EXTRAS_FROM = '2026-10-09' // the clean-up window starts when the cooldown was left at 0
+const istToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+export function LuckyBoxExtras({ onDone }) {
+  const toast = useToast()
+  const [from, setFrom] = useState(EXTRAS_FROM)
+  const [to, setTo] = useState(istToday())
+  const [rows, setRows] = useState(null) // null = not previewed yet
+  const [asked, setAsked] = useState(null) // the window that was previewed
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+
+  const preview = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setRows(await listExtraLuckyBoxes(from, to)); setAsked({ from, to }) }
+    catch (e) { setRows(null); setError(e.message || 'Could not load the preview') }
+    finally { setLoading(false) }
+  }
+  const run = async () => {
+    setBusy(true)
+    try {
+      const r = await pullBackExtraLuckyBoxes(asked.from, asked.to)
+      setResult(r)
+      toast(`${num(r?.pulled || 0)} boxes pulled back (${num(r?.diamonds || 0)} diamonds from ${num(r?.hosts || 0)} hosts)`)
+      setConfirming(false)
+      setRows(await listExtraLuckyBoxes(asked.from, asked.to))
+      onDone?.()
+    } catch (e) {
+      toast(e.message || 'Could not pull back')
+      setConfirming(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const list = rows || []
+  const doable = list.filter((r) => r.canCover)
+  const stuck = list.filter((r) => !r.canCover)
+  const doableDiamonds = doable.reduce((t, r) => t + r.diamonds, 0)
+  const hostCount = new Set(doable.map((r) => r.hostId)).size
+  const stale = asked && (asked.from !== from || asked.to !== to)
+  return (
+    <Card
+      title="Extra boxes in one day"
+      sub="One Lucky Box per host per day (India time) is fine. This lists every further box a host got on the same day, and takes them back; the first box of each day stays."
+      className="mb-16"
+    >
+      <div className="card__body">
+        <div className="hstack wrap" style={{ gap: 12, alignItems: 'flex-end', marginBottom: 12 }}>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label>From (day)</label>
+            <input className="input" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label>To (day, included)</label>
+            <input className="input" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+          </div>
+          <Button icon={loading ? 'refresh' : 'search'} disabled={loading || !from || !to} onClick={preview}>{loading ? 'Loading…' : 'Preview'}</Button>
+        </div>
+        {error && <div className="badge badge--danger" style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 12 }}>{error}</div>}
+        {rows && (
+          <>
+            <div className="hstack wrap" style={{ gap: 8, marginBottom: 12 }}>
+              <Badge tone="warning">{num(doable.length)} extra boxes to pull back</Badge>
+              <Badge tone="muted">{num(doableDiamonds)} diamonds</Badge>
+              <Badge tone="muted">{num(hostCount)} hosts</Badge>
+              {stuck.length > 0 && <Badge tone="danger">{num(stuck.length)} cannot be pulled back (diamonds already spent)</Badge>}
+            </div>
+            {stale && <div className="hint" style={{ marginBottom: 10 }}>The dates changed since this preview — press Preview again before pulling back.</div>}
+            <div className="hstack" style={{ marginBottom: 12 }}>
+              <Button variant="danger" icon="refresh" disabled={!doable.length || stale || busy} onClick={() => setConfirming(true)}>
+                {`Pull back ${num(doable.length)} extra boxes…`}
+              </Button>
+            </div>
+          </>
+        )}
+        {result && (
+          <div className="hint" style={{ marginBottom: 12 }}>
+            Done: {num(result.pulled)} boxes ({num(result.diamonds)} diamonds) taken back from {num(result.hosts)} hosts.
+            {(result.skipped || []).length > 0 && ` Skipped because the diamonds were already spent: ${result.skipped.map((x) => `${x.host} (${num(x.diamonds)})`).join(', ')}.`}
+          </div>
+        )}
+      </div>
+      {rows && (
+        <DataTable
+          rows={list}
+          pageSize={10}
+          searchKeys={['host', 'username', 'displayId']}
+          searchPlaceholder="Search by host or ID…"
+          columns={[
+            personCol('host', 'username'),
+            { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
+            { key: 'day', header: 'Day', sortable: true, render: (r) => <span>{r.day}<div className="muted" style={{ fontSize: 12 }}>{r.winsThatDay} boxes that day</div></span> },
+            { key: 'wonAt', header: 'Won', sortable: true, render: (r) => r.won },
+            numCol('diamonds', 'Diamonds'),
+            numCol('balance', 'Host holds now'),
+            { key: 'canCover', header: 'Status', render: (r) => (r.canCover ? <span className="muted">Can pull back</span> : <Badge tone="danger">Spent</Badge>) },
+          ]}
+          emptyText="No extra boxes in these days."
+        />
+      )}
+      {confirming && (
+        <ConfirmDialog
+          title={`Pull back ${num(doable.length)} extra boxes (${num(doableDiamonds)} diamonds)?`}
+          danger
+          busy={busy}
+          confirmLabel="Pull back now"
+          message={`Takes ${num(doableDiamonds)} diamonds back from ${num(hostCount)} hosts for ${asked?.from} to ${asked?.to}. Each host keeps the first box of every day. Every host is told per box that an admin reclaimed the diamonds, and each one is written to the audit log with your name. A host who has already spent the diamonds is skipped. This cannot be undone from here.`}
+          onConfirm={run}
+          onClose={() => setConfirming(false)}
+        />
+      )}
+    </Card>
+  )
+}
+
 export function LuckyBox() {
   const toast = useToast()
   const { data: config, loading: configLoading, error: configError, reload: reloadConfig } = useAsyncData(getLuckyBoxConfig)
@@ -509,6 +628,7 @@ export function LuckyBox() {
         </AsyncView>
       </Card>
       <LuckyBoxLives lives={lives} loading={livesLoading} error={livesError} reload={reloadLives} duration={v.duration_minutes} reward={v.reward_diamonds} onPaid={() => { reloadLives(); reloadHistory() }} />
+      <LuckyBoxExtras onDone={reloadHistory} />
       <Card title="Reward history" sub="Every Lucky Box win so far.">
         <AsyncView loading={historyLoading} error={historyError} reload={reloadHistory}>
           <DataTable
