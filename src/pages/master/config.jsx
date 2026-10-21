@@ -238,6 +238,10 @@ const RELEASE_FLAGS = [
     desc: 'On: Video PK can be started, as well as audio PK. Counts only while PK Battles is on. Off by default until its Agora cost and reliability have been measured.',
   },
   {
+    key: 'audio_seat_requests', def: false, title: 'Audio seat requests (host approval)',
+    desc: 'Off (default): in audio lives and audio PK battles anyone can take a free seat at once: no "Request sent", no waiting for the host, and the host\'s "Ask before someone sits" switch disappears. The server seats a request on the first free seat the host has not locked, so apps already installed follow too (they may land on a different seat than the one tapped). On: the old behaviour (a room can ask, a PK battle always asks, the host approves). Video lives and video PK are not affected. Needs the database update 20261021110000.',
+  },
+  {
     key: 'games_enabled', def: false, title: 'Games',
     desc: 'On: the Games tab shows the platform\'s games (Android) and the server accepts the game platform\'s calls. Off by default; turning it off stops all game bets and lookups at once. Limits and reports are on the Games page.',
   },
