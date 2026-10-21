@@ -37,6 +37,12 @@ user detail Bag assign / Lucky ID / Edit profile in `pages/master/users.jsx`, he
 coinSellers,support,luckyIds,handover,userTools}.js`. Global and Country menus intentionally have no
 Badge / Profile Frame / Leaderboard entries; Country has no Add Agency.
 
+## Tags
+`pages/master/tags.jsx` (Master `/admin/tags`, Super `/super/tags`) makes tags (name, emoji, order, active, and one of three looks: coloured pill, picture with the name inside it, or a
+background picture the app writes the name on; pictures are uploaded to the `gift-assets` bucket) and gives them to users (search a user, tick tags, max 10).
+Capability `manage_tags` is on by default for a Master and grantable to Global / Country / Sub Admin and Agency in Access Control; the SQL side is `staff_can_manage_tags()`
+(sabalive migration `20261021190000`). Pure rules in `lib/profileTags.js` (tested), database calls in `lib/profileTagsApi.js`. While the tables are missing the page says so.
+
 ## Environment switch (production <-> staging)
 `src/lib/environments.js` picks the Supabase project; `components/EnvironmentSwitch.jsx` is the top-bar pill (Master and
 Super Admin only), the orange STAGING strip and the sign-in notice. A normal build is "home = production" and gets the switch

@@ -46,6 +46,9 @@ export const CAPABILITIES = [
   // Also enforced server-side (staff_cap_on): on by default for a Master, an explicit false blocks.
   { key: 'manage_levels', label: 'Levels (XP & images)', group: 'Platform menu' },
   { key: 'manage_support', label: 'Support chat', group: 'Platform menu' },
+  // Give users profile tags (Master -> Tags). Enforced server-side by staff_can_manage_tags() (migration 20261021190000): Super Admin always, a Master
+  // by default (an explicit false blocks), any other staff account only with this switched on.
+  { key: 'manage_tags', label: 'Tags (give profile tags)', group: 'Platform menu' },
 ]
 
 export const CAPABILITY_KEYS = CAPABILITIES.map((c) => c.key)
@@ -55,7 +58,7 @@ const ALL = Object.fromEntries(CAPABILITY_KEYS.map((k) => [k, true]))
 
 export const ROLE_BASELINE = {
   super_admin: ALL,
-  admin: set('view_dashboards', 'manage_users', 'view_user_profile', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support'),
+  admin: set('view_dashboards', 'manage_users', 'view_user_profile', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support', 'manage_tags'),
   agency_manager: set('view_dashboards', 'manage_hosts', 'export_data'),
   sub_admin: set('view_dashboards', 'manage_hosts'),
   country_admin: set('view_dashboards', 'manage_hosts'),
@@ -102,6 +105,7 @@ export const LOWER_ROLE_GRANTS = {
   manage_live_requests: { roles: ALL_LOWER, gives: 'Live Requests: review and approve go-live requests' },
   manage_levels: { roles: ALL_LOWER, gives: 'Levels (XP & images)' },
   manage_support: { roles: ALL_LOWER, gives: 'Support chat' },
+  manage_tags: { roles: ALL_LOWER, gives: 'Tags: create tags and give them to users' },
   manage_lucky_box: { roles: ALL_LOWER, gives: 'Lucky Box settings' },
   manage_badges: { roles: ALL_LOWER, gives: 'Badge management' },
   manage_leaderboard_frame: { roles: ALL_LOWER, gives: 'Leaderboard frame' },
@@ -127,6 +131,7 @@ export const GRANT_PAGES = {
   manage_live_requests: ['/admin/live'],
   manage_levels: ['/admin/levels'],
   manage_support: ['/admin/support'],
+  manage_tags: ['/admin/tags'],
   manage_lucky_box: ['/admin/lucky-box'],
   manage_badges: ['/admin/badges'],
   manage_leaderboard_frame: ['/admin/leaderboard'],

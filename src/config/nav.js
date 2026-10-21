@@ -124,6 +124,7 @@ export const NAV = {
       { label: 'Games', icon: 'radio', cap: 'manage_lucky_box', to: '/admin/games' },
       { label: 'PK Battles', icon: 'flag', cap: 'manage_lucky_box', to: '/admin/pk' },
       { label: 'Badge Management', icon: 'award', cap: 'manage_badges', to: '/admin/badges' },
+      { label: 'Tags', icon: 'tag', cap: 'manage_tags', to: '/admin/tags' },
       { label: 'Leaderboard Frame', icon: 'trophy', cap: 'manage_leaderboard_frame', to: '/admin/leaderboard' },
       { label: 'Profile Frame', icon: 'frame', cap: 'manage_profile_frames', to: '/admin/frames' },
       { label: 'Content / Settings', icon: 'fileText', cap: 'manage_content', children: [
@@ -212,6 +213,7 @@ export const NAV = {
     ]},
     { section: 'User Management', items: [
       { label: 'Users', icon: 'users', to: '/super/users' },
+      { label: 'Tags', icon: 'tag', cap: 'manage_tags', to: '/super/tags' },
     ]},
     { section: 'Monitoring', items: [
       { label: 'Live Monitor', icon: 'eye', to: '/super/live-monitor' },

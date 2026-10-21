@@ -52,7 +52,9 @@ export function Levels() {
               ? 'Wealth levels go up as a user spends coins on gifts.'
               : 'Charm levels go up as a user receives gifts.'}{' '}
             Set the XP each level needs. Add a level image and it plays full-screen in a live room when someone
-            who has reached that level (the highest level with an image) joins. XP changes re-level every user straight away.
+            who has reached that level (the highest level with an image) joins. A still picture, GIF or WebP also replaces the level star
+            for people at exactly that level, on profiles, in live chat and in the join notice (so it should carry the level number itself); an
+            animated file (SVGA, MP4) keeps the star there. A level with no image keeps the star. XP changes re-level every user straight away.
           </span>
         </div>
       </Card>
@@ -83,8 +85,9 @@ export function Levels() {
           fields={[
             { name: 'xp', label: 'Total XP needed to reach this level', type: 'number', required: true, full: true,
               hint: editing.level === 1 ? 'Level 1 always starts at 0.' : 'Must be more than the previous level and less than the next.' },
-            { name: 'image', label: 'Join image / animation (optional)', type: 'image', accept: UPLOAD_ACCEPT, full: true,
-              onUpload: (file) => uploadMedia('gift-assets', 'levels', file), hint: UPLOAD_HINT },
+            { name: 'image', label: 'Level image (optional)', type: 'image', accept: UPLOAD_ACCEPT, full: true,
+              onUpload: (file) => uploadMedia('gift-assets', 'levels', file),
+              hint: `${UPLOAD_HINT}. Plays full-screen when someone at this level joins a live. A PNG, GIF or WebP (not SVGA / MP4) is also shown small in place of the level star, so the picture should include the level number.` },
           ]}
           onClose={() => setEditing(null)}
           onSubmit={async (v) => { await saveTrackLevel(track, { level: editing.level, xp: v.xp, image: v.image }); reload() }}
