@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
+import { withAgencyAdmins } from './salaryReport.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -21,14 +22,17 @@ export async function agencyOptions() {
 /* ---------------------------------------------------------------- list */
 export async function listSalary() {
   const rows = unwrap(await supabase.from('salary_payments')
-    .select('id, role, period, base_amount, bonus_amount, deductions, net_amount, status, paid_at, created_at, payee:payee_id(name, username), agencies(name)')
+    .select('id, role, period, base_amount, bonus_amount, deductions, net_amount, status, paid_at, created_at, agency_id, payee:payee_id(name, username, display_id), agencies(name, display_id)')
     .order('created_at', { ascending: false })
     .limit(1000))
-  return rows.map((r) => ({
+  return withAgencyAdmins(rows.map((r) => ({
     id: r.id,
     idShort: shortId(r.id),
     payee: r.payee?.name || '—',
-    username: r.payee?.username,
+    username: r.payee?.username,                // kept for the search box only: it is not shown or exported
+    displayId: r.payee?.display_id ?? null,     // the app-facing User ID
+    agencyId: r.agency_id,
+    agencyCode: r.agencies?.display_id ?? null,
     role: titleCase(r.role),
     agency: r.agencies?.name || '—',
     period: r.period,
@@ -38,7 +42,7 @@ export async function listSalary() {
     net: Number(r.net_amount) || 0,
     status: titleCase(r.status),
     paidAt: r.paid_at ? fmtDate(r.paid_at) : '—',
-  }))
+  })))
 }
 
 /* ---------------------------------------------------------------- mutations

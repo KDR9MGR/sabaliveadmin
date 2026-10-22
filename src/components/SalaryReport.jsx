@@ -8,6 +8,7 @@ import ExportButtons from './ExportButtons.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
 import { exportRows } from '../lib/export.js'
+import { HOST_COLUMNS, MONTH_COLUMNS, PAYSLIP_COLUMNS, SALARY_SEARCH_KEYS, SALARY_SEARCH_HINT, slugOf } from '../lib/salaryColumns.js'
 import { usd } from '../lib/money.js'
 import { agencyOptions } from '../lib/salary.js'
 import {
@@ -27,50 +28,7 @@ const monthLabel = (m) => {
   const [y, mo] = m.split('-').map(Number)
   return new Date(y, mo - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })
 }
-const slugOf = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
-
-/* What the downloads contain. `type` only matters for Excel (a $ format / thousands separators); CSV gets plain numbers. All money is USD. */
-const HOST_COLUMNS = [
-  { header: 'Month', value: (r) => r.period },
-  { header: 'User ID', value: (r) => r.displayId },
-  { header: 'Name', value: (r) => r.host },
-  { header: 'Username', value: (r) => r.username },
-  { header: 'Agency', value: (r) => r.agency },
-  { header: 'Diamonds earned', value: (r) => r.earned, type: 'int' },
-  { header: 'Live hours', value: (r) => r.hours },
-  { header: 'Live days', value: (r) => r.days, type: 'int' },
-  { header: 'Withdrawn diamonds', value: (r) => r.withdrawn, type: 'int' },
-  { header: 'Available diamonds', value: (r) => r.available, type: 'int' },
-  { header: 'Slab', value: (r) => r.slab || '' },
-  { header: 'Payment (USD)', value: (r) => (r.payment != null ? r.payment : ''), type: 'usd' },
-  { header: 'Payslip', value: (r) => (r.payslipId ? String(r.payslipStatus || '').replace('_', ' ') : '') },
-  { header: 'Blocked', value: (r) => r.blocked || '' },
-]
-const MONTH_COLUMNS = [
-  { header: 'Month', value: (r) => r.period },
-  { header: 'Month over', value: (r) => (r.ended ? 'yes' : 'no (live preview)') },
-  { header: 'Hosts earning', value: (r) => r.hostsEarning, type: 'int' },
-  { header: 'Diamonds earned', value: (r) => r.earned, type: 'int' },
-  { header: 'Hosts reaching a slab', value: (r) => r.hostsWithSlab, type: 'int' },
-  { header: 'Payment total (USD)', value: (r) => r.payment, type: 'usd' },
-  { header: 'Payslips', value: (r) => r.payslips, type: 'int' },
-  { header: 'Payslips net (USD)', value: (r) => r.payslipsUsd, type: 'usd' },
-  { header: 'Paid (USD)', value: (r) => r.paidUsd, type: 'usd' },
-]
-/* The Payslips list (both the platform and the agency version) */
-export const PAYSLIP_COLUMNS = [
-  { header: 'Payee', value: (r) => r.payee },
-  { header: 'Username', value: (r) => r.username },
-  { header: 'Role', value: (r) => r.role },
-  { header: 'Agency', value: (r) => r.agency || '' },
-  { header: 'Period', value: (r) => r.period },
-  { header: 'Base (USD)', value: (r) => r.base, type: 'usd' },
-  { header: 'Bonus (USD)', value: (r) => r.bonus, type: 'usd' },
-  { header: 'Deductions (USD)', value: (r) => r.deductions, type: 'usd' },
-  { header: 'Net pay (USD)', value: (r) => r.net, type: 'usd' },
-  { header: 'Status', value: (r) => r.status },
-  { header: 'Paid on', value: (r) => r.paidAt || '' },
-]
+export { SALARY_SEARCH_KEYS, SALARY_SEARCH_HINT, PAYSLIP_COLUMNS }
 export const exportPayslips = (format, rows) =>
   exportRows(format, `salary-payslips-${new Date().toISOString().slice(0, 10)}`, PAYSLIP_COLUMNS, rows, 'Payslips')
 
@@ -172,7 +130,8 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
                     { key: 'period', header: 'Month', render: (r) => <span style={{ fontWeight: r.month === month ? 700 : 500 }}>{r.period}{r.month === month ? ' ◂' : ''}</span> },
                     { key: 'ended', header: 'Status', render: (r) => (r.ended ? <Badge tone="muted">Over</Badge> : <Badge tone="info">In progress</Badge>) },
                     numCol('hostsEarning', 'Hosts earning'),
-                    numCol('earned', 'Diamonds earned'),
+                    numCol('earned', 'Diamonds from gifts'),
+                    numCol('rewards', 'Diamonds from rewards'),
                     numCol('hostsWithSlab', 'Reached a slab'),
                     moneyCol('payment', 'Payment total'),
                     { key: 'payslips', header: 'Payslips', sortable: true, align: 'right', render: (r) => <span className="mono">{num(r.payslips)}{r.payslips ? ` · ${usd(r.payslipsUsd)}` : ''}</span> },
@@ -189,7 +148,8 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
               <div style={{ height: 8 }} />
               <StatGrid stats={[
                 { key: 'Hosts with earnings', value: num(rows.filter((r) => r.earned > 0).length), icon: 'users', tile: 'tile-purple' },
-                { key: 'Diamonds earned', value: num(rows.reduce((t, r) => t + r.earned, 0)), icon: 'coins', tile: 'tile-blue' },
+                { key: 'Diamonds from gifts', value: num(rows.reduce((t, r) => t + r.earned, 0)), icon: 'coins', tile: 'tile-blue' },
+                { key: 'Diamonds from rewards', value: num(rows.reduce((t, r) => t + r.rewards, 0)), icon: 'award', tile: 'tile-purple' },
                 { key: 'Will get a payslip', value: num(eligible.length), icon: 'award', tile: 'tile-green' },
                 { key: 'Payment to assign', value: usd(eligibleTotal), icon: 'dollar', tile: 'tile-green' },
               ]} />
@@ -197,8 +157,8 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
             <DataTable
               rows={rows}
               pageSize={10}
-              searchKeys={['host', 'username', 'displayId', 'agency']}
-              searchPlaceholder="Search by host, ID or agency…"
+              searchKeys={SALARY_SEARCH_KEYS}
+              searchPlaceholder={SALARY_SEARCH_HINT}
               tabs={[
                 { label: 'All', value: 'all', filter: () => true },
                 { label: 'Will get a payslip', value: 'e', filter: (r) => r.slabId && !r.payslipId && !r.blocked },
@@ -207,10 +167,13 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
                 { label: 'Blocked', value: 'b', filter: (r) => !!r.blocked },
               ]}
               columns={[
-                personCol('host', 'username'),
-                { key: 'displayId', header: 'User ID', render: (r) => <span className="mono muted">{r.displayId}</span> },
-                ...(fixedAgency ? [] : [{ key: 'agency', header: 'Agency', sortable: true }]),
-                numCol('earned', 'Diamonds earned'),
+                personCol('host'),
+                { key: 'displayId', header: 'User ID', sortable: true, render: (r) => <span className="mono">{r.displayId}</span> },
+                ...(fixedAgency ? [] : [{ key: 'agency', header: 'Agency', sortable: true, render: (r) => <span>{r.agencyCode != null && <span className="mono muted">{r.agencyCode} · </span>}{r.agency}</span> }]),
+                { key: 'countryAdmin', header: 'Country Admin', sortable: true, render: (r) => (r.countryAdmin ? <span>{r.countryAdmin}{r.countryAdminId !== '' && <span className="mono muted"> · {r.countryAdminId}</span>}</span> : <span className="muted">—</span>) },
+                { key: 'globalAdmin', header: 'Global Admin', sortable: true, render: (r) => (r.globalAdmin ? <span>{r.globalAdmin}{r.globalAdminId !== '' && <span className="mono muted"> · {r.globalAdminId}</span>}</span> : <span className="muted">—</span>) },
+                numCol('earned', 'Gift diamonds'),
+                numCol('rewards', 'Reward diamonds'),
                 { key: 'hours', header: 'Live', sortable: true, align: 'right', render: (r) => <span className="mono">{r.hours} h · {r.days} d</span> },
                 numCol('withdrawn', 'Withdrawn'),
                 numCol('available', 'Available now'),

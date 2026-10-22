@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
+import { withAgencyAdmins } from './salaryReport.js'
 import { relativeTime, dayBuckets, bucketSums, daysAgoISO, startOfMonthISO } from './format.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
@@ -156,14 +157,18 @@ export async function listAgencyLiveRequests(agencyId) {
 /* ---------------------------------------------------------------- salary scoped to this agency */
 export async function listAgencySalary(agencyId) {
   const rows = unwrap(await supabase.from('salary_payments')
-    .select('id, role, period, base_amount, bonus_amount, deductions, net_amount, status, paid_at, created_at, payee:payee_id(name, username)')
+        .select('id, role, period, base_amount, bonus_amount, deductions, net_amount, status, paid_at, created_at, payee:payee_id(name, username, display_id), agencies(name, display_id)')
     .eq('agency_id', agencyId)
     .order('created_at', { ascending: false }))
-  return rows.map((r) => ({
+  return withAgencyAdmins(rows.map((r) => ({
     id: r.id,
     idShort: shortId(r.id),
     payee: r.payee?.name || '—',
-    username: r.payee?.username,
+    username: r.payee?.username,                // kept for the search box only: it is not shown or exported
+    displayId: r.payee?.display_id ?? null,     // the app-facing User ID
+    agencyId,
+    agencyCode: r.agencies?.display_id ?? null,
+    agency: r.agencies?.name || '—',
     role: titleCase(r.role),
     period: r.period,
     base: Number(r.base_amount) || 0,
@@ -172,7 +177,7 @@ export async function listAgencySalary(agencyId) {
     net: Number(r.net_amount) || 0,
     status: titleCase(r.status),
     paidAt: r.paid_at ? fmtDate(r.paid_at) : '—',
-  }))
+  })))
 }
 
 /* ---------------------------------------------------------------- sub-admins in this agency (read-only for managers) */

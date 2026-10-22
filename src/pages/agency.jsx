@@ -22,7 +22,7 @@ import { decideHostApplication, markHostApplicationUnderReview, createAssignment
 import { createSalaryPayment, setSalaryStatus, updateSalaryPayment, SALARY_ROLES } from '../lib/salary.js'
 import { HostCodesShell } from './master/hostCodes.jsx'
 import { num } from '../data/index.js'
-import { SalaryReport, SalarySlabs, SALARY_TABS, exportPayslips } from '../components/SalaryReport.jsx'
+import { SalaryReport, SalarySlabs, SALARY_TABS, SALARY_SEARCH_KEYS, SALARY_SEARCH_HINT, exportPayslips } from '../components/SalaryReport.jsx'
 import ExportButtons from '../components/ExportButtons.jsx'
 import { usd } from '../lib/money.js'
 
@@ -548,7 +548,8 @@ export function AgencySalary() {
             <div className="mt-16">
               <DataTable
                 rows={rows}
-                searchKeys={['payee', 'username', 'period', 'idShort']}
+                searchKeys={[...SALARY_SEARCH_KEYS, 'idShort']}
+                searchPlaceholder={SALARY_SEARCH_HINT}
                 tabs={[
                   { label: 'All', value: 'all', filter: () => true },
                   { label: 'Processing', value: 'pr', filter: (r) => r.status === 'Processing' },
@@ -556,7 +557,8 @@ export function AgencySalary() {
                   { label: 'On Hold', value: 'h', filter: (r) => r.status === 'On Hold' },
                 ]}
                 columns={[
-                  personCol('payee', 'username'),
+                  personCol('payee'),
+                  { key: 'displayId', header: 'User ID', sortable: true, render: (r) => <span className="mono">{r.displayId ?? '—'}</span> },
                   { key: 'role', header: 'Role', render: (r) => <Tag>{r.role}</Tag> },
                   { key: 'period', header: 'Period', sortable: true },
                   moneyCol('base', 'Base'),

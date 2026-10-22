@@ -64,7 +64,13 @@ export async function getSalaryReport(month, agencyId) {
     agencyId: r.agency_id,
     agency: r.agency_name || '—',
     period: r.period,
-    earned: Number(r.diamonds_earned),
+    earned: Number(r.diamonds_earned),                 // diamonds from gifts (what the slab is measured on)
+    rewards: Number(r.diamonds_rewards || 0),          // Lucky Box diamonds of the month, net of pull-backs
+    totalDiamonds: Number(r.diamonds_earned) + Number(r.diamonds_rewards || 0),
+    agencyCode: r.agency_code ?? null,                 // the public Agency ID
+    subAdmin: r.sub_admin_name || '', subAdminId: r.sub_admin_display_id ?? '',
+    countryAdmin: r.country_admin_name || '', countryAdminId: r.country_admin_display_id ?? '',
+    globalAdmin: r.global_admin_name || '', globalAdminId: r.global_admin_display_id ?? '',
     hours: Number(r.live_hours),
     days: Number(r.live_days),
     withdrawn: Number(r.withdrawn_diamonds),
@@ -99,10 +105,40 @@ export async function getSalaryMonths(months = 12, agencyId) {
     ended: !!r.month_ended,
     hostsEarning: Number(r.hosts_earning),
     earned: Number(r.diamonds_earned),
+    rewards: Number(r.diamonds_rewards || 0),
     hostsWithSlab: Number(r.hosts_with_slab),
     payment: Number(r.payment_total),
     payslips: Number(r.payslips),
     payslipsUsd: Number(r.payslips_usd),
     paidUsd: Number(r.paid_usd),
   }))
+}
+
+/* Which agency sits under which admins: the public Agency ID ("agency code"), its Sub Admin, that Sub Admin's Country Admin and the Country Admin's
+   Global Admin, each with the app-facing user ID. Scoped by the database to the caller's agencies. Returns {} when the database update is missing,
+   so the payslip lists keep working without it. The Global Admin is empty until the system records which Global Admin owns a Country Admin. */
+export async function getSalaryAgencyMap() {
+  const { data, error } = await supabase.rpc('salary_agency_map')
+  if (error) return {}
+  return Object.fromEntries((data || []).map((m) => [m.agency_id, {
+    agencyCode: m.agency_code ?? null,
+    subAdmin: m.sub_admin_name || '', subAdminId: m.sub_admin_display_id ?? '',
+    countryAdmin: m.country_admin_name || '', countryAdminId: m.country_admin_display_id ?? '',
+    globalAdmin: m.global_admin_name || '', globalAdminId: m.global_admin_display_id ?? '',
+  }]))
+}
+
+/* Adds each payslip's agency admins (Sub / Country / Global, with app IDs) and agency code, for the Payslips list and its export. */
+export async function withAgencyAdmins(rows) {
+  const map = await getSalaryAgencyMap()
+  return rows.map((r) => {
+    const m = map[r.agencyId] || {}
+    return {
+      ...r,
+      agencyCode: r.agencyCode ?? m.agencyCode ?? null,
+      subAdmin: m.subAdmin || '', subAdminId: m.subAdminId ?? '',
+      countryAdmin: m.countryAdmin || '', countryAdminId: m.countryAdminId ?? '',
+      globalAdmin: m.globalAdmin || '', globalAdminId: m.globalAdminId ?? '',
+    }
+  })
 }

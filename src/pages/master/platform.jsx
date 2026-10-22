@@ -10,7 +10,7 @@ import { loadReports } from '../../lib/reports.js'
 import { AGENCIES, num } from '../../data/util.js'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { useAuth } from '../../lib/auth.jsx'
-import { SalaryReport, SalarySlabs, SALARY_TABS, exportPayslips } from '../../components/SalaryReport.jsx'
+import { SalaryReport, SalarySlabs, SALARY_TABS, SALARY_SEARCH_KEYS, SALARY_SEARCH_HINT, exportPayslips } from '../../components/SalaryReport.jsx'
 import ExportButtons from '../../components/ExportButtons.jsx'
 import { usd } from '../../lib/money.js'
 import {
@@ -733,7 +733,8 @@ export function Salary() {
         <div className="mt-16">
           <DataTable
             rows={list}
-            searchKeys={['payee', 'username', 'agency', 'period', 'idShort']}
+            searchKeys={[...SALARY_SEARCH_KEYS, 'idShort']}
+            searchPlaceholder={SALARY_SEARCH_HINT}
             tabs={[
               { label: 'All', value: 'all', filter: () => true },
               { label: 'Processing', value: 'pr', filter: (r) => r.status === 'Processing' },
@@ -745,9 +746,12 @@ export function Salary() {
               { label: 'Period', options: [...new Set(list.map((r) => r.period))], get: (r) => r.period },
             ]}
             columns={[
-              personCol('payee', 'username'),
+              personCol('payee'),
+              { key: 'displayId', header: 'User ID', sortable: true, render: (r) => <span className="mono">{r.displayId ?? '—'}</span> },
               { key: 'role', header: 'Role', render: (r) => <Tag>{r.role}</Tag> },
-              { key: 'agency', header: 'Agency', sortable: true },
+              { key: 'agency', header: 'Agency', sortable: true, render: (r) => <span>{r.agencyCode != null && <span className="mono muted">{r.agencyCode} · </span>}{r.agency}</span> },
+              { key: 'countryAdmin', header: 'Country Admin', sortable: true, render: (r) => (r.countryAdmin ? r.countryAdmin : <span className="muted">—</span>) },
+              { key: 'globalAdmin', header: 'Global Admin', sortable: true, render: (r) => (r.globalAdmin ? r.globalAdmin : <span className="muted">—</span>) },
               { key: 'period', header: 'Period', sortable: true },
               moneyCol('base', 'Base'),
               moneyCol('bonus', 'Bonus'),
