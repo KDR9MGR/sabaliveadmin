@@ -1,7 +1,7 @@
 // Salary exports (CSV / Excel) and the search keys the salary tables use. Plain data: tested in salaryColumns.test.js.
 /* What the search boxes look at: name, username (search only), the app User ID, agency code and name, and the admins above the agency. */
-export const SALARY_SEARCH_KEYS = ['host', 'payee', 'username', 'displayId', 'agency', 'agencyCode', 'subAdmin', 'subAdminId', 'countryAdmin', 'countryAdminId', 'globalAdmin', 'globalAdminId', 'period']
-export const SALARY_SEARCH_HINT = 'Search by name, username, User ID, agency code, agency or admin…'
+export const SALARY_SEARCH_KEYS = ['host', 'payee', 'username', 'displayId', 'agency', 'agencyCode', 'agencyLabel', 'subAdmin', 'subAdminId', 'countryAdmin', 'countryAdminId', 'globalAdmin', 'globalAdminId', 'period']
+export const SALARY_SEARCH_HINT = 'Search by name, username, User ID, Agency ID, agency or admin…'
 export const slugOf = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
 
 /* What the downloads contain. `type` only matters for Excel (a $ format / thousands separators); CSV gets plain numbers. All money is USD.
@@ -62,3 +62,47 @@ export const PAYSLIP_COLUMNS = [
   { header: 'Status', value: (r) => r.status },
   { header: 'Paid on', value: (r) => r.paidAt || '' },
 ]
+
+/* The public Agency ID shown the way people read it: "20012 | India_Agency" (the same form the reference panel uses). */
+export const agencyLabel = (code, name) => (code != null && code !== '' ? `${code} | ${name || ''}`.trim() : String(name || ''))
+
+/* One entry of an agency list/picker. `search` is lower-cased text the type-to-search box looks in: the Agency ID first, then the name, then both
+   together, so "20012", "india" and "20012 | in" all find it. */
+export const agencyOption = (a) => ({
+  value: a.id,
+  label: agencyLabel(a.display_id, a.name),
+  code: a.display_id ?? null,
+  name: a.name || '',
+  search: `${a.display_id ?? ''} ${a.name || ''} ${agencyLabel(a.display_id, a.name)}`.toLowerCase(),
+})
+
+/* One record of the salary_report RPC -> the row the tables and exports use. Pure, so the whole chain (record -> row -> search) is tested. The
+   username is kept only so the search box can find a host by it; it is never shown or exported. agencyLabel is "20012 | Name". */
+export const mapReportRow = (r) => ({
+  id: r.host_id,
+  hostId: r.host_id,
+  host: r.host_name || '—',
+  username: r.host_username,
+  displayId: r.host_display_id,
+  agencyId: r.agency_id,
+  agency: r.agency_name || '—',
+  agencyCode: r.agency_code ?? null,                 // the public Agency ID
+  agencyLabel: agencyLabel(r.agency_code, r.agency_name),
+  period: r.period,
+  earned: Number(r.diamonds_earned),                 // diamonds from gifts (what the slab is measured on)
+  rewards: Number(r.diamonds_rewards || 0),          // Lucky Box diamonds of the month, net of pull-backs
+  totalDiamonds: Number(r.diamonds_earned) + Number(r.diamonds_rewards || 0),
+  subAdmin: r.sub_admin_name || '', subAdminId: r.sub_admin_display_id ?? '',
+  countryAdmin: r.country_admin_name || '', countryAdminId: r.country_admin_display_id ?? '',
+  globalAdmin: r.global_admin_name || '', globalAdminId: r.global_admin_display_id ?? '',
+  hours: Number(r.live_hours),
+  days: Number(r.live_days),
+  withdrawn: Number(r.withdrawn_diamonds),
+  available: Number(r.available_diamonds),
+  slabId: r.slab_id,
+  slab: r.slab_name,
+  payment: r.payment_usd != null ? Number(r.payment_usd) : null,
+  payslipId: r.payslip_id,
+  payslipStatus: r.payslip_status,
+  blocked: r.blocked_reason,
+})

@@ -4,6 +4,7 @@ import { Card, Button, Badge, Tag, EmptyState, useToast, ConfirmDialog } from '.
 import { personCol, numCol, moneyCol } from './cells.jsx'
 import DataTable from './DataTable.jsx'
 import EntityForm from './EntityForm.jsx'
+import UserPicker from './UserPicker.jsx'
 import ExportButtons from './ExportButtons.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
@@ -24,6 +25,8 @@ export const SALARY_TABS = [
   { label: 'Salary slabs', value: 'slabs' },
 ]
 
+/* The first entry of the agency filter: no agency chosen (value '') = every agency the account can see. */
+const ALL_AGENCIES = { value: '', label: 'All agencies in my scope', search: 'all agencies in my scope' }
 const monthLabel = (m) => {
   const [y, mo] = m.split('-').map(Number)
   return new Date(y, mo - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })
@@ -95,12 +98,15 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
                 <input className="input" type="month" value={month} max={istMonth(0)} onChange={(e) => e.target.value && setMonth(e.target.value)} />
               </div>
               {!fixedAgency && (
-                <div className="field" style={{ marginBottom: 0, minWidth: 220 }}>
+                <div className="field" style={{ marginBottom: 0, minWidth: 280 }}>
                   <label>Agency</label>
-                  <select className="input" value={agency} onChange={(e) => setAgency(e.target.value)}>
-                    <option value="">All agencies in my scope</option>
-                    {(agencies || []).map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
-                  </select>
+                  <UserPicker
+                    options={[ALL_AGENCIES, ...(agencies || [])]}
+                    value={agency}
+                    onChange={setAgency}
+                    limit={300}
+                    placeholder="Search by Agency ID or name…"
+                  />
                 </div>
               )}
               <div className="grow" />

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 /* Type-to-search user picker — filters `options` (each { value, label, search })
    by name, username or ID as you type. Click a match to select; click the
    field again to search and change it. */
-export default function UserPicker({ options, value, onChange, placeholder = 'Search by name, username or ID…' }) {
+export default function UserPicker({ options, value, onChange, placeholder = 'Search by name, username or ID…', limit = 50 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -32,7 +32,7 @@ export default function UserPicker({ options, value, onChange, placeholder = 'Se
           {filtered.length === 0 && (
             <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--text-muted)' }}>No matches</div>
           )}
-          {filtered.slice(0, 50).map((o) => (
+          {filtered.slice(0, limit).map((o) => (
             <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); setQuery('') }}>
               {o.label}
             </button>

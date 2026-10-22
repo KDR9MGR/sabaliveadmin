@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { mapReportRow, agencyLabel } from './salaryColumns.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 
@@ -55,33 +56,7 @@ export async function deleteSalarySlab(id) {
 export async function getSalaryReport(month, agencyId) {
   const { data, error } = await supabase.rpc('salary_report', { p_month: month, p_agency: agencyId || null })
   if (error) throw error
-  return (data || []).map((r) => ({
-    id: r.host_id,
-    hostId: r.host_id,
-    host: r.host_name || '—',
-    username: r.host_username,
-    displayId: r.host_display_id,
-    agencyId: r.agency_id,
-    agency: r.agency_name || '—',
-    period: r.period,
-    earned: Number(r.diamonds_earned),                 // diamonds from gifts (what the slab is measured on)
-    rewards: Number(r.diamonds_rewards || 0),          // Lucky Box diamonds of the month, net of pull-backs
-    totalDiamonds: Number(r.diamonds_earned) + Number(r.diamonds_rewards || 0),
-    agencyCode: r.agency_code ?? null,                 // the public Agency ID
-    subAdmin: r.sub_admin_name || '', subAdminId: r.sub_admin_display_id ?? '',
-    countryAdmin: r.country_admin_name || '', countryAdminId: r.country_admin_display_id ?? '',
-    globalAdmin: r.global_admin_name || '', globalAdminId: r.global_admin_display_id ?? '',
-    hours: Number(r.live_hours),
-    days: Number(r.live_days),
-    withdrawn: Number(r.withdrawn_diamonds),
-    available: Number(r.available_diamonds),
-    slabId: r.slab_id,
-    slab: r.slab_name,
-    payment: r.payment_usd != null ? Number(r.payment_usd) : null,
-    payslipId: r.payslip_id,
-    payslipStatus: r.payslip_status,
-    blocked: r.blocked_reason,
-  }))
+  return (data || []).map(mapReportRow)
 }
 
 /* Creates one 'processing' payslip (USD) per host that reached a slab, for a month that has ended. No wallet money moves; staff mark the payslips
@@ -136,6 +111,7 @@ export async function withAgencyAdmins(rows) {
     return {
       ...r,
       agencyCode: r.agencyCode ?? m.agencyCode ?? null,
+      agencyLabel: agencyLabel(r.agencyCode ?? m.agencyCode ?? null, r.agency),
       subAdmin: m.subAdmin || '', subAdminId: m.subAdminId ?? '',
       countryAdmin: m.countryAdmin || '', countryAdminId: m.countryAdminId ?? '',
       globalAdmin: m.globalAdmin || '', globalAdminId: m.globalAdminId ?? '',

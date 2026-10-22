@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
 import { withAgencyAdmins } from './salaryReport.js'
+import { agencyOption } from './salaryColumns.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -14,9 +15,11 @@ export async function payeeOptions() {
   const rows = unwrap(await supabase.from('profiles').select('id, name, username').order('name').limit(1000))
   return rows.map((p) => ({ value: p.id, label: `${p.name} (@${p.username})` }))
 }
+/* The agencies the caller can see, as "20012 | Name" (the public Agency ID first), ordered by that ID, each with the text a type-to-search box
+   looks in, so an agency is found by its ID as well as its name. */
 export async function agencyOptions() {
-  const rows = unwrap(await supabase.from('agencies').select('id, name').order('name'))
-  return rows.map((a) => ({ value: a.id, label: a.name }))
+  const rows = unwrap(await supabase.from('agencies').select('id, name, display_id').order('display_id'))
+  return rows.map(agencyOption)
 }
 
 /* ---------------------------------------------------------------- list */
