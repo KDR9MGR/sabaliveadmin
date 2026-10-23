@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { ROLE_LABEL } from './admin.js'
+import { fetchAllPages } from './profileSearch.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 
@@ -34,8 +35,8 @@ export async function listSeatHolders(role) {
 /* Ordinary users who could take a seat (no panel role yet). */
 export async function listHandoverTargets() {
   const [profiles, staff] = await Promise.all([
-    supabase.from('profiles').select('id, name, username, display_id').eq('is_ghost', false)
-      .order('name').limit(2000).then(unwrap),
+    fetchAllPages((from, to) => supabase.from('profiles').select('id, name, username, display_id').eq('is_ghost', false)
+      .order('name').order('id').range(from, to).then(unwrap)),
     supabase.from('staff_roles').select('user_id').then(unwrap),
   ])
   const taken = new Set((staff || []).map((s) => s.user_id))

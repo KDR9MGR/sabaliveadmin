@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { fetchAllPages } from './profileSearch.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 
@@ -62,8 +63,8 @@ export async function deleteSeller(id) {
 
 /* Users a seller can be linked to. */
 export async function sellerUserOptions() {
-  const rows = unwrap(await supabase.from('profiles')
-    .select('id, name, username, display_id, phone').eq('is_ghost', false).order('name').limit(2000))
+  const rows = await fetchAllPages((from, to) => supabase.from('profiles')
+    .select('id, name, username, display_id, phone').eq('is_ghost', false).order('name').order('id').range(from, to).then(unwrap))
   return rows.map((p) => ({
     value: p.id,
     label: `${p.name} (@${p.username}) · ID ${p.display_id}`,

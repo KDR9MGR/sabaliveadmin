@@ -10,7 +10,7 @@ import DataTable from '../components/DataTable.jsx'
 import UserPicker from '../components/UserPicker.jsx'
 import { TableSkeleton, LoadError } from './_templates.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
-import { profileOptions } from '../lib/coins.js'
+import { searchProfileOptions } from '../lib/coins.js'
 import {
   myCoinBalance, transferCoinsDown, listCoinTransfers, listUserCoinHistory,
   listOwnedAgencies, ownedAgencyManagerOptions,
@@ -21,8 +21,9 @@ import { num } from '../data/index.js'
 /* `kinds` = which recipient types this level may send to, each with the loader
    for its picker options, e.g.
    [{ value: 'agency', label: 'Agency', load: ownedAgencyManagerOptions },
-    { value: 'user',   label: 'User',   load: profileOptions }]. */
-export const USER_KIND = { value: 'user', label: 'User', load: profileOptions }
+    { value: 'user',   label: 'User',   load: async () => [], search: searchProfileOptions }]. */
+/* The user list is searched live (by User ID, name or username), never preloaded: a preloaded list stops at 1000 people. */
+export const USER_KIND = { value: 'user', label: 'User', load: async () => [], search: searchProfileOptions }
 export const OWNED_AGENCY_KIND = { value: 'agency', label: 'Agency', load: ownedAgencyManagerOptions }
 const EMPTY = { to: '', coins: '', note: '' }
 
@@ -74,9 +75,10 @@ export function TransferCoinsPage({ crumbs, kinds, hideHeader = false }) {
                 <label>{kinds.find((k) => k.value === kind).label} <span className="req">*</span></label>
                 <UserPicker
                   options={data.options[kind]}
+                  onSearch={kinds.find((k) => k.value === kind)?.search}
                   value={values.to}
                   onChange={(v) => set('to', v)}
-                  placeholder={kind === 'agency' ? 'Search agency or manager…' : kind === 'sub_admin' ? 'Search sub admin…' : kind === 'country_admin' ? 'Search country admin…' : undefined}
+                  placeholder={kind === 'user' ? 'Search by name, username or User ID…' : kind === 'agency' ? 'Search agency or manager…' : kind === 'sub_admin' ? 'Search sub admin…' : kind === 'country_admin' ? 'Search country admin…' : undefined}
                 />
                 {kind !== 'user' && !data.options[kind].length && (
                   <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>

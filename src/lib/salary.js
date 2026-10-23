@@ -2,6 +2,7 @@ import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
 import { withAgencyAdmins } from './salaryReport.js'
 import { agencyOption } from './salaryColumns.js'
+import { fetchAllPages } from './profileSearch.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -12,7 +13,7 @@ export const SALARY_STATUSES = ['processing', 'paid', 'on_hold']
 
 /* ---------------------------------------------------------------- pickers */
 export async function payeeOptions() {
-  const rows = unwrap(await supabase.from('profiles').select('id, name, username').order('name').limit(1000))
+  const rows = await fetchAllPages((from, to) => supabase.from('profiles').select('id, name, username').order('name').order('id').range(from, to).then(unwrap))
   return rows.map((p) => ({ value: p.id, label: `${p.name} (@${p.username})` }))
 }
 /* The agencies the caller can see, as "20012 | Name" (the public Agency ID first), ordered by that ID, each with the text a type-to-search box

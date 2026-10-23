@@ -9,7 +9,7 @@ import {
   listGifts, createGift, updateGift, deleteGift,
   listCoinPackages, createCoinPackage, updateCoinPackage, deleteCoinPackage,
   listWalletLedger, listGiftTransactions,
-  createCoinGrant, listMyCoinHistory, pullBackCoinGrant, profileOptions,
+  createCoinGrant, listMyCoinHistory, pullBackCoinGrant, searchProfileOptions,
   GIFT_CATEGORIES, PLATFORMS,
 } from '../../lib/coins.js'
 import { uploadMedia, UPLOAD_ACCEPT, AUDIO_ACCEPT, AUDIO_HINT } from '../../lib/storage.js'
@@ -270,7 +270,6 @@ const DISTRIBUTE_KINDS = [
 
 export function TransferCoins() {
   const toast = useToast()
-  const { data: opts } = useAsyncData(profileOptions)
   const { data: recent, reload } = useAsyncData(async () => (await listMyCoinHistory()).filter((r) => r.direction === 'Sent'))
   const [mode, setMode] = useState('To a user')
   const [busy, setBusy] = useState(false)
@@ -303,7 +302,7 @@ export function TransferCoins() {
             <div className="form-grid">
               <div className="field full">
                 <label>Recipient <span className="req">*</span></label>
-                <UserPicker options={opts || []} value={values.granted_to} onChange={(v) => set('granted_to', v)} />
+                <UserPicker onSearch={searchProfileOptions} value={values.granted_to} onChange={(v) => set('granted_to', v)} placeholder="Search by name, username or User ID…" />
               </div>
               <div className="field">
                 <label>Amount (coins) <span className="req">*</span></label>

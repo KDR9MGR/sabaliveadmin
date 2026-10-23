@@ -2,12 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 
 /* Type-to-search user picker — filters `options` (each { value, label, search })
    by name, username or ID as you type. Click a match to select; click the
-   field again to search and change it. */
-export default function UserPicker({ options, value, onChange, placeholder = 'Search by name, username or ID…', limit = 50 }) {
+   field again to search and change it.
+   With `onSearch` (async (text) => options) it searches the DATABASE as you type instead, so it works however many people there are: nothing is
+   preloaded, results appear after a short pause, and the picked person's label stays shown. Pass a stable function (defined outside the component). */
+export default function UserPicker({ options = [], value, onChange, placeholder = 'Search by name, username or ID…', limit = 50, onSearch }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  const [remote, setRemote] = useState([])     // onSearch results for what is typed now
+  const [chosen, setChosen] = useState(null)   // the person picked through onSearch, so the field keeps showing them
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState('')
   const ref = useRef(null)
-  const selected = options.find((o) => o.value === value)
+  const selected = onSearch ? (chosen && chosen.value === value ? chosen : null) : options.find((o) => o.value === value)
 
   useEffect(() => {
     const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -15,8 +21,23 @@ export default function UserPicker({ options, value, onChange, placeholder = 'Se
     return () => window.removeEventListener('mousedown', onClick)
   }, [])
 
+  useEffect(() => {
+    if (!onSearch) return undefined
+    const text = query.trim()
+    if (!text) { setRemote([]); setBusy(false); setFailed(''); return undefined }
+    let live = true
+    setBusy(true)
+    const t = setTimeout(async () => {
+      try { const r = await onSearch(text); if (live) { setRemote(r); setFailed('') } }
+      catch (e) { if (live) { setRemote([]); setFailed(e?.message || 'Search failed') } }
+      finally { if (live) setBusy(false) }
+    }, 250)
+    return () => { live = false; clearTimeout(t) }
+  }, [query, onSearch])
+
   const q = query.trim().toLowerCase()
-  const filtered = q ? options.filter((o) => o.search.includes(q)) : options
+  const filtered = onSearch ? remote : (q ? options.filter((o) => o.search.includes(q)) : options)
+  const pick = (o) => { setChosen(o); onChange(o.value); setOpen(false); setQuery('') }
 
   return (
     <div className="pos-rel" ref={ref}>
@@ -29,11 +50,20 @@ export default function UserPicker({ options, value, onChange, placeholder = 'Se
       />
       {open && (
         <div className="menu-pop" style={{ left: 0, right: 'auto', width: '100%', maxHeight: 260, overflowY: 'auto' }}>
-          {filtered.length === 0 && (
+          {onSearch && !q && (
+            <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--text-muted)' }}>Type a name, username or User ID</div>
+          )}
+          {onSearch && q && busy && (
+            <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--text-muted)' }}>Searching…</div>
+          )}
+          {onSearch && q && !busy && failed && (
+            <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--danger)' }}>{failed}</div>
+          )}
+          {(!onSearch || (q && !busy && !failed)) && filtered.length === 0 && (
             <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--text-muted)' }}>No matches</div>
           )}
-          {filtered.slice(0, limit).map((o) => (
-            <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); setQuery('') }}>
+          {!(onSearch && busy) && filtered.slice(0, limit).map((o) => (
+            <button key={o.value} type="button" onClick={() => pick(o)}>
               {o.label}
             </button>
           ))}

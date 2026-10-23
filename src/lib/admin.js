@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { activeRestrictions } from './bans.js'
+import { fetchAllPages } from './profileSearch.js'
 
 /* ---------------------------------------------------------------- helpers */
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
@@ -33,18 +34,21 @@ export async function listUsers() {
   const cols = 'id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins, diamonds), host_profiles(tier, status, kyc_status, agencies(name))'
   const run = (select) => {
     // ghost IDs (monitoring accounts) are managed under Super Admin → Ghost IDs, not here
-    let q = supabase.from('profiles').select(select).eq('is_ghost', false).order('created_at', { ascending: false }).limit(1000)
-    if (staffIds.length) q = q.not('id', 'in', `(${staffIds.join(',')})`)
-    return q
+    // paged: the server returns at most 1000 rows per request, so a single request hid every user past the thousandth
+    return fetchAllPages((from, to) => {
+      let q = supabase.from('profiles').select(select).eq('is_ghost', false).order('created_at', { ascending: false }).order('id').range(from, to)
+      if (staffIds.length) q = q.not('id', 'in', `(${staffIds.join(',')})`)
+      return q.then(unwrap)
+    })
   }
   let rows
   try {
-    rows = unwrap(await run(`${cols}, user_bans!user_id(kind, ends_at, lifted_at)`))
+    rows = await run(`${cols}, user_bans!user_id(kind, ends_at, lifted_at)`)
   } catch (e) {
     // Before the bans migration is applied there is no user_bans relationship;
     // the list should still load (just without restrictions) rather than break.
     if (!/user_bans/.test(e?.message || '')) throw e
-    rows = unwrap(await run(cols))
+    rows = await run(cols)
   }
   return rows.map((r) => ({
     ...restrictionFields(r),

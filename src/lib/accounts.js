@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate, ROLE_LABEL } from './admin.js'
 import { staffEmails } from './country.js'
+import { fetchAllPages } from './profileSearch.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 
@@ -51,7 +52,7 @@ export async function getStaffAccess(userId) {
 /* Profiles that don't yet have any staff_roles row — candidates to grant. */
 export async function grantableProfiles() {
   const [profiles, staff] = await Promise.all([
-    supabase.from('profiles').select('id, name, username, display_id').order('name').limit(2000).then(unwrap),
+    fetchAllPages((from, to) => supabase.from('profiles').select('id, name, username, display_id').order('name').order('id').range(from, to).then(unwrap)),
     supabase.from('staff_roles').select('user_id').then(unwrap),
   ])
   const taken = new Set((staff || []).map((s) => s.user_id))

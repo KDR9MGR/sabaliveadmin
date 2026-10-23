@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
 import { notifyCoinsChanged } from './balance.js'
+import { fetchAllPages } from './profileSearch.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split(/[_:]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -131,6 +132,6 @@ export async function minterCandidates() {
 
 /* recipient picker for "specific users" distribution */
 export async function profilePickList() {
-  const rows = unwrap(await supabase.from('profiles').select('id, name, username').order('name').limit(1000))
+  const rows = await fetchAllPages((from, to) => supabase.from('profiles').select('id, name, username').order('name').order('id').range(from, to).then(unwrap))
   return rows.map((p) => ({ value: p.id, label: `${p.name} (@${p.username})` }))
 }

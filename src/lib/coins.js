@@ -3,6 +3,7 @@ import { shortId, fmtDate, ROLE_LABEL } from './admin.js'
 import { relativeTime } from './format.js'
 import { notifyCoinsChanged } from './balance.js'
 import { checkSpeed } from './effectFields.js'
+import { fetchAllPages, profileOption, profileSearchFilter } from './profileSearch.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -14,13 +15,21 @@ export const GIFT_CATEGORIES = ['basic', 'luxury', 'vehicle', 'special', 'event'
 export const PLATFORMS = ['all', 'android', 'ios']
 
 /* ---------------------------------------------------------------- pickers */
+/* EVERYONE as picker entries, read in pages (the server returns at most 1000 rows per request, and a list that stopped at 1000 hid every person
+   after the thousandth by name). Fine for lists that need the whole set; the coin-transfer pickers use searchProfileOptions instead. */
 export async function profileOptions() {
-  const rows = unwrap(await supabase.from('profiles').select('id, name, username, display_id').order('name').limit(1000))
-  return rows.map((p) => ({
-    value: p.id,
-    label: `${p.name} (@${p.username}) · ID ${p.display_id}`,
-    search: `${p.name} ${p.username} ${p.display_id}`.toLowerCase(),
-  }))
+  const rows = await fetchAllPages((from, to) => supabase.from('profiles')
+    .select('id, name, username, display_id').order('name').order('id').range(from, to).then(unwrap))
+  return rows.map(profileOption)
+}
+
+/* Find people as you type, by app User ID, name or username, 25 at a time (the profiles rules decide who is visible). Used by the coin-transfer
+   pickers so a recipient is found however many people there are. */
+export async function searchProfileOptions(text) {
+  const filter = profileSearchFilter(text)
+  if (!filter) return []
+  const rows = unwrap(await supabase.from('profiles').select('id, name, username, display_id').or(filter).order('name').limit(25))
+  return rows.map(profileOption)
 }
 
 /* ---------------------------------------------------------------- gifts */
