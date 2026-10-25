@@ -1,58 +1,66 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { levelShiftPlan, shiftNotice, savedLine } from './levelRules.js'
+import { MAX_XP, checkXp, orderNote } from './levelRules.js'
 
 const rows = [
   { level: 1, xp: 0 }, { level: 2, xp: 500 }, { level: 3, xp: 2000 }, { level: 4, xp: 4500 }, { level: 5, xp: 8000 },
 ]
 
-test('an XP between the neighbours shifts nothing', () => {
-  assert.equal(levelShiftPlan(rows, 3, 3000).shift, false)
-  assert.equal(levelShiftPlan(rows, 3, 4499).shift, false)
-  assert.equal(levelShiftPlan(rows, 3, 501).shift, false)
+test('any whole number from 0 to the integer limit is accepted, whatever the other levels are', () => {
+  assert.deepEqual(checkXp(3, '5'), { xp: 5 })
+  assert.deepEqual(checkXp(3, ' 123456 '), { xp: 123456 })
+  assert.deepEqual(checkXp(3, 99999), { xp: 99999 })
+  assert.deepEqual(checkXp(100, String(MAX_XP)), { xp: MAX_XP })
+  assert.deepEqual(checkXp(2, '0'), { xp: 0 })
 })
 
-test('lowering a level never shifts', () => {
-  assert.equal(levelShiftPlan(rows, 3, 1000).shift, false)
+test('what is refused: nothing typed, not a whole number, negative, past the integer limit', () => {
+  assert.ok(checkXp(3, '').error)
+  assert.ok(checkXp(3, '   ').error)
+  assert.ok(checkXp(3, null).error)
+  assert.ok(checkXp(3, 'abc').error)
+  assert.ok(checkXp(3, '12.5').error)
+  assert.ok(checkXp(3, '-4').error)
+  assert.ok(checkXp(3, '1e6').error)
+  assert.match(checkXp(3, String(MAX_XP + 1)).error, /at most 2,147,483,647/)
 })
 
-test('reaching the next level moves every later level up by what this one moved', () => {
-  const p = levelShiftPlan(rows, 2, 2500)
-  assert.equal(p.shift, true)
-  assert.equal(p.delta, 2000)
-  assert.equal(p.count, 3)
-  assert.deepEqual([p.from, p.to], [3, 5])
-  assert.equal(p.newNext, 4000)
+test('level 1 is the one fixed number: it always needs 0 XP', () => {
+  assert.deepEqual(checkXp(1, '0'), { xp: 0 })
+  assert.match(checkXp(1, '5').error, /Level 1 always needs 0 XP/)
 })
 
-test('equal to the next level also shifts (the database needs it strictly below)', () => {
-  const p = levelShiftPlan(rows, 3, 4500)
-  assert.equal(p.shift, true)
-  assert.equal(p.delta, 2500)
-  assert.equal(p.count, 2)
+test('in order: no heads-up', () => {
+  assert.equal(orderNote(rows, 3, 3000), '')
+  assert.equal(orderNote(rows, 3, 500), '', 'equal to the previous level is not lower')
+  assert.equal(orderNote(rows, 3, 4500), '', 'equal to the next level is not higher')
 })
 
-test('the top level and a new level have nothing above them', () => {
-  assert.equal(levelShiftPlan(rows, 5, 999999).shift, false)
-  assert.equal(levelShiftPlan(rows, 6, 9000).shift, false)
+test('lower than the previous level: a heads-up that names it', () => {
+  assert.equal(orderNote(rows, 4, 100), 'Lower than level 3 (2,000 XP): people reach this level before level 3.')
 })
 
-test('empty or unreadable input shifts nothing', () => {
-  assert.equal(levelShiftPlan([], 2, 600).shift, false)
-  assert.equal(levelShiftPlan(null, 2, 600).shift, false)
-  assert.equal(levelShiftPlan(rows, 2, '').shift, false)
-  assert.equal(levelShiftPlan(rows, 2, 'abc').shift, false)
-  assert.equal(levelShiftPlan(rows, 2, null).shift, false)
+test('higher than the next level: a heads-up that names it', () => {
+  assert.equal(orderNote(rows, 2, 3000), 'Higher than level 3 (2,000 XP): people reach level 3 before this one.')
 })
 
-test('the notice names the levels, the amount and the new XP of the next level', () => {
-  assert.equal(shiftNotice(levelShiftPlan(rows, 2, 3000)), 'Levels 3 to 5 will move up by 2,500 XP (level 3 then needs 4,500), so each keeps its gap. Everyone is re-levelled at once.')
-  assert.match(shiftNotice(levelShiftPlan(rows, 4, 8000)), /^Level 5 will move up by 3,500 XP/)
-  assert.equal(shiftNotice(levelShiftPlan(rows, 3, 3000)), '')
+test('a number that is outside both neighbours says both', () => {
+  const odd = [{ level: 1, xp: 0 }, { level: 2, xp: 1000 }, { level: 3, xp: 50 }, { level: 4, xp: 900 }]
+  const note = orderNote(odd, 3, 50)
+  assert.match(note, /Lower than level 2/)
+  assert.doesNotMatch(note, /Higher/)
+  assert.match(orderNote(odd, 2, 2000), /Higher than level 3/)
 })
 
-test('the saved line says how many levels moved', () => {
-  assert.equal(savedLine(0), 'Level saved')
-  assert.equal(savedLine(1), 'Level saved. 1 later level moved up')
-  assert.equal(savedLine(4), 'Level saved. 4 later levels moved up')
+test('the top level and the first level have only one neighbour', () => {
+  assert.equal(orderNote(rows, 5, 999999), '')
+  assert.match(orderNote(rows, 5, 10), /Lower than level 4/)
+  assert.equal(orderNote(rows, 1, 0), '')
+})
+
+test('empty or unreadable input gives no heads-up', () => {
+  assert.equal(orderNote([], 2, 600), '')
+  assert.equal(orderNote(null, 2, 600), '')
+  assert.equal(orderNote(rows, 2, ''), '')
+  assert.equal(orderNote(rows, 2, 'abc'), '')
 })

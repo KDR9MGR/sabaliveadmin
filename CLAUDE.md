@@ -46,10 +46,10 @@ Tag pictures accept **SVGA** (2026-10-25; `TAG_IMAGE_ACCEPT` starts with `.svga`
 Management (`pages/master/platform.jsx`, `UPLOAD_ACCEPT`) already took SVGA / MP4 / GIF / WebP / PNG; the app now draws an uploaded SVGA badge or tag instead of the emoji / pill (MP4 still falls back to the emoji / pill on a profile).
 
 ## Levels and bans (2026-10-25)
-Levels (`pages/master/levels.jsx`, `lib/levels.js`, pure rules in `lib/levelRules.js`): any level can be edited; when the XP typed reaches the next level the drawer says which later levels will move up (each
-keeps its gap) and the save sends `p_shift` to `admin_save_track_level_v2` (sabalive migration `20261025110000`). Bans (`components/BanDialog.jsx`, `lib/bans.js`, pure rules in `lib/banRules.js`): 24 hours, 7 days,
+Levels (`pages/master/levels.jsx`, `lib/levels.js`, pure rules in `lib/levelRules.js`): every level takes exactly the XP typed (0 to 2,147,483,647), whatever the levels around it need; level 1 is 0; `saveTrackLevel` calls
+`admin_save_track_level_v3` (sabalive migration `20261025140000`) and falls back to v2, then v1, while it is missing. The drawer only shows a heads-up (never a block) when the number is outside its neighbours. Bans (`components/BanDialog.jsx`, `lib/bans.js`, pure rules in `lib/banRules.js`): 24 hours, 7 days,
 30 days, a custom date and time (browser time zone, sent as an ISO instant) or permanent, through `ban_user_v2` (`20261025120000`); the reason box is "Reason (shown to the user)": the user sees it, with the end
-time, when they try to sign in. Both fall back to the old functions (`lib/dbErrors.js` `isMissingFunction`) while the migrations are not on the project; 24 hour / custom bans and shifting need them. Ban ends
+time, when they try to sign in. Both fall back to the old functions (`lib/dbErrors.js` `isMissingFunction`) while the migrations are not on the project; 24 hour / custom bans need them. Ban ends
 are shown with their time.
 
 ## Environment switch (production <-> staging)

@@ -20,21 +20,22 @@ export async function listTrackLevels(track) {
   }))
 }
 
-/* Saves one level's XP and image. `shift`: when the new XP reaches the next level, move every later level up by the same amount instead of refusing
-   (admin_save_track_level_v2, sabalive migration 20261025110000). Returns how many later levels moved. While that migration is not on the
-   project it falls back to the strict old function (XP must stay between the neighbours). */
-export async function saveTrackLevel(track, { level, xp, image, shift = false }) {
-  const { data, error } = await supabase.rpc('admin_save_track_level_v2', {
-    p_track: track, p_level: Number(level), p_xp: Number(xp), p_image_url: image || null, p_shift: !!shift,
-  })
-  if (!error) return Number(data) || 0
-  if (!isMissingFunction(error)) throw error
-  if (shift) throw new Error('Moving the later levels needs the latest database update, which is not applied on this project yet.')
-  const old = await supabase.rpc('admin_save_track_level', {
-    p_track: track, p_level: Number(level), p_xp: Number(xp), p_image_url: image || null,
-  })
-  if (old.error) throw old.error
-  return 0
+/* Saves one level's XP and image: exactly the XP given, with no relation to the level before or after it (admin_save_track_level_v3, sabalive migration
+   20261025140000). On a project that does not have that migration yet it falls back to v2 (a level must stay below the next one), then to the first
+   version (strictly between its neighbours), so the page keeps working and the database's own refusal is what the person reads. */
+export async function saveTrackLevel(track, { level, xp, image }) {
+  const base = { p_track: track, p_level: Number(level), p_xp: Number(xp), p_image_url: image || null }
+  const attempts = [
+    ['admin_save_track_level_v3', base],
+    ['admin_save_track_level_v2', { ...base, p_shift: false }],
+    ['admin_save_track_level', base],
+  ]
+  for (const [fn, args] of attempts) {
+    const { error } = await supabase.rpc(fn, args)
+    if (!error) return
+    if (!isMissingFunction(error)) throw error
+  }
+  throw new Error('Saving a level needs a database update that is not applied on this project yet.')
 }
 
 export async function deleteTrackLevel(track, level) {
