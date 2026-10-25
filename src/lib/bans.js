@@ -1,5 +1,9 @@
 import { supabase } from './supabase.js'
 import { relativeTime } from './format.js'
+import { BAN_DURATIONS, endsOn, fmtEnd } from './banRules.js'
+import { isMissingFunction } from './dbErrors.js'
+
+export { BAN_DURATIONS, endsOn }
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const shortId = (uuid) => (uuid ? uuid.slice(0, 8) : '')
@@ -27,12 +31,6 @@ export const BAN_KINDS = {
 }
 export const BAN_KIND_KEYS = Object.keys(BAN_KINDS)
 
-export const BAN_DURATIONS = [
-  { value: '7d', label: '7 days', days: 7 },
-  { value: '30d', label: '30 days', days: 30 },
-  { value: 'permanent', label: 'Permanent' },
-]
-
 /* A ban row from the database: in force right now? */
 export const isBanActive = (b, now = Date.now()) =>
   !b.lifted_at && (!b.ends_at || new Date(b.ends_at).getTime() > now)
@@ -40,14 +38,7 @@ export const isBanActive = (b, now = Date.now()) =>
 export const banState = (b, now = Date.now()) =>
   b.lifted_at ? 'Lifted' : isBanActive(b, now) ? 'Active' : 'Expired'
 
-export const untilLabel = (b) => (b.ends_at ? fmtDate(b.ends_at) : 'Permanent')
-
-/* The end date a duration would give, for the dialog's preview. */
-export function endsOn(duration, now = new Date()) {
-  const d = BAN_DURATIONS.find((x) => x.value === duration)
-  if (!d?.days) return 'Never — until you lift it'
-  return fmtDate(new Date(now.getTime() + d.days * 86400000).toISOString())
-}
+export const untilLabel = (b) => (b.ends_at ? fmtEnd(b.ends_at) : 'Permanent')
 
 /* The active bans in a list of ban rows, as small display objects. */
 export function activeRestrictions(rows, now = Date.now()) {
@@ -61,7 +52,22 @@ export function activeRestrictions(rows, now = Date.now()) {
     }))
 }
 
-export async function banUser(userId, kinds, duration, reason) {
+/* duration: '24h' | '7d' | '30d' | 'custom' | 'permanent'; endsAt (an ISO instant) only for 'custom'. The reason is shown to the person when
+   they try to sign in (ban_user_v2, sabalive migration 20261025120000). While that migration is not on the project it falls back to ban_user,
+   which has only 7 days / 30 days / permanent and keeps the reason private. */
+export async function banUser(userId, kinds, duration, reason, endsAt) {
+  const { data, error } = await supabase.rpc('ban_user_v2', {
+    p_user: userId,
+    p_kinds: kinds,
+    p_duration: duration,
+    p_reason: reason || null,
+    p_ends_at: endsAt || null,
+  })
+  if (!error) return data
+  if (!isMissingFunction(error)) throw error
+  if (duration === '24h' || duration === 'custom') {
+    throw new Error('A 24 hour or custom-date ban needs the latest database update, which is not applied on this project yet.')
+  }
   return unwrap(await supabase.rpc('ban_user', {
     p_user: userId,
     p_kinds: kinds,

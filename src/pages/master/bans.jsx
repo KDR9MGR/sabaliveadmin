@@ -35,7 +35,7 @@ export function Bans() {
       <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
         Place a ban from a user's row or profile (<b>Restrict (ban)…</b>). <b>Live ban</b>: no watching, hosting, chat, gifts or seats.
         {' '}<b>ID ban</b>: the account is signed out and can't sign in (its devices are banned too).
-        {' '}<b>Device ban</b>: the phone(s) the user has used, for any account. Each lasts 7 days, 30 days or permanently.
+        {' '}<b>Device ban</b>: the phone(s) the user has used, for any account. Each lasts 24 hours, 7 days, 30 days, until a date you pick, or permanently. The reason you write is shown to the user when they try to sign in.
       </div></Card>
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable

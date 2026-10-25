@@ -42,6 +42,15 @@ Badge / Profile Frame / Leaderboard entries; Country has no Add Agency.
 background picture the app writes the name on; pictures are uploaded to the `gift-assets` bucket) and gives them to users (search a user, tick tags, max 10).
 Capability `manage_tags` is on by default for a Master and grantable to Global / Country / Sub Admin and Agency in Access Control; the SQL side is `staff_can_manage_tags()`
 (sabalive migration `20261021190000`). Pure rules in `lib/profileTags.js` (tested), database calls in `lib/profileTagsApi.js`. While the tables are missing the page says so.
+Tag pictures accept **SVGA** (2026-10-25; `TAG_IMAGE_ACCEPT` starts with `.svga`, `isSvga(url)`; the page previews one with `SvgaPlayer`, for the picture look and the plate look). Badge
+Management (`pages/master/platform.jsx`, `UPLOAD_ACCEPT`) already took SVGA / MP4 / GIF / WebP / PNG; the app now draws an uploaded SVGA badge or tag instead of the emoji / pill (MP4 still falls back to the emoji / pill on a profile).
+
+## Levels and bans (2026-10-25)
+Levels (`pages/master/levels.jsx`, `lib/levels.js`, pure rules in `lib/levelRules.js`): any level can be edited; when the XP typed reaches the next level the drawer says which later levels will move up (each
+keeps its gap) and the save sends `p_shift` to `admin_save_track_level_v2` (sabalive migration `20261025110000`). Bans (`components/BanDialog.jsx`, `lib/bans.js`, pure rules in `lib/banRules.js`): 24 hours, 7 days,
+30 days, a custom date and time (browser time zone, sent as an ISO instant) or permanent, through `ban_user_v2` (`20261025120000`); the reason box is "Reason (shown to the user)": the user sees it, with the end
+time, when they try to sign in. Both fall back to the old functions (`lib/dbErrors.js` `isMissingFunction`) while the migrations are not on the project; 24 hour / custom bans and shifting need them. Ban ends
+are shown with their time.
 
 ## Environment switch (production <-> staging)
 `src/lib/environments.js` picks the Supabase project; `components/EnvironmentSwitch.jsx` is the top-bar pill (Master and

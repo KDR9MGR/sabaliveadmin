@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Modal, Button, useToast } from './ui.jsx'
 import { BAN_KINDS, BAN_KIND_KEYS, BAN_DURATIONS, endsOn, banUser, liftUserBans, listUserBans } from '../lib/bans.js'
+import { banTerms, toLocalInput } from '../lib/banRules.js'
 
-/* Restrict a user: tick any of Live ban / ID ban / Device ban, pick how long,
-   add an internal reason. The reason is for staff — the user is only told the
-   type and the end date. The switches start at what is in force now, so
-   turning one OFF and pressing Apply lifts that ban; turning one ON adds it. */
+/* Restrict a user: tick any of Live ban / ID ban / Device ban, pick how long
+   (24 hours, 7 days, 30 days, a date and time of your choice, or permanent), and
+   give a reason. The reason is SHOWN TO THE USER when they try to sign in, with
+   the end date, so write it for them (staff notes belong elsewhere). The switches
+   start at what is in force now, so turning one OFF and pressing Apply lifts that
+   ban; turning one ON adds it. */
 export default function BanDialog({ user, defaultKinds = ['account'], onClose, onDone }) {
   const toast = useToast()
   const [kinds, setKinds] = useState(defaultKinds)
   const [active, setActive] = useState(null) // kinds banned right now; null while loading
   const [duration, setDuration] = useState('7d')
+  const [customEnd, setCustomEnd] = useState('') // datetime-local text, in this browser's time zone
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -35,11 +39,13 @@ export default function BanDialog({ user, defaultKinds = ['account'], onClose, o
 
   const submit = async () => {
     if (!toAdd.length && !toLift.length) { setError('Nothing to change'); return }
+    const terms = toAdd.length ? banTerms(duration, customEnd) : null
+    if (terms?.error) { setError(terms.error); return }
     setBusy(true)
     setError('')
     try {
       if (toLift.length) await liftUserBans(user.id, 'Lifted from the admin panel', toLift)
-      if (toAdd.length) await banUser(user.id, toAdd, duration, reason.trim())
+      if (toAdd.length) await banUser(user.id, toAdd, terms.duration, reason.trim(), terms.endsAt)
       const parts = [
         ...toLift.map((k) => `${BAN_KINDS[k].label} lifted`),
         ...toAdd.map((k) => `${BAN_KINDS[k].label} applied`),
@@ -91,19 +97,27 @@ export default function BanDialog({ user, defaultKinds = ['account'], onClose, o
       {toAdd.length > 0 && <>
       <div className="field" style={{ marginBottom: 16 }}>
         <label>For how long</label>
-        <div className="hstack" style={{ gap: 8 }}>
+        <div className="hstack" style={{ gap: 8, flexWrap: 'wrap' }}>
           {BAN_DURATIONS.map((d) => (
             <Button key={d.value} size="sm" variant={duration === d.value ? 'primary' : undefined} onClick={() => setDuration(d.value)}>
               {d.label}
             </Button>
           ))}
         </div>
-        <span className="hint">Ends: {endsOn(duration)}</span>
+        {duration === 'custom' && (
+          <input
+            className="input" type="datetime-local" style={{ marginTop: 8 }} aria-label="Ban ends on"
+            min={toLocalInput(new Date(Date.now() + 10 * 60000))}
+            value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
+          />
+        )}
+        <span className="hint">Ends: {endsOn(duration, new Date(), customEnd)}{duration === 'custom' && customEnd ? ' (your time zone)' : ''}</span>
       </div>
 
       <div className="field">
-        <label>Reason (internal)</label>
-        <textarea className="textarea" placeholder="Why — visible to staff only" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <label>Reason (shown to the user)</label>
+        <textarea className="textarea" maxLength={500} placeholder="Why — the user sees this, with the end date, when they try to sign in" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <span className="hint">Optional. Keep it short and polite; do not put private staff notes here.</span>
       </div>
       </>}
       {toLift.length > 0 && (
