@@ -42,8 +42,9 @@ export const FOOTER_LEGAL_LINKS = [
 // linking to placeholder/fake social profiles.
 export const SOCIAL_LINKS = []
 
-// App store links — wire these up once the listings are live.
+// App store links. Android is live on Google Play; iOS is not built yet. The shared-live page (/live/:id) sends a phone without the app to this
+// listing, and the home page's Google Play button opens it.
 export const STORE_LINKS = {
   ios: null,
-  android: null,
+  android: 'https://play.google.com/store/apps/details?id=com.sabalive.in',
 }
