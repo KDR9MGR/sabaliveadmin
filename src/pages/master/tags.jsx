@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { uploadMedia } from '../../lib/storage.js'
+import SvgaPlayer from '../../components/SvgaPlayer.jsx'
 import { AsyncView } from '../_templates.jsx'
 import { PageHeader, Card, Button, Drawer, ConfirmDialog, EmptyState, useToast } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import { numCol, statusCol } from '../../components/cells.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { listTags, saveTag, deleteTag, getUserTagIds, setUserTags, searchUsers } from '../../lib/profileTagsApi.js'
-import { checkTag, tagTextColor, toggleTag, sameTags, TAG_DEFAULT_COLOR, TAG_STATUSES, TAG_LOOKS, TAG_IMAGE_ACCEPT, TAG_NAME_MAX, MAX_TAGS_PER_USER } from '../../lib/profileTags.js'
+import { checkTag, tagTextColor, toggleTag, sameTags, isSvga, TAG_DEFAULT_COLOR, TAG_STATUSES, TAG_LOOKS, TAG_IMAGE_ACCEPT, TAG_NAME_MAX, MAX_TAGS_PER_USER } from '../../lib/profileTags.js'
 import { normalizeHex } from '../../lib/pkTheme.js'
 
 /* Master -> Tags: the staff tags that show on a user's profile in the app. Two parts: the list of tags (create, edit, hide, delete) and
@@ -21,6 +22,18 @@ export function TagPill({ tag, dim }) {
   const label = tag.emoji ? `${tag.emoji} ${tag.name}` : tag.name
   const opacity = dim ? 0.45 : 1
   const url = tag.image_url
+  if (tag.look === 'picture' && url && isSvga(url)) {
+    return <span title={tag.name} style={{ display: 'inline-flex', opacity, verticalAlign: 'middle' }}><SvgaPlayer url={url} size={28} fallback={<TagPill tag={{ ...tag, look: 'pill' }} />} /></span>
+  }
+  if (tag.look === 'plate' && url && isSvga(url)) {
+    return (
+      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 16px', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', opacity,
+        color: tagTextColor(tag), textShadow: '0 1px 2px rgba(0,0,0,.55)', background: color, borderRadius: 999 }}>
+        <SvgaPlayer url={url} size={28} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+        <span style={{ position: 'relative' }}>{label}</span>
+      </span>
+    )
+  }
   if (tag.look === 'picture' && url && !failed) {
     return <img src={url} alt={tag.name} title={tag.name} onError={() => setFailed(true)} style={{ height: 28, maxWidth: 220, objectFit: 'contain', opacity, verticalAlign: 'middle' }} />
   }
@@ -59,12 +72,18 @@ function PictureField({ value, onChange }) {
   return (
     <div className="field full">
       <label>Picture <span className="req">*</span></label>
-      {value && <div style={{ padding: '8px 0' }}><img src={value} alt="" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain', background: 'rgba(127,127,127,.15)', borderRadius: 8, padding: 6 }} /></div>}
+      {value && (
+        <div style={{ padding: '8px 0' }}>
+          {isSvga(value)
+            ? <SvgaPlayer url={value} size={72} />
+            : <img src={value} alt="" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain', background: 'rgba(127,127,127,.15)', borderRadius: 8, padding: 6 }} />}
+        </div>
+      )}
       <label className="btn" style={{ cursor: busy ? 'default' : 'pointer', textAlign: 'center' }}>
         {busy ? 'Uploading…' : value ? 'Replace picture' : 'Upload picture'}
         <input type="file" accept={TAG_IMAGE_ACCEPT} onChange={pick} disabled={busy} style={{ display: 'none' }} />
       </label>
-      <span className="hint">PNG, WebP or GIF, wide and short (about 4 to 1, at least 300 px wide), on a transparent background. It is shown about 28 px tall.</span>
+      <span className="hint">PNG, WebP, GIF or SVGA animation, wide and short (about 4 to 1, at least 300 px wide), on a transparent background. It is shown about 28 px tall; an SVGA keeps its own proportions and loops.</span>
       {error && <span style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</span>}
     </div>
   )

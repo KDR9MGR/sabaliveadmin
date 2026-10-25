@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { checkTag, textColorFor, tagTextColor, toggleTag, sameTags, tagError, MAX_TAGS_PER_USER, TAG_NAME_MAX, TAG_LOOKS } from './profileTags.js'
+import { checkTag, textColorFor, tagTextColor, toggleTag, sameTags, tagError, isSvga, TAG_IMAGE_ACCEPT, MAX_TAGS_PER_USER, TAG_NAME_MAX, TAG_LOOKS } from './profileTags.js'
 
 const ok = { name: 'Official', color: '#7C3AED', emoji: '✔️', status: 'active', sort_order: 3 }
 
@@ -48,6 +48,16 @@ test('a picture or plate tag needs an uploaded picture; a pill drops any picture
   assert.equal(checkTag({ ...ok, look: 'plate', image_url: PIC }).tag.look, 'plate')
   assert.equal(checkTag({ ...ok, look: 'pill', image_url: PIC }).tag.image_url, null)
   assert.equal(checkTag({ ...ok, look: 'nonsense' }).tag.look, 'pill', 'an unknown look is a pill')
+})
+
+test('SVGA files are accepted for a tag picture, next to pictures and GIF / WebP', () => {
+  assert.match(TAG_IMAGE_ACCEPT, /\.svga/)
+  assert.match(TAG_IMAGE_ACCEPT, /\.png/)
+  assert.equal(isSvga('https://abc123.supabase.co/storage/v1/object/public/gift-assets/tags/king.svga'), true)
+  assert.equal(isSvga('https://abc123.supabase.co/storage/v1/object/public/gift-assets/tags/king.svga?v=2'), true)
+  assert.equal(isSvga('https://abc123.supabase.co/storage/v1/object/public/gift-assets/tags/king.png'), false)
+  assert.equal(isSvga(null), false)
+  assert.equal(checkTag({ ...ok, look: 'picture', image_url: 'https://abc123.supabase.co/storage/v1/object/public/gift-assets/tags/king.svga' }).tag.image_url.endsWith('.svga'), true)
 })
 
 test('the text colour is optional but must be a colour when given', () => {
