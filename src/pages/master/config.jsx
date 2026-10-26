@@ -242,6 +242,14 @@ const RELEASE_FLAGS = [
     desc: 'On: the Games tab shows the platform\'s games (Android) and the server accepts the game platform\'s calls. Off by default; turning it off stops all game bets and lookups at once. Limits and reports are on the Games page.',
   },
   {
+    key: 'sud_games_enabled', def: false, title: 'SUD games (party games)',
+    desc: 'On: the SUD games chosen on the Games page (Ludo, Domino, UNO-style cards, ...) show in the app next to the Tulasi games and the server opens them. Needs Games to be on as well. Off by default; off hides them at once on open phones.',
+  },
+  {
+    key: 'sud_coin_games_enabled', def: false, title: 'SUD coin games',
+    desc: 'On: SUD games marked "stakes coins" (cards, betting) can be played and may move wallet coins, within the limits on the Games page. Needs SUD games to be on. Off by default: turn it on only after the same store and legal review the Tulasi games need.',
+  },
+  {
     key: 'screen_protection', def: false, title: 'Block screenshots and screen recording',
     desc: 'On: Android phones show a black picture instead of the app to screenshots, screen recorders, casting and the recent-apps list. iPhones cannot block screenshots, so this does nothing there. Off by default.',
   },

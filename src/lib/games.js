@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { relativeTime } from './format.js'
+import { sudGameRow } from './sudGames.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 
@@ -130,4 +131,41 @@ export async function listHostInflow(limit = 100) {
     received: Number(r.received), fromWinners: Number(r.from_game_winners), winnerSenders: Number(r.winner_senders),
     share: r.received > 0 ? Math.round((Number(r.from_game_winners) / Number(r.received)) * 100) : 0,
   }))
+}
+
+/* ---------------------------------------------------------------- SUD games (sabalive migration 20261026110000)
+   A second provider next to Tulasi. The games live in sud_games (their own table), shown in the app next to Tulasi's while two switches in Release controls allow it:
+   sud_games_enabled (needs the master games_enabled too) and sud_coin_games_enabled (the ones that stake wallet coins). */
+export async function getSudSwitches() {
+  const row = unwrap(await supabase.from('app_config').select('feature_flags').eq('id', true).maybeSingle())
+  const f = row?.feature_flags || {}
+  return { games: f.games_enabled === true, sud: f.sud_games_enabled === true, coins: f.sud_coin_games_enabled === true }
+}
+
+export async function listSudGames() {
+  const rows = unwrap(await supabase.from('sud_games')
+    .select('id, provider_game_id, name, image_url, description, aspect, uses_coins, status, hidden, sort_order, updated_at')
+    .order('sort_order', { ascending: true }).order('id', { ascending: true }).limit(500))
+  return rows.map(sudGameRow)
+}
+
+/* game: what checkSudGame returned. */
+export async function saveSudGame(game) {
+  const { data, error } = await supabase.rpc('admin_save_sud_game', {
+    p_provider_game_id: game.mgId, p_name: game.name, p_aspect: game.aspect, p_uses_coins: game.usesCoins,
+    p_image_url: game.image || null, p_description: game.description || null, p_status: game.status, p_sort: game.sort,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function deleteSudGame(id) {
+  const { error } = await supabase.rpc('admin_delete_sud_game', { p_id: id })
+  if (error) throw error
+}
+
+export async function setSudGamesHidden(ids, hidden) {
+  const { data, error } = await supabase.rpc('admin_set_sud_games_hidden', { p_ids: ids, p_hidden: hidden })
+  if (error) throw error
+  return data
 }

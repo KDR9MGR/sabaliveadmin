@@ -10,6 +10,7 @@ import Privacy from './pages/Privacy.jsx'
 import Terms from './pages/Terms.jsx'
 import DeleteAccount from './pages/DeleteAccount.jsx'
 import Live from './pages/Live.jsx'
+import SudPlay from './pages/SudPlay.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 /* Runs after each page's own useSeo (which resets scroll to top) so an
@@ -28,6 +29,9 @@ function ScrollToHash() {
 }
 
 export default function App() {
+  const { pathname } = useLocation()
+  // the game page opens inside the app's game panel: full screen, none of the site's header and footer
+  if (pathname === '/sud/play' || pathname === '/sud/play/') return <SudPlay />
   return (
     <Layout>
       <Routes>
