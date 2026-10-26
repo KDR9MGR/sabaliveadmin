@@ -10,6 +10,7 @@ import Privacy from './pages/Privacy.jsx'
 import Terms from './pages/Terms.jsx'
 import DeleteAccount from './pages/DeleteAccount.jsx'
 import Live from './pages/Live.jsx'
+import Invite from './pages/Invite.jsx'
 import SudPlay from './pages/SudPlay.jsx'
 import NotFound from './pages/NotFound.jsx'
 
@@ -44,6 +45,8 @@ export default function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/delete-account" element={<DeleteAccount />} />
         <Route path="/live/:id" element={<Live />} />
+        <Route path="/invite" element={<Invite />} />
+        <Route path="/invite/:code" element={<Invite />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <ScrollToHash />

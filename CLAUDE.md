@@ -42,6 +42,7 @@ Badge / Profile Frame / Leaderboard entries; Country has no Add Agency.
 background picture the app writes the name on; pictures are uploaded to the `gift-assets` bucket) and gives them to users (search a user, tick tags, max 10).
 Capability `manage_tags` is on by default for a Master and grantable to Global / Country / Sub Admin and Agency in Access Control; the SQL side is `staff_can_manage_tags()`
 (sabalive migration `20261021190000`). Pure rules in `lib/profileTags.js` (tested), database calls in `lib/profileTagsApi.js`. While the tables are missing the page says so.
+The preview (`TagPill`) draws a plate as big as its artwork with the name centred on it (as the app does), and a plate whose name has no letter or digit (`nameIsWritten`, e.g. ".") as the picture alone; `SvgaPlayer` takes `autoWidth` to follow an animation's own proportions.
 Tag pictures accept **SVGA** (2026-10-25; `TAG_IMAGE_ACCEPT` starts with `.svga`, `isSvga(url)`; the page previews one with `SvgaPlayer`, for the picture look and the plate look). Badge
 Management (`pages/master/platform.jsx`, `UPLOAD_ACCEPT`) already took SVGA / MP4 / GIF / WebP / PNG; the app now draws an uploaded SVGA badge or tag instead of the emoji / pill (MP4 still falls back to the emoji / pill on a profile).
 
@@ -82,6 +83,11 @@ saved with a button, turning it ON asks once more, and it names the next run and
   (migration `20261026140000`) so a banner can be a GIF / SVG / SVGA too.
 - Config -> Release controls has **"Coin sellers on iOS"** (`coin_seller_ios`, default ON): off hides "Buy from Offline Seller" on iPhones (Android always shows it).
 - **Diamond reset is its own permission**, `reset_diamonds` (`lib/capabilities.js`: Operations group, on by default for a Master, an explicit false blocks it; a lower role can never use it). The menu item and the route use it instead of `run_payroll`.
+
+## Invite page (2026-10-26)
+`landing/src/pages/Invite.jsx` at `/invite` and `/invite/:code` (inside the site layout) is where the app's invite link and QR code land (`sabalive/lib/core/utils/share_links.dart` `inviteShareUrl`). Pure rules in `landing/src/lib/invite.js`
+(`cleanInviteCode`, `platformFor`, `playStoreUrl`, `inviteTarget`; tested in `landing/src/lib/invite.test.js`, part of `npm test`): Android is sent to `STORE_LINKS.android` with the code as the Play referrer, an iPhone sees "coming soon"
+until `STORE_LINKS.ios` (`landing/src/lib/site.js`) is set and is then redirected there, a computer sees both buttons. The code is shown with a Copy button. Vercel's rewrite to `/index.html` already covers the path.
 
 ## Environment switch (production <-> staging)
 `src/lib/environments.js` picks the Supabase project; `components/EnvironmentSwitch.jsx` is the top-bar pill (Master and

@@ -9,54 +9,45 @@ import DataTable from '../../components/DataTable.jsx'
 import { numCol, statusCol } from '../../components/cells.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { listTags, saveTag, deleteTag, getUserTagIds, setUserTags, searchUsers } from '../../lib/profileTagsApi.js'
-import { checkTag, tagTextColor, toggleTag, sameTags, isSvga, TAG_DEFAULT_COLOR, TAG_STATUSES, TAG_LOOKS, TAG_IMAGE_ACCEPT, TAG_NAME_MAX, MAX_TAGS_PER_USER } from '../../lib/profileTags.js'
+import { checkTag, tagTextColor, toggleTag, sameTags, isSvga, nameIsWritten, TAG_DEFAULT_COLOR, TAG_STATUSES, TAG_LOOKS, TAG_IMAGE_ACCEPT, TAG_NAME_MAX, MAX_TAGS_PER_USER } from '../../lib/profileTags.js'
 import { normalizeHex } from '../../lib/pkTheme.js'
 
 /* Master -> Tags: the staff tags that show on a user's profile in the app. Two parts: the list of tags (create, edit, hide, delete) and
    "Give tags to a user" (find a user, tick the tags they should have). Master and Super Admin have it by default; any other staff account
    needs the Tags switch in Access Control. The database (sabalive migration 20261021190000) enforces all of it. */
 
+/* The artwork of a tag at the tag height and its own proportions: an SVGA animation, an SVG drawing or a picture. `fallback` stands in while it loads and if it fails. */
+function TagArtwork({ url, fallback, onFail }) {
+  if (isSvga(url)) return <SvgaPlayer url={url} size={28} autoWidth fallback={fallback} />
+  if (isSvg(url)) return <SvgPreview url={url} style={{ height: 28, maxWidth: 220, objectFit: 'contain' }} fallback={fallback} />
+  return <img src={url} alt="" onError={onFail} style={{ height: 28, maxWidth: 220, objectFit: 'contain' }} />
+}
+
 /* One tag as the app draws it: a coloured pill, a picture shown as it is, or a background picture with the name on it. A picture that cannot be
-   loaded falls back to the pill, as in the app. */
+   loaded falls back to the pill, as in the app. A plate is as big as its artwork (the whole picture, never cropped) with the name centred on it,
+   and a name with no letter or digit (".") is not written at all: the artwork carries its own text. */
 export function TagPill({ tag, dim }) {
   const [failed, setFailed] = useState(false)
   const color = normalizeHex(tag.color) || TAG_DEFAULT_COLOR
   const label = tag.emoji ? `${tag.emoji} ${tag.name}` : tag.name
   const opacity = dim ? 0.45 : 1
   const url = tag.image_url
-  if (tag.look === 'picture' && url && isSvga(url)) {
-    return <span title={tag.name} style={{ display: 'inline-flex', opacity, verticalAlign: 'middle' }}><SvgaPlayer url={url} size={28} fallback={<TagPill tag={{ ...tag, look: 'pill' }} />} /></span>
+  const written = nameIsWritten(tag.name)
+  const look = tag.look === 'plate' && !written ? 'picture' : tag.look
+  const pill = <TagPill tag={{ ...tag, look: 'pill' }} />
+  if (look === 'picture' && url && (isSvga(url) || isSvg(url))) {
+    return <span title={tag.name} style={{ display: 'inline-flex', opacity, verticalAlign: 'middle' }}><TagArtwork url={url} fallback={pill} /></span>
   }
-  if (tag.look === 'plate' && url && isSvga(url)) {
-    return (
-      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 16px', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', opacity,
-        color: tagTextColor(tag), textShadow: '0 1px 2px rgba(0,0,0,.55)', background: color, borderRadius: 999 }}>
-        <SvgaPlayer url={url} size={28} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-        <span style={{ position: 'relative' }}>{label}</span>
-      </span>
-    )
-  }
-  if (tag.look === 'picture' && url && isSvg(url)) {
-    return <span title={tag.name} style={{ display: 'inline-flex', opacity, verticalAlign: 'middle' }}><SvgPreview url={url} alt={tag.name} style={{ height: 28, maxWidth: 220, objectFit: 'contain' }} fallback={<TagPill tag={{ ...tag, look: 'pill' }} />} /></span>
-  }
-  if (tag.look === 'plate' && url && isSvg(url)) {
-    return (
-      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 16px', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', opacity,
-        color: tagTextColor(tag), textShadow: '0 1px 2px rgba(0,0,0,.55)', background: color, borderRadius: 999, overflow: 'hidden' }}>
-        <SvgPreview url={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-        <span style={{ position: 'relative' }}>{label}</span>
-      </span>
-    )
-  }
-  if (tag.look === 'picture' && url && !failed) {
+  if (look === 'picture' && url && !failed) {
     return <img src={url} alt={tag.name} title={tag.name} onError={() => setFailed(true)} style={{ height: 28, maxWidth: 220, objectFit: 'contain', opacity, verticalAlign: 'middle' }} />
   }
-  if (tag.look === 'plate' && url && !failed) {
+  if (look === 'plate' && url && !failed) {
+    // artwork and name share one grid cell: the plate is as big as the artwork, or as the name if that is wider
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 16px', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', opacity,
-        backgroundImage: `url("${url}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', borderRadius: 999, color: tagTextColor(tag), textShadow: '0 1px 2px rgba(0,0,0,.55)' }}>
-        <img src={url} alt="" onError={() => setFailed(true)} style={{ display: 'none' }} />
-        {label}
+      <span title={tag.name} style={{ display: 'inline-grid', verticalAlign: 'middle', opacity }}>
+        <span style={{ gridArea: '1 / 1', display: 'inline-flex' }}><TagArtwork url={url} fallback={pill} onFail={() => setFailed(true)} /></span>
+        <span style={{ gridArea: '1 / 1', alignSelf: 'center', justifySelf: 'center', padding: '0 10px', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap',
+          color: tagTextColor(tag), textShadow: '0 1px 2px rgba(0,0,0,.55)' }}>{label}</span>
       </span>
     )
   }

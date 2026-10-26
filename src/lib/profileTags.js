@@ -18,6 +18,8 @@ export const TAG_LOOKS = [
 ]
 /* A tag picture can be a still picture, a GIF / WebP, or an SVGA animation (owner, 2026-10-25). */
 export const TAG_IMAGE_ACCEPT = '.svga,.svg,.png,.webp,.gif,.jpg,.jpeg,image/png,image/webp,image/gif,image/jpeg,image/svg+xml'
+/* Does a tag name say anything? A name with no letter or digit ("." or "-") is how a tag shows only its picture when the artwork already carries the text: the app writes nothing over it. */
+export const nameIsWritten = (name) => /[\p{L}\p{N}]/u.test(String(name || ''))
 export const isSvga = (url) => /\.svga(\?|$)/i.test(String(url || ''))
 export const TAG_STATUSES = [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive (hidden, cannot be given)' }]
 

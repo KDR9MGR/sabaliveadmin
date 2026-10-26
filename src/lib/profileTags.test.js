@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { checkTag, textColorFor, tagTextColor, toggleTag, sameTags, tagError, isSvga, TAG_IMAGE_ACCEPT, MAX_TAGS_PER_USER, TAG_NAME_MAX, TAG_LOOKS } from './profileTags.js'
+import { checkTag, textColorFor, tagTextColor, toggleTag, sameTags, tagError, isSvga, nameIsWritten, TAG_IMAGE_ACCEPT, MAX_TAGS_PER_USER, TAG_NAME_MAX, TAG_LOOKS } from './profileTags.js'
 
 const ok = { name: 'Official', color: '#7C3AED', emoji: '✔️', status: 'active', sort_order: 3 }
 
@@ -101,4 +101,15 @@ test('server errors become sentences', () => {
   assert.match(tagError({ message: 'permission denied for table profile_tags' }), /Tags access/)
   assert.equal(tagError({ message: 'A user can have at most 10 tags' }), 'A user can have at most 10 tags')
   assert.equal(tagError(null), 'Something went wrong.')
+})
+
+test('a tag name with no letter or digit is not written over the picture (the artwork carries the text)', () => {
+  assert.equal(nameIsWritten('.'), false)
+  assert.equal(nameIsWritten(' - '), false)
+  assert.equal(nameIsWritten('...'), false)
+  assert.equal(nameIsWritten(''), false)
+  assert.equal(nameIsWritten(undefined), false)
+  assert.equal(nameIsWritten('Agency'), true)
+  assert.equal(nameIsWritten('VIP 1'), true)
+  assert.equal(nameIsWritten('७'), true)
 })
