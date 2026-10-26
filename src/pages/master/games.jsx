@@ -9,7 +9,7 @@ import {
   getGamesSwitch, getGameConfig, updateGameConfig, listGameDays, listRecentGameTransactions, listWinnerGifting, listHostInflow, listMerchantGames, setGamesHidden,
   getSudSwitches, listSudGames, saveSudGame, deleteSudGame, setSudGamesHidden,
 } from '../../lib/games.js'
-import { presetOptions, checkSudGame, SUD_NOT_INSTALLED } from '../../lib/sudGames.js'
+import { presetOptions, checkSudGame, SUD_NOT_INSTALLED, SUD_PICKER_LIMIT } from '../../lib/sudGames.js'
 import { uploadMedia, UPLOAD_ACCEPT, UPLOAD_HINT } from '../../lib/storage.js'
 
 const FIELDS = [
@@ -152,8 +152,8 @@ export function Games() {
           }}
           fields={[
             ...(sudForm.add ? [
-              { name: 'preset', label: "Game from SUD's list", type: 'picker', options: presetOptions(), full: true, placeholder: 'Search by name…',
-                hint: 'Fills the name, the game id and the proportions. A game SUD added since is not in this list: type its id below instead.' },
+              { name: 'preset', label: "Game from SUD's list", type: 'picker', options: presetOptions(), limit: SUD_PICKER_LIMIT, full: true, placeholder: 'Search by name, or type "betting"…',
+                hint: 'Fills the name, the game id and the proportions. The betting games (cards, poker...) come first and are marked; they also need "SUD coin games" switched on. A game SUD added since is not in this list: type its id below instead.' },
               { name: 'mg_id', label: 'Or the SUD game id', placeholder: 'e.g. 1468180338417074177', full: true, hint: 'The long number from SUD\'s game list. Leave empty when you chose a game above.' },
             ] : []),
             { name: 'name', label: 'Name shown to players', full: true, hint: sudForm.add ? 'Leave empty to use SUD\'s name.' : undefined },

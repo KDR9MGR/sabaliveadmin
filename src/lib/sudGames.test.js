@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { presetOptions, presetById, checkSudGame, sudGameRow, SUD_NOT_INSTALLED } from './sudGames.js'
+import { presetOptions, presetById, checkSudGame, sudGameRow, SUD_NOT_INSTALLED, SUD_PICKER_LIMIT } from './sudGames.js'
 import { SUD_PRESETS } from '../data/sudGames.js'
 
 test('the preset list is sound: unique long ids kept as text, sensible proportions, a name, nothing the web SDK lacks', () => {
@@ -74,4 +74,21 @@ test('the database not having the SUD games yet is recognised', () => {
   assert.ok(SUD_NOT_INSTALLED.test('relation "public.sud_games" does not exist'))
   assert.ok(SUD_NOT_INSTALLED.test('Could not find the function public.admin_save_sud_game in the schema cache'))
   assert.ok(!SUD_NOT_INSTALLED.test('Only admins can do that'))
+})
+
+test('the Add game list shows every game, the betting ones first and marked (the picker used to cut it at 50 and hide Blackjack)', () => {
+  const opts = presetOptions()
+  assert.equal(opts.length, SUD_PRESETS.length)
+  assert.ok(SUD_PICKER_LIMIT >= SUD_PRESETS.length, 'the picker must be able to show all of them')
+  const betting = SUD_PRESETS.filter((p) => p.coins)
+  assert.ok(betting.length >= 4)
+  // the first ones are exactly the betting games, then the rest
+  assert.deepEqual(opts.slice(0, betting.length).map((o) => o.value).sort(), betting.map((p) => p.mgId).sort())
+  assert.ok(opts.slice(0, betting.length).every((o) => o.label.includes('betting game')))
+  assert.ok(opts.slice(betting.length).every((o) => !o.label.includes('betting game')))
+  for (const name of ['TeenPatti', 'Texas Holdem Poker', 'Blackjack']) assert.ok(opts.slice(0, betting.length).some((o) => o.label.startsWith(name)), name)
+  // typing "betting" finds them all
+  assert.equal(opts.filter((o) => o.search.includes('betting')).length, betting.length)
+  // every game is still there exactly once
+  assert.equal(new Set(opts.map((o) => o.value)).size, SUD_PRESETS.length)
 })

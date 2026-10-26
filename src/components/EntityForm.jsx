@@ -64,7 +64,7 @@ function ImageUploadField({ value, onChange, onUpload, accept = 'image/*', clear
 }
 
 /* Schema-driven form rendered inside a Drawer.
-   fields: [{ name, label, type: text|email|number|select|picker|textarea|toggle|image, options?, required?, hint?, full?, placeholder?, autoComplete?, onUpload?, clearable?, step?, min?, max?, onSearch? }]
+   fields: [{ name, label, type: text|email|number|select|picker|textarea|toggle|image, options?, required?, hint?, full?, placeholder?, autoComplete?, onUpload?, clearable?, step?, min?, max?, onSearch?, limit? }]
    type: 'picker' is a type-to-search list (UserPicker): give it `options` ({ value, label, search }) or `onSearch` (async (text) => options) to search the
    database as you type (a stable function, defined outside the component); the stored value is the picked option's `value`.
    type: 'image' needs onUpload: (file) => Promise<url> (it also carries sounds: pass an audio `accept`;
@@ -131,7 +131,7 @@ export default function EntityForm({ title, fields, initial = {}, onClose, onSub
             {f.type === 'image' ? (
               <ImageUploadField value={values[f.name]} onChange={(url) => set(f.name, url)} onUpload={f.onUpload} accept={f.accept} clearable={f.clearable} />
             ) : f.type === 'picker' ? (
-              <UserPicker options={f.options || []} onSearch={f.onSearch} value={values[f.name]} onChange={(v) => set(f.name, v)} placeholder={f.placeholder} />
+              <UserPicker options={f.options || []} onSearch={f.onSearch} value={values[f.name]} onChange={(v) => set(f.name, v)} placeholder={f.placeholder} limit={f.limit} />
             ) : f.type === 'select' ? (
               <select className="select" value={values[f.name]} onChange={(e) => set(f.name, e.target.value)}>
                 <option value="">Select…</option>

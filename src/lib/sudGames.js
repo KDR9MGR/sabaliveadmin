@@ -2,10 +2,15 @@
    A game is added by choosing it from SUD's own list (src/data/sudGames.js) or, for one SUD added since, by its game id. */
 import { SUD_PRESETS } from '../data/sudGames.js'
 
-export const presetOptions = () => SUD_PRESETS.map((p) => ({
+/* How many games the "Add game" list may show before the person types. The picker's own default is 50, which hid the last nine of SUD's 59 games (Blackjack, a betting
+   game, was number 57). Never lower than the number of presets (tested). */
+export const SUD_PICKER_LIMIT = 200
+
+/* The list of SUD's games for the Add game picker: the BETTING games (the ones that may stake coins) first, marked, then the rest in SUD's own order. */
+export const presetOptions = () => [...SUD_PRESETS.filter((p) => p.coins), ...SUD_PRESETS.filter((p) => !p.coins)].map((p) => ({
   value: p.mgId,
-  label: `${p.name} · ${p.players}${p.coins ? ' · may stake coins' : ''}`,
-  search: `${p.name} ${p.mgId} ${p.players}`.toLowerCase(),
+  label: `${p.name} · ${p.players}${p.coins ? ' · betting game (may stake coins)' : ''}`,
+  search: `${p.name} ${p.mgId} ${p.players}${p.coins ? ' betting coins stake' : ''}`.toLowerCase(),
 }))
 
 export const presetById = (id) => SUD_PRESETS.find((p) => p.mgId === String(id || '').trim()) || null
