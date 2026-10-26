@@ -81,7 +81,7 @@ saved with a button, turning it ON asks once more, and it names the next run and
   to be a real drawing and refused if it carries a script, an event handler, embedded HTML or a javascript: link, then sent as `application/octet-stream` (like SVGA: the buckets only accept a fixed list of types, and a generic binary is
   never run by a browser). The panel draws it with `components/SvgPreview.jsx` (reads the file and shows it as an image; used by `MediaPreview`, the upload field, the banners table and the Tags page). The banners bucket was widened
   (migration `20261026140000`) so a banner can be a GIF / SVG / SVGA too.
-- Config -> Release controls has **"Coin sellers on iOS"** (`coin_seller_ios`, default ON): off hides "Buy from Offline Seller" on iPhones (Android always shows it).
+- Config -> Release controls has **"Coin sellers on iOS"** (`coin_seller_ios`, default OFF since 2026-10-27: Apple requires In-App Purchase for coins): on shows "Buy from Offline Seller" on iPhones too (Android always shows it). Find it as Super Admin: Application Config -> "Release Settings" (left list) -> the switch list -> **Save release controls**.
 - **Diamond reset is its own permission**, `reset_diamonds` (`lib/capabilities.js`: Operations group, on by default for a Master, an explicit false blocks it; a lower role can never use it). The menu item and the route use it instead of `run_payroll`.
 
 ## Invite page (2026-10-26)

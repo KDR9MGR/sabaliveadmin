@@ -242,8 +242,8 @@ const RELEASE_FLAGS = [
     desc: 'On: the Games tab shows the platform\'s games (Android) and the server accepts the game platform\'s calls. Off by default; turning it off stops all game bets and lookups at once. Limits and reports are on the Games page.',
   },
   {
-    key: 'coin_seller_ios', def: true, title: 'Coin sellers on iOS',
-    desc: 'On (default): the "Buy from Offline Seller" button shows on iPhones as well as Android. Off: iPhones do not show it (for App Store review); Android always shows it. Takes effect on open phones within a moment.',
+    key: 'coin_seller_ios', def: false, title: 'Coin sellers on iOS',
+    desc: 'Off (default): iPhones do not show the "Buy from Offline Seller" button, because Apple does not allow coins to be bought outside In-App Purchase (App Store review). On: iPhones show it too. Android always shows it. Takes effect on open phones within a moment.',
   },
   {
     key: 'sud_games_enabled', def: false, title: 'SUD games (party games)',
