@@ -52,6 +52,16 @@ Levels (`pages/master/levels.jsx`, `lib/levels.js`, pure rules in `lib/levelRule
 time, when they try to sign in. Both fall back to the old functions (`lib/dbErrors.js` `isMissingFunction`) while the migrations are not on the project; 24 hour / custom bans need them. Ban ends
 are shown with their time.
 
+## Salary: finding a person (2026-10-26)
+Every Salary table has a **User** dropdown (`components/SalaryUserFilter.jsx`: `useSalaryUser`, `SalaryUserPicker`, `SalaryUserNote`, `WithSalaryUser`; pure helpers `userOptions` / `filterByUser` in `lib/salaryColumns.js`, tested):
+type a User ID (whole or part), a name or a username, pick the person and the table, its tiles and its export show only their rows ("Showing only ... Show everyone"). Used by the Monthly report (the By-month table,
+the month totals and Assign Salary Payment still cover every host in scope), the Master Payslips tab and the Agency Payslips tab. The people are the rows already loaded, so nothing extra is read. The tables' own search
+box also matches the User ID. In the Master "New Payslip" form the Payee is a `picker` field (`EntityForm` type `picker`): a live database search by User ID, name or username (`searchProfileOptions`), so nobody is preloaded.
+
+Salary exports (Excel / CSV): every export carries the app User ID, and Sub Admin, Country Admin and Global Admin each as name + app User ID (`ADMIN_COLUMNS` in `lib/salaryColumns.js`); an admin the system does not know says
+"Not assigned" (`NOT_ASSIGNED`), never an empty cell. The same three columns show on screen (`adminCol` in `components/cells.jsx`). The Global Admin comes from `staff_roles.global_admin_id` (sabalive migration
+`20261026100000`), set on the Transfer Global page (`transfer_country_admin`): "Assign a Global Admin" for a Country Admin that has none.
+
 ## Environment switch (production <-> staging)
 `src/lib/environments.js` picks the Supabase project; `components/EnvironmentSwitch.jsx` is the top-bar pill (Master and
 Super Admin only), the orange STAGING strip and the sign-in notice. A normal build is "home = production" and gets the switch

@@ -6,13 +6,16 @@ export const slugOf = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g
 
 /* What the downloads contain. `type` only matters for Excel (a $ format / thousands separators); CSV gets plain numbers. All money is USD.
    User IDs are the ones the app shows (profiles.display_id), never the database id. The username is deliberately not exported. The admin columns say
-   which Sub Admin, Country Admin and Global Admin the agency sits under (the Global Admin is blank until the system records it). */
+   which Sub Admin, Country Admin and Global Admin the agency sits under, each with their name AND their app User ID; an admin the system has not recorded says
+   "Not assigned" (the Global Admin comes from staff_roles.global_admin_id, set by the Transfer Global page; sabalive migration 20261026100000). */
+/* What a cell says when the system has not recorded that admin: a word, never an empty cell. */
+export const NOT_ASSIGNED = 'Not assigned'
 export const ADMIN_COLUMNS = [
-  { header: 'Sub Admin', value: (r) => r.subAdmin || '' },
+  { header: 'Sub Admin', value: (r) => r.subAdmin || NOT_ASSIGNED },
   { header: 'Sub Admin ID', value: (r) => r.subAdminId ?? '' },
-  { header: 'Country Admin', value: (r) => r.countryAdmin || '' },
+  { header: 'Country Admin', value: (r) => r.countryAdmin || NOT_ASSIGNED },
   { header: 'Country Admin ID', value: (r) => r.countryAdminId ?? '' },
-  { header: 'Global Admin', value: (r) => r.globalAdmin || '' },
+  { header: 'Global Admin', value: (r) => r.globalAdmin || NOT_ASSIGNED },
   { header: 'Global Admin ID', value: (r) => r.globalAdminId ?? '' },
 ]
 export const HOST_COLUMNS = [
@@ -106,3 +109,38 @@ export const mapReportRow = (r) => ({
   payslipStatus: r.payslip_status,
   blocked: r.blocked_reason,
 })
+
+/* ---------------------------------------------------------------- the "User" filter of the Salary tabs
+   One entry per person who has a row in the table (a host in the monthly report, a payee in the payslips), found by their app User ID, name or username.
+   Plain functions so they are tested: the rows already carry displayId / host or payee / username. */
+export const ALL_USERS = { value: '', label: 'All users', search: 'all users' }
+
+const userName = (r) => r.host || r.payee || '—'
+const hasId = (r) => r.displayId != null && String(r.displayId).trim() !== ''
+
+/* What identifies a person across their rows: their app User ID, else (an old row without one) their name and username. */
+export const userKeyOf = (r) => (hasId(r) ? String(r.displayId).trim() : `n:${String(userName(r)).toLowerCase()}|${String(r.username || '').toLowerCase()}`)
+
+/* The picker entries for these rows: "123456 | Name", one per person, ordered by User ID. `search` is lower-cased text the type-to-search box looks in:
+   the User ID first, then the name and username, then the label, so "1234", "asha" and "1234 | as" all find the person. */
+export function userOptions(rows) {
+  const seen = new Map()
+  for (const r of rows || []) {
+    const key = userKeyOf(r)
+    if (seen.has(key)) continue
+    const id = hasId(r) ? String(r.displayId).trim() : ''
+    const name = userName(r)
+    const label = id ? `${id} | ${name}` : name
+    seen.set(key, { value: key, label, search: `${id} ${name} ${r.username || ''} ${label}`.toLowerCase(), id, name })
+  }
+  const byId = (a, b) => {
+    if (a.id && b.id) return (Number(a.id) - Number(b.id)) || a.id.localeCompare(b.id)
+    if (a.id) return -1
+    if (b.id) return 1
+    return a.name.localeCompare(b.name)
+  }
+  return [...seen.values()].sort(byId).map(({ value, label, search }) => ({ value, label, search }))
+}
+
+/* The rows of one person; every row when no one is chosen. */
+export const filterByUser = (rows, key) => (key ? (rows || []).filter((r) => userKeyOf(r) === key) : (rows || []))

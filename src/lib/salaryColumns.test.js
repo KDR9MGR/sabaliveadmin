@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { HOST_COLUMNS, MONTH_COLUMNS, PAYSLIP_COLUMNS, ADMIN_COLUMNS, SALARY_SEARCH_KEYS, slugOf, agencyLabel, agencyOption, mapReportRow } from './salaryColumns.js'
+import { HOST_COLUMNS, MONTH_COLUMNS, PAYSLIP_COLUMNS, ADMIN_COLUMNS, NOT_ASSIGNED, SALARY_SEARCH_KEYS, slugOf, agencyLabel, agencyOption, mapReportRow, ALL_USERS, userKeyOf, userOptions, filterByUser } from './salaryColumns.js'
 import { toCsv } from './csv.js'
 
 const headers = (cols) => cols.map((c) => c.header)
@@ -32,7 +32,7 @@ const host = {
   earned: 5000, rewards: 3000, totalDiamonds: 8000, hours: 18, days: 12, withdrawn: 0, available: 8000, slab: 'Gold', payment: 25, payslipId: null, blocked: null,
 }
 
-test('a host row exports the right values; the username is nowhere in the file; the Global Admin is blank when none is recorded', () => {
+test('a host row exports the right values; the username is nowhere in the file; an admin that is not recorded says Not assigned instead of an empty cell', () => {
   const csv = toCsv(HOST_COLUMNS, [host])
   const [head, row] = csv.split('\r\n')
   const cells = row.split(',')
@@ -41,7 +41,10 @@ test('a host row exports the right values; the username is nowhere in the file; 
   assert.equal(at('Agency code'), '20005')
   assert.equal(at('Country Admin'), 'Country Y')
   assert.equal(at('Country Admin ID'), '100211')
-  assert.equal(at('Global Admin'), '')
+  assert.equal(at('Sub Admin'), 'Sub X')
+  assert.equal(at('Sub Admin ID'), '100301')
+  assert.equal(at('Global Admin'), NOT_ASSIGNED)
+  assert.equal(at('Global Admin ID'), '')
   assert.equal(at('Diamonds from gifts'), '5000')
   assert.equal(at('Diamonds from rewards'), '3000')
   assert.equal(at('Total diamonds'), '8000')
@@ -111,4 +114,76 @@ test('a record whose agency has no ID yet gives a clean row (no "null" text)', (
   assert.equal(row.agencyCode, null)
   assert.equal(row.agencyLabel, 'Solo')
   assert.ok(!tableHit(row, 'null'))
+})
+
+/* ---------------------------------------------------------------- the User filter */
+const hostRows = [
+  { hostId: 'h1', host: 'Asha Rao', username: 'asha', displayId: 100260, earned: 5 },
+  { hostId: 'h2', host: 'Bilal Khan', username: 'bk_live', displayId: 100005, earned: 9 },
+  { hostId: 'h3', host: 'Chen Li', username: 'chen', displayId: 123456, earned: 1 },
+]
+const payslips = [
+  { id: 'p1', payee: 'Asha Rao', username: 'asha', displayId: 100260, period: 'Sep 2026' },
+  { id: 'p2', payee: 'Asha Rao', username: 'asha', displayId: 100260, period: 'Oct 2026' },
+  { id: 'p3', payee: 'Old Account', username: 'old', displayId: null, period: 'Aug 2026' },
+]
+
+test('the user filter lists each person once, as "User ID | Name", ordered by User ID', () => {
+  assert.deepEqual(userOptions(hostRows).map((o) => o.label), ['100005 | Bilal Khan', '100260 | Asha Rao', '123456 | Chen Li'])
+  const p = userOptions(payslips)
+  assert.equal(p.length, 2, 'two payslips of one person are one entry')
+  assert.equal(p[0].label, '100260 | Asha Rao')
+  assert.equal(p[1].label, 'Old Account', 'a payee without a User ID still appears, after those that have one')
+})
+
+test('a person is found by User ID (whole or part), name or username, and by the label', () => {
+  const opts = userOptions(hostRows)
+  const find = (q) => opts.filter((o) => o.search.includes(q.toLowerCase())).map((o) => o.label)
+  assert.deepEqual(find('100260'), ['100260 | Asha Rao'])
+  assert.deepEqual(find('1004'), [])
+  assert.deepEqual(find('10026'), ['100260 | Asha Rao'])
+  assert.deepEqual(find('bilal'), ['100005 | Bilal Khan'])
+  assert.deepEqual(find('bk_live'), ['100005 | Bilal Khan'], 'the username finds them, though it is never shown')
+  assert.deepEqual(find('123456 | chen'), ['123456 | Chen Li'])
+  assert.ok(ALL_USERS.search.includes('all'))
+})
+
+test('the key of a person is their User ID, else their name and username', () => {
+  assert.equal(userKeyOf(hostRows[0]), '100260')
+  assert.equal(userKeyOf({ payee: 'Old Account', username: 'Old' }), 'n:old account|old')
+  assert.equal(userKeyOf({ host: 'X', displayId: '' }), 'n:x|')
+})
+
+test('choosing a person keeps only their rows; choosing nobody keeps everything', () => {
+  assert.deepEqual(filterByUser(payslips, '100260').map((r) => r.id), ['p1', 'p2'])
+  assert.deepEqual(filterByUser(payslips, 'n:old account|old').map((r) => r.id), ['p3'])
+  assert.equal(filterByUser(hostRows, '').length, 3)
+  assert.equal(filterByUser(hostRows, null).length, 3)
+  assert.deepEqual(filterByUser(hostRows, '999'), [])
+  assert.deepEqual(filterByUser(null, '100260'), [])
+  assert.deepEqual(userOptions(null), [])
+})
+
+test('the User ID search keys were already part of every Salary table search', () => {
+  assert.ok(SALARY_SEARCH_KEYS.includes('displayId'))
+  assert.ok(SALARY_SEARCH_KEYS.includes('username'))
+})
+
+test('every admin level exports both its name and its app User ID, for the host report and the payslips alike', () => {
+  const full = { ...host, globalAdmin: 'Global Z', globalAdminId: 100050 }
+  for (const [cols, name] of [[HOST_COLUMNS, 'host report'], [PAYSLIP_COLUMNS, 'payslips']]) {
+    const [head, row] = toCsv(cols, [{ ...full, payee: 'P', role: 'Host', period: 'Oct 2026', base: 1, bonus: 0, deductions: 0, net: 1, status: 'Paid', paidAt: '' }]).split('\r\n')
+    const at = (h) => row.split(',')[head.split(',').indexOf(h)]
+    assert.deepEqual([at('Sub Admin'), at('Sub Admin ID')], ['Sub X', '100301'], name)
+    assert.deepEqual([at('Country Admin'), at('Country Admin ID')], ['Country Y', '100211'], name)
+    assert.deepEqual([at('Global Admin'), at('Global Admin ID')], ['Global Z', '100050'], name)
+  }
+})
+
+test('a row with no admin at all still has a word in every admin name cell', () => {
+  const bare = { ...host, subAdmin: '', subAdminId: '', countryAdmin: '', countryAdminId: '', globalAdmin: '', globalAdminId: '' }
+  const [head, row] = toCsv(HOST_COLUMNS, [bare]).split('\r\n')
+  const at = (h) => row.split(',')[head.split(',').indexOf(h)]
+  for (const h of ['Sub Admin', 'Country Admin', 'Global Admin']) assert.equal(at(h), NOT_ASSIGNED, h)
+  for (const h of ['Sub Admin ID', 'Country Admin ID', 'Global Admin ID']) assert.equal(at(h), '', h)
 })

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { StatGrid, AsyncView } from '../pages/_templates.jsx'
 import { Card, Button, Badge, Tag, EmptyState, useToast, ConfirmDialog } from './ui.jsx'
-import { personCol, numCol, moneyCol } from './cells.jsx'
+import { personCol, numCol, moneyCol, adminCol } from './cells.jsx'
 import DataTable from './DataTable.jsx'
 import EntityForm from './EntityForm.jsx'
 import UserPicker from './UserPicker.jsx'
+import { useSalaryUser, SalaryUserPicker, SalaryUserNote } from './SalaryUserFilter.jsx'
 import ExportButtons from './ExportButtons.jsx'
 import { useAsyncData } from '../lib/useAsync.js'
 import { useAuth } from '../lib/auth.jsx'
@@ -53,6 +54,7 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
   const canExport = can('export_data')
 
   const rows = data || []
+  const userFilter = useSalaryUser(rows) // the User dropdown: narrows the hosts table (and its export) to one person; the totals and Assign keep using every host
   const eligible = rows.filter((r) => r.slabId && !r.payslipId && !r.blocked)
   const assignedAlready = rows.filter((r) => r.payslipId)
   const blocked = rows.filter((r) => r.slabId && !r.payslipId && r.blocked)
@@ -78,7 +80,7 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
   }
 
   const scopeSlug = fixedAgency ? 'agency' : slugOf((agencies || []).find((a) => a.value === agencyId)?.label) || (agencyId ? 'agency' : 'all-agencies')
-  const exportHosts = (format) => exportRows(format, `salary-report-${month}-${scopeSlug}`, HOST_COLUMNS, rows, `Salary ${month}`)
+  const exportHosts = (format) => exportRows(format, `salary-report-${month}-${scopeSlug}`, HOST_COLUMNS, userFilter.shown, `Salary ${month}`)
   const exportMonths = (format) => exportRows(format, `salary-months-${scopeSlug}`, MONTH_COLUMNS, months || [], 'Salary by month')
 
   return (
@@ -109,12 +111,14 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
                   />
                 </div>
               )}
+              <SalaryUserPicker filter={userFilter} />
               <div className="grow" />
-              <ExportButtons show={canExport} disabled={!rows.length || loading} label="Export this month" onExport={exportHosts} />
+              <ExportButtons show={canExport} disabled={!userFilter.shown.length || loading} label="Export this month" onExport={exportHosts} />
               <Button variant="primary" icon="dollar" disabled={!eligible.length || notEnded || loading} onClick={() => setConfirming(true)}>
                 {`Assign Salary Payment${eligible.length ? ` (${num(eligible.length)})` : ''}…`}
               </Button>
             </div>
+            <SalaryUserNote filter={userFilter} />
             {notEnded && <div className="hint" style={{ marginBottom: 10 }}>{monthLabel(month)} is not over yet, so this is a live preview. Payments can be assigned once the month has ended.</div>}
           </div>
           <div className="card__body" style={{ paddingTop: 0 }}>
@@ -161,7 +165,7 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
               ]} />
             </div>
             <DataTable
-              rows={rows}
+              rows={userFilter.shown}
               pageSize={10}
               searchKeys={SALARY_SEARCH_KEYS}
               searchPlaceholder={SALARY_SEARCH_HINT}
@@ -176,8 +180,9 @@ export function SalaryReport({ agencyId: fixedAgency, onAssigned }) {
                 personCol('host'),
                 { key: 'displayId', header: 'User ID', sortable: true, render: (r) => <span className="mono">{r.displayId}</span> },
                 ...(fixedAgency ? [] : [{ key: 'agency', header: 'Agency', sortable: true, render: (r) => <span>{r.agencyCode != null && <span className="mono muted">{r.agencyCode} · </span>}{r.agency}</span> }]),
-                { key: 'countryAdmin', header: 'Country Admin', sortable: true, render: (r) => (r.countryAdmin ? <span>{r.countryAdmin}{r.countryAdminId !== '' && <span className="mono muted"> · {r.countryAdminId}</span>}</span> : <span className="muted">—</span>) },
-                { key: 'globalAdmin', header: 'Global Admin', sortable: true, render: (r) => (r.globalAdmin ? <span>{r.globalAdmin}{r.globalAdminId !== '' && <span className="mono muted"> · {r.globalAdminId}</span>}</span> : <span className="muted">—</span>) },
+                adminCol('subAdmin', 'subAdminId', 'Sub Admin'),
+                adminCol('countryAdmin', 'countryAdminId', 'Country Admin'),
+                adminCol('globalAdmin', 'globalAdminId', 'Global Admin'),
                 numCol('earned', 'Gift diamonds'),
                 numCol('rewards', 'Reward diamonds'),
                 { key: 'hours', header: 'Live', sortable: true, align: 'right', render: (r) => <span className="mono">{r.hours} h · {r.days} d</span> },

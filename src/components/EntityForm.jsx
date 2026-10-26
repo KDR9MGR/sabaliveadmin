@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Drawer, Button, useToast } from './ui.jsx'
 import { mediaKind } from '../lib/storage.js'
 import SvgaPlayer from './SvgaPlayer.jsx'
+import UserPicker from './UserPicker.jsx'
 
 /* type: 'image' field — uploads immediately on file pick via f.onUpload(file) =>
    url, then stores the returned URL as the field's value (same as any other
@@ -57,7 +58,9 @@ function ImageUploadField({ value, onChange, onUpload, accept = 'image/*', clear
 }
 
 /* Schema-driven form rendered inside a Drawer.
-   fields: [{ name, label, type: text|email|number|select|textarea|toggle|image, options?, required?, hint?, full?, placeholder?, autoComplete?, onUpload?, clearable?, step?, min?, max? }]
+   fields: [{ name, label, type: text|email|number|select|picker|textarea|toggle|image, options?, required?, hint?, full?, placeholder?, autoComplete?, onUpload?, clearable?, step?, min?, max?, onSearch? }]
+   type: 'picker' is a type-to-search list (UserPicker): give it `options` ({ value, label, search }) or `onSearch` (async (text) => options) to search the
+   database as you type (a stable function, defined outside the component); the stored value is the picked option's `value`.
    type: 'image' needs onUpload: (file) => Promise<url> (it also carries sounds: pass an audio `accept`;
    `clearable` adds a "Remove file" button). step / min / max are for number fields.
    onSubmit(values): optional async persister. If given, its result drives success/error;
@@ -121,6 +124,8 @@ export default function EntityForm({ title, fields, initial = {}, onClose, onSub
             )}
             {f.type === 'image' ? (
               <ImageUploadField value={values[f.name]} onChange={(url) => set(f.name, url)} onUpload={f.onUpload} accept={f.accept} clearable={f.clearable} />
+            ) : f.type === 'picker' ? (
+              <UserPicker options={f.options || []} onSearch={f.onSearch} value={values[f.name]} onChange={(v) => set(f.name, v)} placeholder={f.placeholder} />
             ) : f.type === 'select' ? (
               <select className="select" value={values[f.name]} onChange={(e) => set(f.name, e.target.value)}>
                 <option value="">Select…</option>

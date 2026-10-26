@@ -24,6 +24,7 @@ import { HostCodesShell } from './master/hostCodes.jsx'
 import { num } from '../data/index.js'
 import { SalaryReport, SalarySlabs, SALARY_TABS, SALARY_SEARCH_KEYS, SALARY_SEARCH_HINT, exportPayslips } from '../components/SalaryReport.jsx'
 import ExportButtons from '../components/ExportButtons.jsx'
+import { WithSalaryUser, SalaryUserNote } from '../components/SalaryUserFilter.jsx'
 import { usd } from '../lib/money.js'
 
 const CR = ['Home', 'Agency']
@@ -537,17 +538,22 @@ export function AgencySalary() {
             <div className="mb-16"><PillTabs tabs={SALARY_TABS} value={tab} onChange={setTab} /></div>
             {tab === 'report' && <SalaryReport agencyId={agencyId} onAssigned={reload} />}
             {tab === 'slabs' && <SalarySlabs canEdit={false} />}
-            {tab === 'payslips' && (<>
-            <div className="hstack mb-16" style={{ justifyContent: 'flex-end' }}><ExportButtons show={canExport} disabled={!rows.length} onExport={(f) => exportPayslips(f, rows)} /></div>
+            {tab === 'payslips' && (<WithSalaryUser rows={rows}>{(shown, picker, filter) => (<>
+            <div className="hstack wrap mb-16" style={{ gap: 12, alignItems: 'flex-end' }}>
+              {picker}
+              <div className="grow" />
+              <ExportButtons show={canExport} disabled={!shown.length} onExport={(f) => exportPayslips(f, shown)} />
+            </div>
+            <SalaryUserNote filter={filter} />
             <StatGrid stats={[
-              { key: 'Payslips', value: String(rows.length), icon: 'users', tile: 'tile-purple' },
-              { key: 'Gross', value: usd(rows.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
-              { key: 'Net payable', value: usd(rows.reduce((s, r) => s + r.net, 0)), icon: 'wallet', tile: 'tile-blue' },
-              { key: 'On hold', value: String(rows.filter((r) => r.status === 'On Hold').length), icon: 'lock', tile: 'tile-red' },
+              { key: 'Payslips', value: String(shown.length), icon: 'users', tile: 'tile-purple' },
+              { key: 'Gross', value: usd(shown.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
+              { key: 'Net payable', value: usd(shown.reduce((s, r) => s + r.net, 0)), icon: 'wallet', tile: 'tile-blue' },
+              { key: 'On hold', value: String(shown.filter((r) => r.status === 'On Hold').length), icon: 'lock', tile: 'tile-red' },
             ]} />
             <div className="mt-16">
               <DataTable
-                rows={rows}
+                rows={shown}
                 searchKeys={[...SALARY_SEARCH_KEYS, 'idShort']}
                 searchPlaceholder={SALARY_SEARCH_HINT}
                 tabs={[
@@ -589,7 +595,7 @@ export function AgencySalary() {
                 initial={{ period: editing.period, role: editing.role.toLowerCase().replace(' ', '_'), base_amount: editing.base, bonus_amount: editing.bonus, deductions: editing.deductions }}
                 fields={fields.filter((f) => f.name !== 'payee_id')} />
             )}
-            </>)}
+            </>)}</WithSalaryUser>)}
           </>
         )
       }}

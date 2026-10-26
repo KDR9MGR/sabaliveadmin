@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ListPage, StatGrid, AsyncView } from '../_templates.jsx'
 import { PageHeader, Card, Button, Person, StatusBadge, Tag, Badge, PillTabs, KV, useToast, ConfirmDialog } from '../../components/ui.jsx'
-import { personCol, statusCol, numCol, moneyCol } from '../../components/cells.jsx'
+import { personCol, adminCol, statusCol, numCol, moneyCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
 import { AreaChart, BarChart, DonutChart } from '../../components/charts.jsx'
@@ -15,8 +15,10 @@ import ExportButtons from '../../components/ExportButtons.jsx'
 import { usd } from '../../lib/money.js'
 import {
   listSalary, createSalaryPayment, updateSalaryPayment, setSalaryStatus,
-  payeeOptions, agencyOptions, SALARY_ROLES, SALARY_STATUSES,
+  agencyOptions, SALARY_ROLES, SALARY_STATUSES,
 } from '../../lib/salary.js'
+import { searchProfileOptions } from '../../lib/coins.js'
+import { useSalaryUser, SalaryUserPicker, SalaryUserNote } from '../../components/SalaryUserFilter.jsx'
 import { listLiveRequests, decideLiveRequest } from '../../lib/workflows.js'
 import ActiveRoomsGrid from '../../components/ActiveRoomsGrid.jsx'
 import SystemKpis from '../../components/SystemKpis.jsx'
@@ -693,7 +695,9 @@ export function Salary() {
   const { data: rows, loading, error, reload } = useAsyncData(listSalary)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null)
-  const list = rows || []
+  const all = rows || []
+  const userFilter = useSalaryUser(all) // the User dropdown: the payslips of one person
+  const list = userFilter.shown
 
   const setStatus = async (r, status) => {
     try { await setSalaryStatus(r.id, status); toast(`${r.payee} → ${status.replace('_', ' ')}`); reload() }
@@ -701,7 +705,7 @@ export function Salary() {
   }
 
   const salaryFields = (opts) => [
-    { name: 'payee_id', label: 'Payee', type: 'select', required: true, options: opts?.payees || [] },
+    { name: 'payee_id', label: 'Payee', type: 'picker', required: true, onSearch: searchProfileOptions, placeholder: 'Search by User ID, name or username…' },
     { name: 'role', label: 'Role', type: 'select', required: true, options: SALARY_ROLE_OPTS },
     { name: 'agency_id', label: 'Agency', type: 'select', options: opts?.agencies || [] },
     { name: 'period', label: 'Period', required: true, placeholder: 'e.g. Sep 2026' },
@@ -724,6 +728,10 @@ export function Salary() {
       {tab === 'report' && <SalaryReport onAssigned={reload} />}
       {tab === 'slabs' && <SalarySlabs canEdit={canEditSlabs} />}
       {tab === 'payslips' && <AsyncView loading={loading} error={error} reload={reload}>
+        <div className="hstack wrap" style={{ gap: 12, alignItems: 'flex-end', marginBottom: 12 }}>
+          <SalaryUserPicker filter={userFilter} />
+        </div>
+        <SalaryUserNote filter={userFilter} />
         <StatGrid stats={[
           { key: 'Payslips', value: String(list.length), icon: 'users', tile: 'tile-purple' },
           { key: 'Gross', value: usd(list.reduce((s, r) => s + r.base + r.bonus, 0)), icon: 'dollar', tile: 'tile-green' },
@@ -743,15 +751,16 @@ export function Salary() {
             ]}
             filters={[
               { label: 'Role', options: ['Host', 'Sub Admin', 'Agency Manager'], get: (r) => r.role },
-              { label: 'Period', options: [...new Set(list.map((r) => r.period))], get: (r) => r.period },
+              { label: 'Period', options: [...new Set(all.map((r) => r.period))], get: (r) => r.period },
             ]}
             columns={[
               personCol('payee'),
               { key: 'displayId', header: 'User ID', sortable: true, render: (r) => <span className="mono">{r.displayId ?? '—'}</span> },
               { key: 'role', header: 'Role', render: (r) => <Tag>{r.role}</Tag> },
               { key: 'agency', header: 'Agency', sortable: true, render: (r) => <span>{r.agencyCode != null && <span className="mono muted">{r.agencyCode} · </span>}{r.agency}</span> },
-              { key: 'countryAdmin', header: 'Country Admin', sortable: true, render: (r) => (r.countryAdmin ? r.countryAdmin : <span className="muted">—</span>) },
-              { key: 'globalAdmin', header: 'Global Admin', sortable: true, render: (r) => (r.globalAdmin ? r.globalAdmin : <span className="muted">—</span>) },
+              adminCol('subAdmin', 'subAdminId', 'Sub Admin'),
+              adminCol('countryAdmin', 'countryAdminId', 'Country Admin'),
+              adminCol('globalAdmin', 'globalAdminId', 'Global Admin'),
               { key: 'period', header: 'Period', sortable: true },
               moneyCol('base', 'Base'),
               moneyCol('bonus', 'Bonus'),
@@ -785,7 +794,8 @@ export function Salary() {
 }
 
 function SalaryDrawer({ title, fieldsFor, onClose, onSubmit, savedMessage, initial, lockPickers }) {
-  const { data: opts } = useAsyncData(async () => ({ payees: await payeeOptions(), agencies: await agencyOptions() }))
+  // the payee is searched in the database as you type (User ID, name or username), so nobody has to be loaded up front
+  const { data: opts } = useAsyncData(async () => ({ agencies: await agencyOptions() }))
   let fields = fieldsFor(opts)
   if (lockPickers) fields = fields.filter((f) => f.name !== 'payee_id' && f.name !== 'agency_id')
   return <EntityForm title={title} onClose={onClose} onSubmit={onSubmit} savedMessage={savedMessage} initial={initial} fields={fields} />

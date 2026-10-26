@@ -1,6 +1,7 @@
 import { Person, StatusBadge, Tag } from './ui.jsx'
 import { usd } from '../lib/money.js'
 import { num } from '../data/util.js'
+import { NOT_ASSIGNED } from '../lib/salaryColumns.js'
 
 export const personCol = (nameKey = 'name', metaKey) => ({
   key: nameKey,
@@ -45,3 +46,11 @@ export const emailCol = (key = 'email', header = 'Email') => ({
 })
 
 export const textCol = (key, header, opts = {}) => ({ key, header, sortable: opts.sortable ?? true, ...opts })
+
+/* An admin above an agency (Sub / Country / Global Admin): their name and their app User ID, or "Not assigned" when the system has not recorded one. */
+export const adminCol = (nameKey, idKey, header) => ({
+  key: nameKey, header, sortable: true,
+  render: (r) => (r[nameKey]
+    ? <span>{r[nameKey]}{r[idKey] !== '' && r[idKey] != null && <span className="mono muted"> · {r[idKey]}</span>}</span>
+    : <span className="muted">{NOT_ASSIGNED}</span>),
+})

@@ -239,8 +239,9 @@ export function CountryTransferCountry({ handover = false }) {
   )
 }
 
-/* Transfer Global — hand a Country Admin (and all their Sub Admins / Agencies / Hosts)
-   to another Global Admin. Mirrors the Transfer Sub Admin pattern, one level up. */
+/* Transfer Global — says which Global Admin a Country Admin (and, with them, their Sub Admins / Agencies / Hosts) belongs to: assign one that has none, or hand it
+   to another Global Admin. Mirrors the Transfer Sub Admin pattern, one level up. The owner is who the Salary exports show as the Global Admin
+   (staff_roles.global_admin_id + transfer_country_admin, sabalive migration 20261026100000). */
 export function CountryTransferGlobal({ handover = false }) {
   const [moving, setMoving] = useState(null)
   const [targets, setTargets] = useState(null)
@@ -263,7 +264,9 @@ export function CountryTransferGlobal({ handover = false }) {
       {({ countryAdmins }, reload) => (
         <>
           <Card className="mb-16"><div className="card__body" style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-            Transferring a Country Admin hands them, and every Sub Admin, Agency and Host they own, to another Global Admin. The current owner loses access immediately.
+            Every Country Admin belongs to one Global Admin, and so do their Sub Admins, Agencies and Hosts. This is the Global Admin the Salary exports show for them (name and User ID).
+            Assign one to a Country Admin who has none, or move a Country Admin to another Global Admin. A Master or Super Admin can change any; a Global Admin only their own.
+            This records who reports to whom: every Global Admin can still see everyone.
           </div></Card>
           <DataTable
             rows={countryAdmins}
@@ -276,14 +279,14 @@ export function CountryTransferGlobal({ handover = false }) {
               numCol('agencies', 'Agencies'),
               numCol('hosts', 'Hosts'),
             ]}
-            rowActions={(r) => [{ label: 'Transfer to another Global Admin', icon: 'arrowLeftRight', onClick: () => openWith(r) }]}
+            rowActions={(r) => [{ label: r.globalAdminId ? 'Transfer to another Global Admin' : 'Assign a Global Admin', icon: 'arrowLeftRight', onClick: () => openWith(r) }]}
             emptyText="No Country Admins yet — grant the country_admin role from Super Admin → Access Control."
           />
           {moving && (
             <EntityForm
-              title={`Transfer Country Admin — ${moving.name}`}
+              title={`${moving.globalAdminId ? 'Transfer' : 'Assign a Global Admin to'} Country Admin — ${moving.name}`}
               onClose={() => { setMoving(null); setTargets(null) }}
-              savedMessage={`${moving.name} transferred`}
+              savedMessage={moving.globalAdminId ? `${moving.name} transferred` : `Global Admin assigned to ${moving.name}`}
               onSubmit={async (v) => {
                 await transferCountryAdmin({ countryAdminId: moving.id, toGlobalAdmin: v.global_admin })
                 reload()
@@ -291,7 +294,7 @@ export function CountryTransferGlobal({ handover = false }) {
               fields={[
                 {
                   name: 'global_admin',
-                  label: `New Global Admin (currently: ${moving.globalAdmin})`,
+                  label: moving.globalAdminId ? `New Global Admin (currently: ${moving.globalAdmin})` : 'Global Admin',
                   type: 'select',
                   required: true,
                   options: targets || [],
