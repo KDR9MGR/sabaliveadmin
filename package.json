@@ -12,7 +12,7 @@
     "build:site": "rm -rf dist-combined && npm run build:admin:zone && npm run build:landing:zone",
     "build:admin:zone": "vite build --base /admin/ --outDir dist-combined/admin",
     "build:landing:zone": "npm --prefix landing install && npm --prefix landing run build -- --outDir ../dist-combined --emptyOutDir false",
-    "test": "node --test src/lib/environments.test.js src/lib/pkStats.test.js src/lib/pkTheme.test.js src/lib/liveWarning.test.js src/lib/profileTags.test.js src/lib/csv.test.js src/lib/xlsx.test.js src/lib/salaryColumns.test.js src/lib/profileSearch.test.js src/lib/levelRules.test.js src/lib/banRules.test.js src/lib/dbErrors.test.js"
+    "test": "node --test src/lib/environments.test.js src/lib/pkStats.test.js src/lib/pkTheme.test.js src/lib/liveWarning.test.js src/lib/profileTags.test.js src/lib/csv.test.js src/lib/xlsx.test.js src/lib/salaryColumns.test.js src/lib/profileSearch.test.js src/lib/levelRules.test.js src/lib/banRules.test.js src/lib/dbErrors.test.js src/lib/sudGames.test.js src/lib/diamondResetRules.test.js landing/src/lib/sudParams.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

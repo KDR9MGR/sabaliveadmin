@@ -62,6 +62,19 @@ Salary exports (Excel / CSV): every export carries the app User ID, and Sub Admi
 "Not assigned" (`NOT_ASSIGNED`), never an empty cell. The same three columns show on screen (`adminCol` in `components/cells.jsx`). The Global Admin comes from `staff_roles.global_admin_id` (sabalive migration
 `20261026100000`), set on the Transfer Global page (`transfer_country_admin`): "Assign a Global Admin" for a Country Admin that has none.
 
+## SUD games (2026-10-26, built, not shipped)
+The Games page has a second card, "SUD games" (`pages/master/games.jsx`): add a game from SUD's list (`data/sudGames.js`, 59 presets; or type a SUD game id; ids are TEXT, they exceed JavaScript's safe integers),
+edit name / proportions (height / width) / picture / coin-game flag / order, Hide / Show, On / Off, Delete (`lib/games.js` `listSudGames`, `saveSudGame`, `setSudGamesHidden`, `deleteSudGame`; rules in `lib/sudGames.js`,
+tested). Two Release controls in Config: `sud_games_enabled` and `sud_coin_games_enabled`, both default off. The card says "needs the database update" until sabalive migration `20261026110000` is applied
+(`SUD_NOT_INSTALLED`). The page the app opens to play a SUD game is part of the public landing site: `landing/src/pages/SudPlay.jsx` at `/sud/play` (outside the site layout; the SUD web SDK is pinned in
+`landing/package.json`; the hostname `sabalive.in` is what SUD's console must list as the Web bundle_id). Full story: `sabalive/docs/SUD_GAMES.md`.
+
+## Diamond reset (2026-10-26, built, not shipped)
+`pages/master/diamondReset.jsx` at `/admin/diamond-reset` (menu: Economy -> Diamond Reset, capability `run_payroll`, but the SQL needs the Master / Super Admin role as well; a lower role cannot open the path). Pick a finished month, see
+what each button would take, press **Reset gifting diamonds**, **Reset reward diamonds** or **Reset both**, type the month to confirm; the history table has Undo. Pure rules (months, button states, confirmation) in
+`lib/diamondResetRules.js` (tested), database calls in `lib/diamondReset.js`. The first card is the **automatic monthly reset** (a toggle, a Gifting and a Reward checkbox, the day of the month; `AutoResetCard`; pure rules `checkAutoSettings` / `nextAutoRun` in `diamondResetRules.js`, calls `getAutoSettings` / `saveAutoSettings`):
+saved with a button, turning it ON asks once more, and it names the next run and what it will reset. The page says so while sabalive migration `20261026120000` (buttons) or `20261026130000` (automatic) is missing. Full story: `sabalive/docs/DIAMOND_RESET.md`.
+
 ## Environment switch (production <-> staging)
 `src/lib/environments.js` picks the Supabase project; `components/EnvironmentSwitch.jsx` is the top-bar pill (Master and
 Super Admin only), the orange STAGING strip and the sign-in notice. A normal build is "home = production" and gets the switch

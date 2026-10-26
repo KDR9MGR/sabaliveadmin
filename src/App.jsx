@@ -41,6 +41,7 @@ import { Games } from './pages/master/games.jsx'
 import { PkBattles } from './pages/master/pk.jsx'
 import { LiveRequests, LuckyBox, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary, Reports, SystemManagement } from './pages/master/platform.jsx'
 import { Withdrawals } from './pages/master/withdrawals.jsx'
+import { DiamondReset } from './pages/master/diamondReset.jsx'
 
 import {
   AgencyDashboard, MyAgency, AgencyHosts, AgencyHostProfiles, AgencyApplications,
@@ -169,6 +170,8 @@ export default function App() {
             <Route element={<RequireCap cap="run_payroll" />}>
               <Route path="salary" element={<Salary />} />
               <Route path="withdrawals" element={<Withdrawals />} />
+              {/* Master / Super Admin only in SQL (admin_reset_diamonds checks the role), not just here */}
+              <Route path="diamond-reset" element={<DiamondReset />} />
             </Route>
 
             <Route element={<RequireCap cap="view_reports" />}>
