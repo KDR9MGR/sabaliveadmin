@@ -8,6 +8,8 @@ import { useState } from 'react'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { useAuth } from '../../lib/auth.jsx'
 import { listUsers, getUserDetail, setUserStatus, listStaff, fmtDate, ROLE_LABEL } from '../../lib/admin.js'
+import { userLevelCards } from '../../lib/userLevels.js'
+import LevelProgress from '../../components/LevelProgress.jsx'
 import {
   listTransferRequests, decideTransfer, createTransferRequest,
   agencyOptions, hostOptions, subAdminOptions,
@@ -209,7 +211,8 @@ export function UserIds() {
             personCol('name', 'username'),
             { key: 'displayId', header: 'User ID', render: (r) => <span className="mono">{r.displayId}</span> },
             { key: 'id', header: 'System ID', render: (r) => <span className="mono muted">{r.id}</span> },
-            { key: 'level', header: 'Level', align: 'right' },
+            { key: 'wealthLevel', header: 'Wealth level', align: 'right' },
+            { key: 'charmLevel', header: 'Charm level', align: 'right' },
             numCol('followers', 'Followers'),
             statusCol(),
           ]}
@@ -602,7 +605,7 @@ export function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRe
               ['User ID', <span className="mono">{u.display_id}</span>],
               ['Username', '@' + (u.username || '—')],
               ['Region', u.location],
-              ['Level', `Lv. ${u.level}`],
+              ...userLevelCards(u, data.ladders).map((c) => [`${c.label} level`, <LevelProgress key={c.key} card={c} />]),
               ['Coin balance', Number(w.coins || 0).toLocaleString()],
               ['Diamonds', Number(w.diamonds || 0).toLocaleString()],
               ['Followers / Following', `${u.followers_count} / ${u.following_count}`],

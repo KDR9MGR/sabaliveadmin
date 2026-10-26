@@ -84,6 +84,12 @@ saved with a button, turning it ON asks once more, and it names the next run and
 - Config -> Release controls has **"Coin sellers on iOS"** (`coin_seller_ios`, default OFF since 2026-10-27: Apple requires In-App Purchase for coins): on shows "Buy from Offline Seller" on iPhones too (Android always shows it). Find it as Super Admin: Application Config -> "Release Settings" (left list) -> the switch list -> **Save release controls**.
 - **Diamond reset is its own permission**, `reset_diamonds` (`lib/capabilities.js`: Operations group, on by default for a Master, an explicit false blocks it; a lower role can never use it). The menu item and the route use it instead of `run_payroll`.
 
+## User page levels (2026-10-27)
+The user detail page (`pages/master/users.jsx`, `UserProfileBody`) shows **Wealth and Charm separately** (`components/LevelProgress.jsx`): the level, the XP they have, the XP the NEXT level needs, a bar and "N XP to go" (or "Top level"). The users list has a Wealth level and a Charm level
+column instead of the old combined one (the old combined `profiles.level` is no longer shown anywhere in the panel). Pure rules in `lib/userLevels.js` (`trackProgress`, `userLevelCards`, `laddersFromRows`; tested in `userLevels.test.js` with the SAME fixture as the app's
+`my_level_panel_levels_test.dart`): the next level is level + 1 and a person is at the highest level whose XP they reached, exactly like the app's My Level screen and the database (`recompute_track_levels`). `getUserDetail` also reads `track_levels` (the page still loads without it).
+The page flags a stored level that is not the one its XP reaches. Cross-check done 2026-10-27 on staging: 82 cases (real users and synthetic XP at every threshold, both tracks) gave the same level, next-level XP, XP to go and progress in the database, the panel code and the app code.
+
 ## Invite page (2026-10-26)
 `landing/src/pages/Invite.jsx` at `/invite` and `/invite/:code` (inside the site layout) is where the app's invite link and QR code land (`sabalive/lib/core/utils/share_links.dart` `inviteShareUrl`). Pure rules in `landing/src/lib/invite.js`
 (`cleanInviteCode`, `platformFor`, `playStoreUrl`, `inviteTarget`; tested in `landing/src/lib/invite.test.js`, part of `npm test`): Android is sent to `STORE_LINKS.android` with the code as the Play referrer, an iPhone sees "coming soon"

@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { activeRestrictions } from './bans.js'
 import { fetchAllPages } from './profileSearch.js'
+import { laddersFromRows } from './userLevels.js'
 
 /* ---------------------------------------------------------------- helpers */
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
@@ -31,7 +32,7 @@ const restrictionFields = (r) => {
    filterable down to them. */
 export async function listUsers() {
   const staffIds = unwrap(await supabase.from('staff_roles').select('user_id')).map((s) => s.user_id)
-  const cols = 'id, display_id, name, username, location, level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins, diamonds), host_profiles(tier, status, kyc_status, agencies(name))'
+  const cols = 'id, display_id, name, username, location, level, wealth_level, charm_level, followers_count, verified, status, is_live, avatar_url, created_at, wallets(coins, diamonds), host_profiles(tier, status, kyc_status, agencies(name))'
   const run = (select) => {
     // ghost IDs (monitoring accounts) are managed under Super Admin → Ghost IDs, not here
     // paged: the server returns at most 1000 rows per request, so a single request hid every user past the thousandth
@@ -60,6 +61,8 @@ export async function listUsers() {
     avatar: r.avatar_url || null,
     location: r.location,
     level: r.level,
+    wealthLevel: r.wealth_level ?? 1,
+    charmLevel: r.charm_level ?? 1,
     followers: r.followers_count,
     verified: r.verified,
     status: titleCase(r.status),
@@ -76,7 +79,7 @@ export async function listUsers() {
 }
 
 export async function getUserDetail(id) {
-  const [profile, entries, streams, badges, frames, following, followers, login] = await Promise.all([
+  const [profile, entries, streams, badges, frames, following, followers, login, levelRows] = await Promise.all([
     supabase.from('profiles')
       .select('*, wallets(coins, diamonds), host_profiles(*, agencies(name)), staff_roles!user_id(role, agency_id, agencies(name)), kyc_verifications!profile_id(status, document_type, created_at)')
       .eq('id', id).maybeSingle().then(unwrap),
@@ -102,9 +105,12 @@ export async function getUserDetail(id) {
     // how they sign in, and from which devices (RPC from migration 20261003120000;
     // the page still loads without it)
     supabase.rpc('admin_user_login_info', { p_user: id }).then(({ data, error }) => (error ? null : data)),
+    // the XP every Wealth and Charm level needs (Master -> Levels): the page shows how far this person is to the next one; the page still loads without it
+    supabase.from('track_levels').select('track, level, xp_required').order('level').limit(1000).then(({ data, error }) => (error ? [] : data)),
   ])
   return {
     profile,
+    ladders: laddersFromRows(levelRows),
     entries: (entries || [])
       .filter((e) => e.store_items && e.store_items.category !== 'vip')
       .map((e) => ({
