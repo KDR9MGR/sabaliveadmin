@@ -242,6 +242,10 @@ const RELEASE_FLAGS = [
     desc: 'On: the Games tab shows the platform\'s games (Android) and the server accepts the game platform\'s calls. Off by default; turning it off stops all game bets and lookups at once. Limits and reports are on the Games page.',
   },
   {
+    key: 'coin_seller_ios', def: true, title: 'Coin sellers on iOS',
+    desc: 'On (default): the "Buy from Offline Seller" button shows on iPhones as well as Android. Off: iPhones do not show it (for App Store review); Android always shows it. Takes effect on open phones within a moment.',
+  },
+  {
     key: 'sud_games_enabled', def: false, title: 'SUD games (party games)',
     desc: 'On: the SUD games chosen on the Games page (Ludo, Domino, UNO-style cards, ...) show in the app next to the Tulasi games and the server opens them. Needs Games to be on as well. Off by default; off hides them at once on open phones.',
   },

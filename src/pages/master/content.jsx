@@ -5,6 +5,7 @@ import { statusCol } from '../../components/cells.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
 import SvgaPlayer from '../../components/SvgaPlayer.jsx'
+import SvgPreview from '../../components/SvgPreview.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { UPLOAD_ACCEPT, mediaKind } from '../../lib/storage.js'
 import {
@@ -109,6 +110,7 @@ export function Banners() {
                 <span className="hstack" style={{ gap: 10 }}>
                   {kind === 'video' ? <video src={r.imageUrl} autoPlay loop muted playsInline style={box} />
                     : kind === 'image' ? <img src={r.imageUrl} alt="" style={box} />
+                    : kind === 'svg' ? <SvgPreview url={r.imageUrl} style={box} fallback={<span style={{ ...box, display: 'block', background: 'linear-gradient(135deg,#7c3aed,#ec4899)' }} />} />
                     : kind === 'svga' ? <SvgaPlayer url={r.imageUrl} size={44} style={{ borderRadius: 6, overflow: 'hidden' }} />
                     : <span style={{ ...box, display: 'block', background: 'linear-gradient(135deg,#7c3aed,#ec4899)' }} />}
                   <b>{r.title}</b>

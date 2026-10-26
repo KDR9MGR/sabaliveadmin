@@ -17,7 +17,7 @@ export const TAG_LOOKS = [
   { value: 'plate', label: 'Background picture, the app writes the name on it' },
 ]
 /* A tag picture can be a still picture, a GIF / WebP, or an SVGA animation (owner, 2026-10-25). */
-export const TAG_IMAGE_ACCEPT = '.svga,.png,.webp,.gif,.jpg,.jpeg,image/png,image/webp,image/gif,image/jpeg'
+export const TAG_IMAGE_ACCEPT = '.svga,.svg,.png,.webp,.gif,.jpg,.jpeg,image/png,image/webp,image/gif,image/jpeg,image/svg+xml'
 export const isSvga = (url) => /\.svga(\?|$)/i.test(String(url || ''))
 export const TAG_STATUSES = [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive (hidden, cannot be given)' }]
 

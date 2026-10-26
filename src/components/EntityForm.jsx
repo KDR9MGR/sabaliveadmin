@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Drawer, Button, useToast } from './ui.jsx'
 import { mediaKind } from '../lib/storage.js'
 import SvgaPlayer from './SvgaPlayer.jsx'
+import SvgPreview from './SvgPreview.jsx'
 import UserPicker from './UserPicker.jsx'
 
 /* type: 'image' field — uploads immediately on file pick via f.onUpload(file) =>
@@ -33,6 +34,11 @@ function ImageUploadField({ value, onChange, onUpload, accept = 'image/*', clear
       )}
       {value && kind === 'image' && (
         <img src={value} alt="" style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 8 }} />
+      )}
+      {value && kind === 'svg' && (
+        <div style={{ display: 'grid', placeItems: 'center', background: 'var(--surface-2, #0001)', borderRadius: 8, padding: 8 }}>
+          <SvgPreview url={value} style={{ maxWidth: '100%', maxHeight: 140, objectFit: 'contain' }} fallback={<span className="muted" style={{ fontSize: 12.5 }}>SVG uploaded (preview unavailable).</span>} />
+        </div>
       )}
       {value && kind === 'svga' && (
         <div style={{ display: 'grid', placeItems: 'center', background: 'var(--surface-2, #0001)', borderRadius: 8, padding: 8 }}>

@@ -170,7 +170,9 @@ export default function App() {
             <Route element={<RequireCap cap="run_payroll" />}>
               <Route path="salary" element={<Salary />} />
               <Route path="withdrawals" element={<Withdrawals />} />
-              {/* Master / Super Admin only in SQL (admin_reset_diamonds checks the role), not just here */}
+            </Route>
+            {/* its own permission (Access Control: "Diamond reset"); Master / Super Admin only in SQL as well (admin_reset_diamonds checks the role and the permission) */}
+            <Route element={<RequireCap cap="reset_diamonds" />}>
               <Route path="diamond-reset" element={<DiamondReset />} />
             </Route>
 

@@ -75,6 +75,14 @@ what each button would take, press **Reset gifting diamonds**, **Reset reward di
 `lib/diamondResetRules.js` (tested), database calls in `lib/diamondReset.js`. The first card is the **automatic monthly reset** (a toggle, a Gifting and a Reward checkbox, the day of the month; `AutoResetCard`; pure rules `checkAutoSettings` / `nextAutoRun` in `diamondResetRules.js`, calls `getAutoSettings` / `saveAutoSettings`):
 saved with a button, turning it ON asks once more, and it names the next run and what it will reset. The page says so while sabalive migration `20261026120000` (buttons) or `20261026130000` (automatic) is missing. Full story: `sabalive/docs/DIAMOND_RESET.md`.
 
+## SVG uploads, the iOS coin seller switch and the reset permission (2026-10-26)
+- Every asset upload accepts **.svg** as well as SVGA / MP4 / GIF / WebP / PNG (`UPLOAD_ACCEPT`, `TAG_IMAGE_ACCEPT`). `lib/mediaTypes.js` holds the pure rules (`mediaKind`, `looksLikeSvg`, `svgProblem`, tested): an SVG is checked
+  to be a real drawing and refused if it carries a script, an event handler, embedded HTML or a javascript: link, then sent as `application/octet-stream` (like SVGA: the buckets only accept a fixed list of types, and a generic binary is
+  never run by a browser). The panel draws it with `components/SvgPreview.jsx` (reads the file and shows it as an image; used by `MediaPreview`, the upload field, the banners table and the Tags page). The banners bucket was widened
+  (migration `20261026140000`) so a banner can be a GIF / SVG / SVGA too.
+- Config -> Release controls has **"Coin sellers on iOS"** (`coin_seller_ios`, default ON): off hides "Buy from Offline Seller" on iPhones (Android always shows it).
+- **Diamond reset is its own permission**, `reset_diamonds` (`lib/capabilities.js`: Operations group, on by default for a Master, an explicit false blocks it; a lower role can never use it). The menu item and the route use it instead of `run_payroll`.
+
 ## Environment switch (production <-> staging)
 `src/lib/environments.js` picks the Supabase project; `components/EnvironmentSwitch.jsx` is the top-bar pill (Master and
 Super Admin only), the orange STAGING strip and the sign-in notice. A normal build is "home = production" and gets the switch

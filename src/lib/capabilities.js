@@ -22,6 +22,9 @@ export const CAPABILITIES = [
   { key: 'manage_hosts', label: 'Manage hosts', group: 'Operations' },
   { key: 'manage_coins', label: 'Configure coins & gifts', group: 'Operations' },
   { key: 'run_payroll', label: 'Run payroll', group: 'Operations' },
+  // The monthly diamond reset (Economy -> Diamond Reset, sabalive migration 20261026140000). Master and Super Admin only: on by default for a Master (an explicit false blocks it),
+  // never openable by a lower role even if it is saved on one (the database also requires the Master role).
+  { key: 'reset_diamonds', label: 'Diamond reset (monthly)', group: 'Operations' },
   { key: 'edit_config', label: 'Edit app config', group: 'System' },
   { key: 'manage_infra', label: 'Manage infrastructure', group: 'System' },
   { key: 'view_audit', label: 'Access audit logs', group: 'System' },
@@ -58,7 +61,7 @@ const ALL = Object.fromEntries(CAPABILITY_KEYS.map((k) => [k, true]))
 
 export const ROLE_BASELINE = {
   super_admin: ALL,
-  admin: set('view_dashboards', 'manage_users', 'view_user_profile', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support', 'manage_tags'),
+  admin: set('view_dashboards', 'manage_users', 'view_user_profile', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support', 'manage_tags', 'reset_diamonds'),
   agency_manager: set('view_dashboards', 'manage_hosts', 'export_data'),
   sub_admin: set('view_dashboards', 'manage_hosts'),
   country_admin: set('view_dashboards', 'manage_hosts'),

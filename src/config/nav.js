@@ -113,7 +113,7 @@ export const NAV = {
       ]},
       { label: 'Withdrawals', icon: 'wallet', cap: 'run_payroll', to: '/admin/withdrawals' },
       { label: 'Salary', icon: 'fileText', cap: 'run_payroll', to: '/admin/salary' },
-      { label: 'Diamond Reset', icon: 'star', cap: 'run_payroll', to: '/admin/diamond-reset' },
+      { label: 'Diamond Reset', icon: 'star', cap: 'reset_diamonds', to: '/admin/diamond-reset' },
       { label: 'Reports & Analytics', icon: 'chart', cap: 'view_reports', to: '/admin/reports' },
     ]},
     { section: 'Platform', items: [

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { uploadMedia } from '../../lib/storage.js'
 import SvgaPlayer from '../../components/SvgaPlayer.jsx'
+import SvgPreview from '../../components/SvgPreview.jsx'
+import { isSvg } from '../../lib/mediaTypes.js'
 import { AsyncView } from '../_templates.jsx'
 import { PageHeader, Card, Button, Drawer, ConfirmDialog, EmptyState, useToast } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
@@ -34,13 +36,25 @@ export function TagPill({ tag, dim }) {
       </span>
     )
   }
+  if (tag.look === 'picture' && url && isSvg(url)) {
+    return <span title={tag.name} style={{ display: 'inline-flex', opacity, verticalAlign: 'middle' }}><SvgPreview url={url} alt={tag.name} style={{ height: 28, maxWidth: 220, objectFit: 'contain' }} fallback={<TagPill tag={{ ...tag, look: 'pill' }} />} /></span>
+  }
+  if (tag.look === 'plate' && url && isSvg(url)) {
+    return (
+      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 16px', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', opacity,
+        color: tagTextColor(tag), textShadow: '0 1px 2px rgba(0,0,0,.55)', background: color, borderRadius: 999, overflow: 'hidden' }}>
+        <SvgPreview url={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        <span style={{ position: 'relative' }}>{label}</span>
+      </span>
+    )
+  }
   if (tag.look === 'picture' && url && !failed) {
     return <img src={url} alt={tag.name} title={tag.name} onError={() => setFailed(true)} style={{ height: 28, maxWidth: 220, objectFit: 'contain', opacity, verticalAlign: 'middle' }} />
   }
   if (tag.look === 'plate' && url && !failed) {
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 16px', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', opacity,
-        backgroundImage: `url("${url}")`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', color: tagTextColor(tag), textShadow: '0 1px 2px rgba(0,0,0,.55)' }}>
+        backgroundImage: `url("${url}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', borderRadius: 999, color: tagTextColor(tag), textShadow: '0 1px 2px rgba(0,0,0,.55)' }}>
         <img src={url} alt="" onError={() => setFailed(true)} style={{ display: 'none' }} />
         {label}
       </span>
@@ -76,14 +90,16 @@ function PictureField({ value, onChange }) {
         <div style={{ padding: '8px 0' }}>
           {isSvga(value)
             ? <SvgaPlayer url={value} size={72} />
-            : <img src={value} alt="" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain', background: 'rgba(127,127,127,.15)', borderRadius: 8, padding: 6 }} />}
+            : isSvg(value)
+              ? <SvgPreview url={value} style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain', background: 'rgba(127,127,127,.15)', borderRadius: 8, padding: 6 }} />
+              : <img src={value} alt="" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain', background: 'rgba(127,127,127,.15)', borderRadius: 8, padding: 6 }} />}
         </div>
       )}
       <label className="btn" style={{ cursor: busy ? 'default' : 'pointer', textAlign: 'center' }}>
         {busy ? 'Uploading…' : value ? 'Replace picture' : 'Upload picture'}
         <input type="file" accept={TAG_IMAGE_ACCEPT} onChange={pick} disabled={busy} style={{ display: 'none' }} />
       </label>
-      <span className="hint">PNG, WebP, GIF or SVGA animation, wide and short (about 4 to 1, at least 300 px wide), on a transparent background. It is shown about 28 px tall; an SVGA keeps its own proportions and loops.</span>
+      <span className="hint">PNG, WebP, GIF, SVG drawing or SVGA animation, wide and short (about 4 to 1, at least 300 px wide), on a transparent background. It is shown about 28 px tall; an SVGA keeps its own proportions and loops.</span>
       {error && <span style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</span>}
     </div>
   )
