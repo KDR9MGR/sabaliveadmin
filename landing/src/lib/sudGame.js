@@ -1,7 +1,7 @@
 /* Starts a SUD game in a container: the web SDK flow of SUD's own demo (hello-sud-plus-h5): initSDK -> loadMG, answering the SDK's questions (how big is the
    view, what is the game config, the login code expired). The SDK packages are imported only here and only when a game is opened, so the rest of the site never
    loads them. Returns { destroy }. Everything the SDK needs is in `params` (see sudParams.js); nothing is logged. */
-import { viewInfo, refreshRequest, startFailure, EXIT_URL } from './sudParams.js'
+import { viewInfo, refreshRequest, startFailure, bundleIdFor, EXIT_URL } from './sudParams.js'
 
 const ok = JSON.stringify({ ret_code: 0, ret_msg: 'success' })
 
@@ -49,8 +49,8 @@ export async function startSudGame({ root, params, onProgress, onStarted, onErro
     })
 
     await new Promise((resolve, reject) => {
-      // The web SDK's bundle id is this page's host name: it must be the one set in the SUD console ("Web bundle_id").
-      SudMGP.initSDK(params.appId, params.appKey, window.location.hostname, params.test, {
+      // The web SDK's bundle id is this page's host name without www: it must be one set in the SUD console ("Web bundle_id", see bundleIdFor).
+      SudMGP.initSDK(params.appId, params.appKey, bundleIdFor(window.location.hostname), params.test, {
         onSuccess: resolve,
         onFailure: (code) => reject(Object.assign(new Error('init'), { code })),
       })

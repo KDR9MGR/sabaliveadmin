@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readLaunchParams, trustedApi, viewInfo, refreshRequest, startFailure, EXIT_URL, LOAD_TIMEOUT_MS, LOAD_TIMEOUT_MESSAGE } from './sudParams.js'
+import { readLaunchParams, trustedApi, bundleIdFor, viewInfo, refreshRequest, startFailure, EXIT_URL, LOAD_TIMEOUT_MS, LOAD_TIMEOUT_MESSAGE } from './sudParams.js'
 
 const good = '?appId=1000000000000000001&appKey=client-key&gameId=1468180338417074177&roomId=live-123&userId=b1000000-0000-0000-0000-0000000000b2&code=a.b.c&t=x.y.z&lang=en-US&api=https%3A%2F%2Fabc.supabase.co%2Ffunctions%2Fv1%2Fsud&test=1'
 
@@ -67,4 +67,15 @@ test('what a person reads when it fails, and the exit link the app understands',
 test('a game that never starts gives up after 90 seconds with a plain message', () => {
   assert.equal(LOAD_TIMEOUT_MS, 90000)
   assert.match(LOAD_TIMEOUT_MESSAGE, /taking too long/)
+})
+
+test('the bundle id SUD is told is the host name without www: the page runs on www.sabalive.in, the id on record is sabalive.in', () => {
+  assert.equal(bundleIdFor('www.sabalive.in'), 'sabalive.in')
+  assert.equal(bundleIdFor('sabalive.in'), 'sabalive.in')
+  assert.equal(bundleIdFor('WWW.Sabalive.IN'), 'sabalive.in')
+  assert.equal(bundleIdFor('staging.sabalive.in'), 'staging.sabalive.in', 'only a leading www goes')
+  assert.equal(bundleIdFor('wwwx.sabalive.in'), 'wwwx.sabalive.in')
+  assert.equal(bundleIdFor('localhost'), 'localhost')
+  assert.equal(bundleIdFor(''), '')
+  assert.equal(bundleIdFor(undefined), '')
 })

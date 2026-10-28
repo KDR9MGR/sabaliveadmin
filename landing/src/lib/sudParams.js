@@ -35,6 +35,14 @@ export function readLaunchParams(search) {
   return { ok: true, ...p }
 }
 
+/* What the SDK is told this page's "bundle id" is: the site's host name WITHOUT a leading www. The page really runs on www.sabalive.in (the apex redirects there), but the id SUD
+   has on record for the web is `sabalive.in` (SUD console > Web bundle_id; SUD's own test environment was set up from it), and a different host name is refused with error 10005
+   ("Invalid app platform information"). */
+export function bundleIdFor(hostname) {
+  const h = String(hostname || '').trim().toLowerCase()
+  return h.replace(/^www\./, '') || h
+}
+
 /* The answer to the SDK's "how big is the game view": its size in device pixels, with no margin taken from the game. */
 export function viewInfo(width, height, ratio) {
   const dpr = Number(ratio) > 0 ? Number(ratio) : 1
