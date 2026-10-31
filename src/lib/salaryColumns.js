@@ -83,7 +83,8 @@ export const mapReportRow = (r) => ({
   hostId: r.host_id,
   host: r.host_name || '—',
   username: r.host_username,
-  displayId: r.host_display_id,
+  // the salary_report RPC names it `display_id` (the host's app User ID); `host_display_id` is what an older reading of the record used and is still accepted
+  displayId: r.display_id ?? r.host_display_id ?? null,
   agencyId: r.agency_id,
   agency: r.agency_name || '—',
   agencyCode: r.agency_code ?? null,                 // the public Agency ID

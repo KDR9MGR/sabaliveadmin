@@ -93,7 +93,7 @@ test('an agency without an ID still has a label and can be found by name', () =>
 
 test('from the database record to the table search: a host row is found by the Agency ID, the "ID | name" text and the agency name', () => {
   const row = mapReportRow({
-    host_id: 'h1', host_display_id: 100718, host_name: 'Khushboo Sharma', host_username: 'khush_01',
+    host_id: 'h1', display_id: 100718, host_name: 'Khushboo Sharma', host_username: 'khush_01', // `display_id` is the column the salary_report function really returns
     agency_id: 'a1', agency_name: 'India_Agency', agency_code: 20012, period: 'Oct 2026',
     diamonds_earned: '5000', diamonds_rewards: '3000', live_hours: '18.0', live_days: 12, withdrawn_diamonds: 0, available_diamonds: 8000,
     slab_id: null, slab_name: null, payment_usd: null, payslip_id: null, payslip_status: null, blocked_reason: null,
@@ -183,4 +183,23 @@ test('a row with no admin at all still has a word in every admin name cell', () 
   const [head, row] = toCsv(HOST_COLUMNS, [bare]).split('\r\n')
   const at = (h) => row.split(',')[head.split(',').indexOf(h)]
   for (const h of ['Sub Admin', 'Country Admin', 'Global Admin']) assert.equal(at(h), NOT_ASSIGNED, h)
+})
+
+test('the host\'s app User ID is read from the salary_report column `display_id`, and shows in the export row and the User dropdown (it was blank when the panel read `host_display_id`)', () => {
+  // a record exactly as the database function returns it (no host_display_id)
+  const record = {
+    host_id: 'h1', display_id: 100718, host_name: 'Deewana', host_username: 'deewana', agency_id: 'a1', agency_name: 'KGF Agency', agency_code: 20026, period: 'Oct 2026',
+    diamonds_earned: '501700', diamonds_rewards: '0', live_hours: '13.8', live_days: 4, withdrawn_diamonds: 0, available_diamonds: 501700,
+    slab_id: null, slab_name: null, payment_usd: null, payslip_id: null, payslip_status: null, blocked_reason: null,
+    sub_admin_name: 'Sub X', sub_admin_display_id: 100301, country_admin_name: 'Country Y', country_admin_display_id: 100211, global_admin_name: 'Global Z', global_admin_display_id: 100050,
+  }
+  const row = mapReportRow(record)
+  assert.equal(row.displayId, 100718)
+  const [head, line] = toCsv(HOST_COLUMNS, [row]).split('\r\n')
+  assert.equal(line.split(',')[head.split(',').indexOf('User ID')], '100718', 'the User ID cell of the downloaded sheet')
+  assert.ok(!line.includes('100301') && !line.includes('100211') && !line.includes('100050'), 'no admin ID in the sheet')
+  assert.deepEqual(userOptions([row]).map((o) => o.label), ['100718 | Deewana'])
+  // the older name still works, and a record with neither gives null (the sheet leaves the cell empty rather than printing "undefined")
+  assert.equal(mapReportRow({ ...record, display_id: undefined, host_display_id: 100999 }).displayId, 100999)
+  assert.equal(mapReportRow({ ...record, display_id: undefined }).displayId, null)
 })
