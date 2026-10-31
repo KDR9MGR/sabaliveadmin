@@ -1,22 +1,19 @@
 // Salary exports (CSV / Excel) and the search keys the salary tables use. Plain data: tested in salaryColumns.test.js.
-/* What the search boxes look at: name, username (search only), the app User ID, agency code and name, and the admins above the agency. */
-export const SALARY_SEARCH_KEYS = ['host', 'payee', 'username', 'displayId', 'agency', 'agencyCode', 'agencyLabel', 'subAdmin', 'subAdminId', 'countryAdmin', 'countryAdminId', 'globalAdmin', 'globalAdminId', 'period']
+/* What the search boxes look at: name, username (search only), the app User ID, agency code and name, and the NAMES of the admins above the agency. */
+export const SALARY_SEARCH_KEYS = ['host', 'payee', 'username', 'displayId', 'agency', 'agencyCode', 'agencyLabel', 'subAdmin', 'countryAdmin', 'globalAdmin', 'period']
 export const SALARY_SEARCH_HINT = 'Search by name, username, User ID, Agency ID, agency or admin…'
 export const slugOf = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
 
 /* What the downloads contain. `type` only matters for Excel (a $ format / thousands separators); CSV gets plain numbers. All money is USD.
-   User IDs are the ones the app shows (profiles.display_id), never the database id. The username is deliberately not exported. The admin columns say
-   which Sub Admin, Country Admin and Global Admin the agency sits under, each with their name AND their app User ID; an admin the system has not recorded says
-   "Not assigned" (the Global Admin comes from staff_roles.global_admin_id, set by the Transfer Global page; sabalive migration 20261026100000). */
+   The User ID is the one the app shows (profiles.display_id), never the database id, and is in every host and payslip row. The username is deliberately not exported. The admin
+   columns say which Sub Admin, Country Admin and Global Admin the agency sits under, by NAME ONLY (the owner, 2026-10-31: "get rid of the id of all global, country and sub");
+   an admin the system has not recorded says "Not assigned" (the Global Admin comes from staff_roles.global_admin_id, set by the Transfer Global page; sabalive migration 20261026100000). */
 /* What a cell says when the system has not recorded that admin: a word, never an empty cell. */
 export const NOT_ASSIGNED = 'Not assigned'
 export const ADMIN_COLUMNS = [
   { header: 'Sub Admin', value: (r) => r.subAdmin || NOT_ASSIGNED },
-  { header: 'Sub Admin ID', value: (r) => r.subAdminId ?? '' },
   { header: 'Country Admin', value: (r) => r.countryAdmin || NOT_ASSIGNED },
-  { header: 'Country Admin ID', value: (r) => r.countryAdminId ?? '' },
   { header: 'Global Admin', value: (r) => r.globalAdmin || NOT_ASSIGNED },
-  { header: 'Global Admin ID', value: (r) => r.globalAdminId ?? '' },
 ]
 export const HOST_COLUMNS = [
   { header: 'Month', value: (r) => r.period },
@@ -95,9 +92,9 @@ export const mapReportRow = (r) => ({
   earned: Number(r.diamonds_earned),                 // diamonds from gifts (what the slab is measured on)
   rewards: Number(r.diamonds_rewards || 0),          // Lucky Box diamonds of the month, net of pull-backs
   totalDiamonds: Number(r.diamonds_earned) + Number(r.diamonds_rewards || 0),
-  subAdmin: r.sub_admin_name || '', subAdminId: r.sub_admin_display_id ?? '',
-  countryAdmin: r.country_admin_name || '', countryAdminId: r.country_admin_display_id ?? '',
-  globalAdmin: r.global_admin_name || '', globalAdminId: r.global_admin_display_id ?? '',
+  subAdmin: r.sub_admin_name || '',
+  countryAdmin: r.country_admin_name || '',
+  globalAdmin: r.global_admin_name || '',
   hours: Number(r.live_hours),
   days: Number(r.live_days),
   withdrawn: Number(r.withdrawn_diamonds),

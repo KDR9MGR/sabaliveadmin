@@ -12,8 +12,9 @@ test('no export has a Username column; every one has the app-facing User ID', ()
   }
 })
 
-test('the admin columns map the agency to its Sub, Country and Global Admin with their app IDs, in both host and payslip exports', () => {
-  assert.deepEqual(headers(ADMIN_COLUMNS), ['Sub Admin', 'Sub Admin ID', 'Country Admin', 'Country Admin ID', 'Global Admin', 'Global Admin ID'])
+test('the admin columns map the agency to its Sub, Country and Global Admin by NAME ONLY (no admin IDs), in both host and payslip exports', () => {
+  assert.deepEqual(headers(ADMIN_COLUMNS), ['Sub Admin', 'Country Admin', 'Global Admin'])
+  for (const cols of [HOST_COLUMNS, PAYSLIP_COLUMNS]) assert.ok(!headers(cols).some((h) => /admin id/i.test(h)), `an admin ID column slipped in: ${headers(cols)}`)
   for (const cols of [HOST_COLUMNS, PAYSLIP_COLUMNS]) {
     for (const h of headers(ADMIN_COLUMNS)) assert.ok(headers(cols).includes(h), `${h} is missing`)
     assert.ok(headers(cols).includes('Agency code'))
@@ -28,7 +29,7 @@ test('the host export shows gift diamonds, reward diamonds and their total side 
 
 const host = {
   period: 'Oct 2026', displayId: 100718, host: 'Khushboo Sharma', username: 'khush_01', agencyCode: 20005, agency: 'Shree Shyam',
-  subAdmin: 'Sub X', subAdminId: 100301, countryAdmin: 'Country Y', countryAdminId: 100211, globalAdmin: '', globalAdminId: '',
+  subAdmin: 'Sub X', subAdminId: 100301, countryAdmin: 'Country Y', countryAdminId: 100211, globalAdmin: '', globalAdminId: '', // the *Id fields are still in the fixture: the exports must NOT print them
   earned: 5000, rewards: 3000, totalDiamonds: 8000, hours: 18, days: 12, withdrawn: 0, available: 8000, slab: 'Gold', payment: 25, payslipId: null, blocked: null,
 }
 
@@ -40,11 +41,8 @@ test('a host row exports the right values; the username is nowhere in the file; 
   assert.equal(at('User ID'), '100718')
   assert.equal(at('Agency code'), '20005')
   assert.equal(at('Country Admin'), 'Country Y')
-  assert.equal(at('Country Admin ID'), '100211')
   assert.equal(at('Sub Admin'), 'Sub X')
-  assert.equal(at('Sub Admin ID'), '100301')
   assert.equal(at('Global Admin'), NOT_ASSIGNED)
-  assert.equal(at('Global Admin ID'), '')
   assert.equal(at('Diamonds from gifts'), '5000')
   assert.equal(at('Diamonds from rewards'), '3000')
   assert.equal(at('Total diamonds'), '8000')
@@ -169,14 +167,14 @@ test('the User ID search keys were already part of every Salary table search', (
   assert.ok(SALARY_SEARCH_KEYS.includes('username'))
 })
 
-test('every admin level exports both its name and its app User ID, for the host report and the payslips alike', () => {
+test('every admin level exports its name (and no ID), and every row carries the person\'s app User ID, for the host report and the payslips alike', () => {
   const full = { ...host, globalAdmin: 'Global Z', globalAdminId: 100050 }
   for (const [cols, name] of [[HOST_COLUMNS, 'host report'], [PAYSLIP_COLUMNS, 'payslips']]) {
     const [head, row] = toCsv(cols, [{ ...full, payee: 'P', role: 'Host', period: 'Oct 2026', base: 1, bonus: 0, deductions: 0, net: 1, status: 'Paid', paidAt: '' }]).split('\r\n')
     const at = (h) => row.split(',')[head.split(',').indexOf(h)]
-    assert.deepEqual([at('Sub Admin'), at('Sub Admin ID')], ['Sub X', '100301'], name)
-    assert.deepEqual([at('Country Admin'), at('Country Admin ID')], ['Country Y', '100211'], name)
-    assert.deepEqual([at('Global Admin'), at('Global Admin ID')], ['Global Z', '100050'], name)
+    assert.deepEqual([at('Sub Admin'), at('Country Admin'), at('Global Admin')], ['Sub X', 'Country Y', 'Global Z'], name)
+    assert.ok(!row.includes('100301') && !row.includes('100211') && !row.includes('100050'), `an admin's ID is in the ${name} row: ${row}`)
+    assert.equal(at('User ID'), '100718', name)
   }
 })
 
@@ -185,5 +183,4 @@ test('a row with no admin at all still has a word in every admin name cell', () 
   const [head, row] = toCsv(HOST_COLUMNS, [bare]).split('\r\n')
   const at = (h) => row.split(',')[head.split(',').indexOf(h)]
   for (const h of ['Sub Admin', 'Country Admin', 'Global Admin']) assert.equal(at(h), NOT_ASSIGNED, h)
-  for (const h of ['Sub Admin ID', 'Country Admin ID', 'Global Admin ID']) assert.equal(at(h), '', h)
 })

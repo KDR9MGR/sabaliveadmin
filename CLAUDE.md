@@ -71,8 +71,9 @@ type a User ID (whole or part), a name or a username, pick the person and the ta
 the month totals and Assign Salary Payment still cover every host in scope), the Master Payslips tab and the Agency Payslips tab. The people are the rows already loaded, so nothing extra is read. The tables' own search
 box also matches the User ID. In the Master "New Payslip" form the Payee is a `picker` field (`EntityForm` type `picker`): a live database search by User ID, name or username (`searchProfileOptions`), so nobody is preloaded.
 
-Salary exports (Excel / CSV): every export carries the app User ID, and Sub Admin, Country Admin and Global Admin each as name + app User ID (`ADMIN_COLUMNS` in `lib/salaryColumns.js`); an admin the system does not know says
-"Not assigned" (`NOT_ASSIGNED`), never an empty cell. The same three columns show on screen (`adminCol` in `components/cells.jsx`). The Global Admin comes from `staff_roles.global_admin_id` (sabalive migration
+Salary exports (Excel / CSV): every export carries the app User ID (`profiles.display_id`, never the database id) in every host and payslip row, and Sub Admin, Country Admin and Global Admin as NAMES ONLY (`ADMIN_COLUMNS` in `lib/salaryColumns.js`; 2026-10-31 the owner asked to
+"get rid of the id of all global, country and sub": the three "... ID" columns, the ID next to the name on screen (`adminCol(nameKey, header)` in `components/cells.jsx`) and the admin IDs in the search keys are gone); an admin the system does not know says
+"Not assigned" (`NOT_ASSIGNED`), never an empty cell. The same three columns show on screen. The Global Admin comes from `staff_roles.global_admin_id` (sabalive migration
 `20261026100000`), set on the Transfer Global page (`transfer_country_admin`): "Assign a Global Admin" for a Country Admin that has none.
 
 ## SUD games (2026-10-26, built, not shipped)

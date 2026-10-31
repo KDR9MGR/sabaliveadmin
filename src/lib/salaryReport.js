@@ -90,20 +90,20 @@ export async function getSalaryMonths(months = 12, agencyId) {
 }
 
 /* Which agency sits under which admins: the public Agency ID ("agency code"), its Sub Admin, that Sub Admin's Country Admin and the Country Admin's
-   Global Admin, each with the app-facing user ID. Scoped by the database to the caller's agencies. Returns {} when the database update is missing,
+   Global Admin, by name only. Scoped by the database to the caller's agencies. Returns {} when the database update is missing,
    so the payslip lists keep working without it. The Global Admin is empty until the system records which Global Admin owns a Country Admin. */
 export async function getSalaryAgencyMap() {
   const { data, error } = await supabase.rpc('salary_agency_map')
   if (error) return {}
   return Object.fromEntries((data || []).map((m) => [m.agency_id, {
     agencyCode: m.agency_code ?? null,
-    subAdmin: m.sub_admin_name || '', subAdminId: m.sub_admin_display_id ?? '',
-    countryAdmin: m.country_admin_name || '', countryAdminId: m.country_admin_display_id ?? '',
-    globalAdmin: m.global_admin_name || '', globalAdminId: m.global_admin_display_id ?? '',
+    subAdmin: m.sub_admin_name || '',
+    countryAdmin: m.country_admin_name || '',
+    globalAdmin: m.global_admin_name || '',
   }]))
 }
 
-/* Adds each payslip's agency admins (Sub / Country / Global, with app IDs) and agency code, for the Payslips list and its export. */
+/* Adds each payslip's agency admins (Sub / Country / Global, names only) and agency code, for the Payslips list and its export. */
 export async function withAgencyAdmins(rows) {
   const map = await getSalaryAgencyMap()
   return rows.map((r) => {
@@ -112,9 +112,9 @@ export async function withAgencyAdmins(rows) {
       ...r,
       agencyCode: r.agencyCode ?? m.agencyCode ?? null,
       agencyLabel: agencyLabel(r.agencyCode ?? m.agencyCode ?? null, r.agency),
-      subAdmin: m.subAdmin || '', subAdminId: m.subAdminId ?? '',
-      countryAdmin: m.countryAdmin || '', countryAdminId: m.countryAdminId ?? '',
-      globalAdmin: m.globalAdmin || '', globalAdminId: m.globalAdminId ?? '',
+      subAdmin: m.subAdmin || '',
+      countryAdmin: m.countryAdmin || '',
+      globalAdmin: m.globalAdmin || '',
     }
   })
 }
