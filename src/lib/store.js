@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { shortId } from './admin.js'
 import { checkSpeed } from './effectFields.js'
+import { parsePrice, missesColumn } from './panelRules.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const num = (v) => (v === '' || v == null ? undefined : Number(v))
@@ -46,20 +47,23 @@ const row = (r) => ({
   days: r.duration_days,
   status: r.status === 'active' ? 'Active' : 'Inactive',
   sort: r.sort_order,
+  locked: !!r.locked,
 })
 
+const STORE_COLUMNS = 'id, category, name, emoji, asset_url, price_coins, duration_days, status, sort_order, play_speed, sound_url'
+
+/* `locked` (sabalive migration 20261031100000) is read when the database has it; before that the page works as it did. */
 export async function listStoreItems(category) {
-  const rows = unwrap(await supabase.from('store_items')
-    .select('id, category, name, emoji, asset_url, price_coins, duration_days, status, sort_order, play_speed, sound_url')
-    .eq('category', category)
-    .order('sort_order').order('price_coins'))
-  return rows.map(row)
+  const read = (cols) => supabase.from('store_items').select(cols).eq('category', category).order('sort_order').order('price_coins')
+  let res = await read(`${STORE_COLUMNS}, locked`)
+  if (res.error && missesColumn(res.error, 'locked')) res = await read(STORE_COLUMNS)
+  return unwrap(res).map(row)
 }
 
+/* A price of 0 (or an empty box) makes the item free, like a Lucky ID (migration 20261031100000). */
 const validate = (v) => {
   if (!String(v.name || '').trim()) throw new Error('Name is required')
-  const price = num(v.price_coins)
-  if (!(price > 0)) throw new Error('Price must be greater than 0')
+  parsePrice(v.price_coins)
   const days = num(v.duration_days)
   if (!(days > 0)) throw new Error('Duration must be at least 1 day')
 }
@@ -74,10 +78,11 @@ export async function createStoreItem(category, v) {
     name: v.name.trim(),
     emoji: (v.emoji || '').trim() || '🎁',
     asset_url: v.asset_url || null,
-    price_coins: num(v.price_coins),
+    price_coins: parsePrice(v.price_coins),
     duration_days: num(v.duration_days),
     status: (v.status || 'active').toLowerCase(),
     sort_order: num(v.sort_order) ?? 0,
+    ...(v.locked === true ? { locked: true } : {}),
   }).select().single())
 }
 
@@ -88,12 +93,12 @@ export async function updateStoreItem(id, v) {
   if (v.asset_url !== undefined) patch.asset_url = v.asset_url || null
   if (v.play_speed !== undefined) patch.play_speed = checkSpeed(v.play_speed)
   if (v.sound_url !== undefined) patch.sound_url = v.sound_url || null
-  if (v.price_coins !== undefined) patch.price_coins = num(v.price_coins)
+  if (v.price_coins !== undefined) patch.price_coins = parsePrice(v.price_coins)
+  if (v.locked !== undefined) patch.locked = !!v.locked
   if (v.duration_days !== undefined) patch.duration_days = num(v.duration_days)
   if (v.status !== undefined) patch.status = String(v.status).toLowerCase()
   if (v.sort_order !== undefined) patch.sort_order = num(v.sort_order) ?? 0
   if (patch.name === '') throw new Error('Name is required')
-  if (patch.price_coins !== undefined && !(patch.price_coins > 0)) throw new Error('Price must be greater than 0')
   if (patch.duration_days !== undefined && !(patch.duration_days > 0)) throw new Error('Duration must be at least 1 day')
   return unwrap(await supabase.from('store_items').update(patch).eq('id', id).select().single())
 }

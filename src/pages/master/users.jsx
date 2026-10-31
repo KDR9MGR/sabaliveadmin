@@ -23,6 +23,7 @@ import { HostsTable } from './hosts.jsx'
 import { listBadges, listFrames, grantBadge, grantUserFrame, removeUserBadge, removeUserFrame } from '../../lib/gamification.js'
 import { listStoreItems } from '../../lib/store.js'
 import { assignStoreItem, removeUserItem, updateUserProfile, pullBackAllCoins } from '../../lib/userTools.js'
+import { assignable, lockedName } from '../../lib/panelRules.js'
 import { userLuckyId, availableLuckyOptions, assignLuckyId, revokeLuckyId } from '../../lib/luckyIds.js'
 import { uploadMedia } from '../../lib/storage.js'
 import {
@@ -547,8 +548,10 @@ export function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRe
   const sr = u.staff_roles
   const kyc = (u.kyc_verifications || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
   const role = sr ? (ROLE_LABEL[sr.role] || sr.role) : hp ? 'Host' : 'User'
+  const { staffRole } = useAuth()
+  const viewerRole = staffRole?.role // a locked frame / item is only offered to Master and Super Admin
   const [granting, setGranting] = useState(null) // 'badge' | 'frame'
-  const [assigningItem, setAssigningItem] = useState(false)
+  const [assigningItem, setAssigningItem] = useState(false) // false | the kind to start on: 'entry_effect' | 'room_skin'
   const [assigningLucky, setAssigningLucky] = useState(false)
   const { data: lucky, reload: reloadLucky } = useAsyncData(() => userLuckyId(u.id), [u.id])
   const toast = useToast()
@@ -617,7 +620,12 @@ export function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRe
         <Card
           title="Bag"
           sub="Entry effects, vehicles, frames and room skins this user owns — the equipped entry effect / vehicle plays when they walk into a live"
-          action={canAssign ? <Button size="sm" icon="userPlus" onClick={() => setAssigningItem(true)}>Assign item</Button> : undefined}
+          action={canAssign ? (
+            <span className="hstack" style={{ gap: 8 }}>
+              <Button size="sm" icon="userPlus" onClick={() => setAssigningItem('entry_effect')}>Assign item</Button>
+              <Button size="sm" icon="userPlus" onClick={() => setAssigningItem('room_skin')}>Assign room skin</Button>
+            </span>
+          ) : undefined}
         >
           {data.entries.length ? (
             <div className="feed">
@@ -761,7 +769,7 @@ export function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRe
         </Card>}
       </div>
 
-      {assigningItem && <AssignItemForm user={u} onClose={() => setAssigningItem(false)} onDone={() => { setAssigningItem(false); onGranted?.() }} />}
+      {assigningItem && <AssignItemForm user={u} role={viewerRole} initialKind={assigningItem} onClose={() => setAssigningItem(false)} onDone={() => { setAssigningItem(false); onGranted?.() }} />}
       {assigningLucky && <AssignLuckyForm user={u} onClose={() => setAssigningLucky(false)} onDone={() => { setAssigningLucky(false); reloadLucky(); onGranted?.() }} />}
       {granting && (
         <EntityForm
@@ -774,7 +782,7 @@ export function UserProfileBody({ data, bans, onLift, onStatus, onGranted, canRe
             label: granting === 'badge' ? 'Badge' : 'Frame',
             type: 'select',
             required: true,
-            options: (granting === 'badge' ? catalog?.badges : catalog?.frames)?.map((x) => ({ value: x.id, label: `${x.emoji} ${x.name}` })) || [],
+            options: (granting === 'badge' ? catalog?.badges : assignable(catalog?.frames, viewerRole))?.map((x) => ({ value: x.id, label: `${x.emoji} ${lockedName(x)}` })) || [],
           }]}
         />
       )}
@@ -789,26 +797,27 @@ const ITEM_KINDS = [
   { value: 'frame', label: 'Frame (Store)' },
   { value: 'room_skin', label: 'Room skin' },
 ]
-function AssignItemForm({ user, onClose, onDone }) {
-  const [kind, setKind] = useState('entry_effect')
+function AssignItemForm({ user, role, initialKind = 'entry_effect', onClose, onDone }) {
+  const [kind, setKind] = useState(initialKind)
   const { data: items } = useAsyncData(() => listStoreItems(kind), [kind])
+  const pickable = assignable(items || [], role) // a locked item is only offered to Master / Super Admin
   return (
     <EntityForm
-      title={`Assign an item to ${user.name}`}
+      title={`Assign ${kind === 'room_skin' ? 'a room skin' : 'an item'} to ${user.name}`}
       submitLabel="Assign"
       savedMessage="Added to their Bag"
-      initial={{ kind: 'entry_effect', equip: true }}
+      initial={{ kind: initialKind, equip: true }}
       onChange={(name, val) => { if (name === 'kind') setKind(val) }}
       onClose={onClose}
       fields={[
         { name: 'kind', label: 'Type', type: 'select', required: true, options: ITEM_KINDS, full: true },
         { name: 'item_id', label: 'Item', type: 'select', required: true, full: true,
-          options: (items || []).map((i) => ({ value: i.id, label: `${i.emoji} ${i.name} · ${i.days} days` })) },
+          options: pickable.map((i) => ({ value: i.id, label: `${i.emoji} ${lockedName(i)} · ${i.days} days` })) },
         { name: 'days', label: 'Days (optional)', type: 'number', hint: 'Leave empty for the item\'s own duration. Adds to an unexpired copy.' },
         { name: 'equip', label: 'Equip it now', type: 'toggle' },
       ]}
       onSubmit={async (v) => {
-        if (!(items || []).some((i) => i.id === v.item_id)) throw new Error('Pick an item of this type')
+        if (!pickable.some((i) => i.id === v.item_id)) throw new Error('Pick an item of this type')
         await assignStoreItem(user.id, v.item_id, v.days, v.equip)
         onDone()
       }}

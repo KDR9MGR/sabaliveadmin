@@ -46,6 +46,18 @@ The preview (`TagPill`) draws a plate as big as its artwork with the name centre
 Tag pictures accept **SVGA** (2026-10-25; `TAG_IMAGE_ACCEPT` starts with `.svga`, `isSvga(url)`; the page previews one with `SvgaPlayer`, for the picture look and the plate look). Badge
 Management (`pages/master/platform.jsx`, `UPLOAD_ACCEPT`) already took SVGA / MP4 / GIF / WebP / PNG; the app now draws an uploaded SVGA badge or tag instead of the emoji / pill (MP4 still falls back to the emoji / pill on a profile).
 
+## Background tone (2026-10-31)
+Site / Branding has a **Background tone** select (Deep / Rich / Soft; `lib/appPalette.js` `TONES`, `parseTone`, `TONE_LABELS`) next to the brand and accent colours, and the preview tiles use it (`appPalette(brand, accent, tone)` mirrors the app's `AppPalette.fromBrand`; `appPalette.test.js` checks reference colours printed by the app). The select only appears, and `brand_tone` is only
+sent on save, when the loaded `app_config` row has the column (sabalive migration `20261031110000`), so the page works before the database is updated. An app build older than 1.0.0+16 ignores the tone and keeps the old black look.
+
+## Host tag, frame lock, free Store prices, room skins (2026-10-31)
+Pure rules in `lib/panelRules.js` (tested in `panelRules.test.js`): `parsePrice` (empty or 0 = free, else a whole number), `priceLabel`, `isMasterRole`, `assignable` (a locked item is left out of pick lists unless Master / Super Admin), `lockedName`, `missesColumn`.
+`listStoreItems`, `listFrames` and `listTags` read the new columns (`locked`, `auto_for_hosts`) and retry without them while sabalive migration `20261031100000` is missing, so the pages still load before the database is updated.
+- **Tags** (`pages/master/tags.jsx`): row actions "Give to every new host automatically" / "Stop giving to new hosts" (`setHostAutoTag`) and, for the marked tag, "Add to hosts that already exist" (`giveHostTagToCurrentHosts`); the marked tag shows "Auto · new hosts".
+- **Lock**: Profile Frame page (`platform.jsx` `ProfileFrame`) and Store -> Frames (`store.jsx`) show a Locked toggle and a Lock / Unlock row action to Master and Super Admin only (`isMasterRole(staffRole.role)`); a lock is shown on the name. Every other panel's Assign frame / Assign item lists leave a locked item out (`users.jsx`). SQL enforces it.
+- **Store price**: the price box is optional; empty or 0 = free (shown as "Free" in the gallery and table).
+- **Room skin**: user page -> Bag card has **Assign item** and **Assign room skin** (same form, starts on Room skin).
+
 ## Levels and bans (2026-10-25)
 Levels (`pages/master/levels.jsx`, `lib/levels.js`, pure rules in `lib/levelRules.js`): every level takes exactly the XP typed (0 to 2,147,483,647), whatever the levels around it need; level 1 is 0; `saveTrackLevel` calls
 `admin_save_track_level_v3` (sabalive migration `20261025140000`) and falls back to v2, then v1, while it is missing. The drawer only shows a heads-up (never a block) when the number is outside its neighbours. Bans (`components/BanDialog.jsx`, `lib/bans.js`, pure rules in `lib/banRules.js`): 24 hours, 7 days,

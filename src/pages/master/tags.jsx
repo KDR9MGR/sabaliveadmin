@@ -8,7 +8,7 @@ import { PageHeader, Card, Button, Drawer, ConfirmDialog, EmptyState, useToast }
 import DataTable from '../../components/DataTable.jsx'
 import { numCol, statusCol } from '../../components/cells.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
-import { listTags, saveTag, deleteTag, getUserTagIds, setUserTags, searchUsers } from '../../lib/profileTagsApi.js'
+import { listTags, saveTag, deleteTag, getUserTagIds, setUserTags, searchUsers, setHostAutoTag, giveHostTagToCurrentHosts } from '../../lib/profileTagsApi.js'
 import { checkTag, tagTextColor, toggleTag, sameTags, isSvga, nameIsWritten, TAG_DEFAULT_COLOR, TAG_STATUSES, TAG_LOOKS, TAG_IMAGE_ACCEPT, TAG_NAME_MAX, MAX_TAGS_PER_USER } from '../../lib/profileTags.js'
 import { normalizeHex } from '../../lib/pkTheme.js'
 
@@ -327,6 +327,21 @@ export function Tags() {
     }
   }
 
+  const toggleHostTag = async (r) => {
+    try {
+      await setHostAutoTag(r.id, !r.autoForHosts)
+      toast(r.autoForHosts ? `"${r.name}" will no longer be given to new hosts` : `"${r.name}" is now given to every new host automatically`)
+      reload()
+    } catch (e) { toast(e?.message || 'Could not change it') }
+  }
+  const giveCurrentHosts = async (r) => {
+    try {
+      const n = await giveHostTagToCurrentHosts()
+      toast(n > 0 ? `"${r.name}" added to ${n} host${n === 1 ? '' : 's'}` : 'Every current host already has it')
+      reload()
+    } catch (e) { toast(e?.message || 'Could not add it') }
+  }
+
   return (
     <>
       <PageHeader
@@ -345,13 +360,20 @@ export function Tags() {
                 searchKeys={['name']}
                 filters={[{ label: 'Status', options: ['Active', 'Inactive'], get: (r) => r.statusLabel }]}
                 columns={[
-                  { key: 'label', header: 'Tag', sortable: true, render: (r) => <TagPill tag={r} dim={r.status !== 'active'} /> },
+                  { key: 'label', header: 'Tag', sortable: true, render: (r) => (
+                    <span className="hstack" style={{ gap: 8 }}>
+                      <TagPill tag={r} dim={r.status !== 'active'} />
+                      {r.autoForHosts && <span className="muted" style={{ fontSize: 11 }} title="Given automatically to every host the moment an agency accepts them">Auto · new hosts</span>}
+                    </span>
+                  ) },
                   numCol('users', 'Users'),
                   numCol('sort_order', 'Order'),
                   statusCol('statusLabel'),
                 ]}
                 rowActions={(r) => [
                   { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
+                  { label: r.autoForHosts ? 'Stop giving to new hosts' : 'Give to every new host automatically', icon: 'userPlus', onClick: () => toggleHostTag(r) },
+                  ...(r.autoForHosts ? [{ label: 'Add to hosts that already exist', icon: 'users', onClick: () => giveCurrentHosts(r) }] : []),
                   { label: 'Delete', icon: 'trash', onClick: () => setDeleting(r) },
                 ]}
                 emptyText="No tags yet. Add the first one."

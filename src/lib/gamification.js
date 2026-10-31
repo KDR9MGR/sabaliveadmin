@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { missesColumn } from './panelRules.js'
 import { shortId } from './admin.js'
 
 export { profileOptions } from './coins.js'
@@ -89,16 +90,18 @@ export async function removeUserFrame(profileId, frameId) {
 }
 
 /* ---------------------------------------------------------------- profile frames */
+const FRAME_COLUMNS = 'id, name, emoji, icon_url, unlock_type, unlock_value, price_coins, status, sort_order'
 export async function listFrames() {
-  const [frames, owners] = await Promise.all([
-    supabase.from('frames').select('id, name, emoji, icon_url, unlock_type, unlock_value, price_coins, status, sort_order').order('sort_order').order('name'),
-    supabase.from('user_frames').select('frame_id'),
-  ])
-  if (frames.error) throw frames.error
+  const read = (cols) => supabase.from('frames').select(cols).order('sort_order').order('name')
+  // `locked` (sabalive migration 20261031100000) is read when the database has it
+  let framesRes = await read(`${FRAME_COLUMNS}, locked`)
+  if (framesRes.error && missesColumn(framesRes.error, 'locked')) framesRes = await read(FRAME_COLUMNS)
+  const owners = await supabase.from('user_frames').select('frame_id')
+  if (framesRes.error) throw framesRes.error
   if (owners.error) throw owners.error
   const counts = {}
   for (const r of owners.data) counts[r.frame_id] = (counts[r.frame_id] || 0) + 1
-  return frames.data.map((f) => ({
+  return framesRes.data.map((f) => ({
     id: f.id, idShort: shortId(f.id),
     name: f.name, emoji: f.emoji || '💫', iconUrl: f.icon_url,
     unlockType: titleCase(f.unlock_type),
@@ -108,6 +111,7 @@ export async function listFrames() {
     owners: counts[f.id] || 0,
     sortOrder: f.sort_order || 0,
     status: titleCase(f.status),
+    locked: !!f.locked,
   }))
 }
 export async function createFrame(v) {
@@ -120,6 +124,7 @@ export async function createFrame(v) {
     price_coins: int(v.price_coins),
     sort_order: int(v.sort_order),
     status: (v.status || 'active').toLowerCase(),
+    ...(v.locked === true ? { locked: true } : {}),
   }).select().single())
 }
 export async function updateFrame(id, v) {
@@ -132,6 +137,7 @@ export async function updateFrame(id, v) {
   if (v.price_coins !== undefined) p.price_coins = int(v.price_coins)
   if (v.sort_order !== undefined) p.sort_order = int(v.sort_order)
   if (v.status) p.status = v.status.toLowerCase()
+  if (v.locked !== undefined) p.locked = !!v.locked
   return unwrap(await supabase.from('frames').update(p).eq('id', id).select().single())
 }
 export const setFrameStatus = (id, status) => updateFrame(id, { status })

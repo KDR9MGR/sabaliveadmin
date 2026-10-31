@@ -10,6 +10,7 @@ import { loadReports } from '../../lib/reports.js'
 import { AGENCIES, num } from '../../data/util.js'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { useAuth } from '../../lib/auth.jsx'
+import { isMasterRole } from '../../lib/panelRules.js'
 import { SalaryReport, SalarySlabs, SALARY_TABS, SALARY_SEARCH_KEYS, SALARY_SEARCH_HINT, exportPayslips } from '../../components/SalaryReport.jsx'
 import ExportButtons from '../../components/ExportButtons.jsx'
 import { usd } from '../../lib/money.js'
@@ -287,6 +288,9 @@ export function LeaderboardFrame() {
 /* ------------------------------------------------------------------ Profile Frame */
 export function ProfileFrame() {
   const toast = useToast()
+  const { staffRole } = useAuth()
+  // a locked frame can only be assigned by a Super Admin or Master (sabalive migration 20261031100000); only they can lock / unlock
+  const canLock = isMasterRole(staffRole?.role)
   const { data: rows, loading, error, reload } = useAsyncData(listFrames)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -300,6 +304,7 @@ export function ProfileFrame() {
     { name: 'price_coins', label: 'Price (coins)', type: 'number' },
     { name: 'sort_order', label: 'Sort order', type: 'number' },
     { name: 'status', label: 'Status', type: 'select', options: FRAME_STATUSES.map(gOpt) },
+    ...(canLock ? [{ name: 'locked', label: 'Locked', type: 'toggle', hint: 'While locked, only a Super Admin or Master can assign this frame to a user. Other panels cannot.' }] : []),
   ]
 
   return (
@@ -315,7 +320,7 @@ export function ProfileFrame() {
             <div className="gallery__item" key={f.id}>
               <div className="gallery__preview"><MediaPreview url={f.iconUrl} emoji={f.emoji} size={20} /></div>
               <div className="gallery__meta">
-                <div><div className="n">{f.name}</div><div className="muted" style={{ fontSize: 11 }}>{f.unlock} · {num(f.owners)} owners</div></div>
+                <div><div className="n">{f.name}</div><div className="muted" style={{ fontSize: 11 }}>{f.unlock} · {num(f.owners)} owners{f.locked ? ' · 🔒 locked' : ''}</div></div>
                 <StatusBadge value={f.status} />
               </div>
             </div>
@@ -326,7 +331,7 @@ export function ProfileFrame() {
           searchKeys={['name', 'unlock', 'idShort']}
           filters={[{ label: 'Unlock', options: [...new Set((rows || []).map((f) => f.unlock))], get: (r) => r.unlock }]}
           columns={[
-            { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.iconUrl} emoji={r.emoji} size={18} /><b>{r.name}</b></span> },
+            { key: 'name', header: 'Frame', sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.iconUrl} emoji={r.emoji} size={18} /><b>{r.name}</b>{r.locked && <span title="Locked: only a Super Admin or Master can assign it">🔒</span>}</span> },
             { key: 'unlock', header: 'Unlock', render: (r) => <Tag>{r.unlock}</Tag> },
             numCol('price', 'Price (coins)'),
             numCol('owners', 'Owners'),
@@ -334,6 +339,10 @@ export function ProfileFrame() {
           ]}
           rowActions={(r) => [
             { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
+            ...(canLock ? [{ label: r.locked ? 'Unlock' : 'Lock (Super / Master only)', icon: 'lock', onClick: async () => {
+              try { await updateFrame(r.id, { locked: !r.locked }); toast(r.locked ? `${r.name} unlocked` : `${r.name} locked`); reload() }
+              catch (e) { toast(e.message || 'Could not change the lock') }
+            } }] : []),
             r.status === 'Active'
               ? { label: 'Move to draft', icon: 'lock', onClick: async () => { await setFrameStatus(r.id, 'draft'); toast(`${r.name} moved to draft`); reload() } }
               : { label: 'Publish', icon: 'externalLink', onClick: async () => { await setFrameStatus(r.id, 'active'); toast(`${r.name} published`); reload() } },
@@ -349,7 +358,7 @@ export function ProfileFrame() {
       {editing && (
         <EntityForm title={`Edit — ${editing.name}`} onClose={() => setEditing(null)} savedMessage="Frame updated"
           onSubmit={async (v) => { await updateFrame(editing.id, v); reload() }}
-          initial={{ name: editing.name, emoji: editing.emoji, icon_url: editing.iconUrl || '', unlock_type: editing.unlockType.toLowerCase(), unlock_value: editing.unlockValue, price_coins: editing.price, sort_order: editing.sortOrder, status: editing.status.toLowerCase() }}
+          initial={{ name: editing.name, emoji: editing.emoji, icon_url: editing.iconUrl || '', unlock_type: editing.unlockType.toLowerCase(), unlock_value: editing.unlockValue, price_coins: editing.price, sort_order: editing.sortOrder, status: editing.status.toLowerCase() , ...(canLock ? { locked: editing.locked } : {}) }}
           fields={fields} />
       )}
     </>

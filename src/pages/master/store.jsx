@@ -6,6 +6,8 @@ import DataTable from '../../components/DataTable.jsx'
 import EntityForm from '../../components/EntityForm.jsx'
 import MediaPreview from '../../components/MediaPreview.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
+import { useAuth } from '../../lib/auth.jsx'
+import { isMasterRole, priceLabel } from '../../lib/panelRules.js'
 import { uploadMedia, UPLOAD_ACCEPT, UPLOAD_HINT, AUDIO_ACCEPT, AUDIO_HINT } from '../../lib/storage.js'
 import { SPEED_FIELD, soundField, speedLabel } from '../../lib/effectFields.js'
 import {
@@ -22,6 +24,9 @@ const STATUS_OPTS = STORE_STATUSES.map((v) => ({ value: v, label: v[0].toUpperCa
 export function StoreItems({ category }) {
   const meta = STORE_CATEGORIES[category]
   const toast = useToast()
+  const { staffRole } = useAuth()
+  // frames can be locked: only a Super Admin or Master can lock / unlock, and only they can assign a locked one (sabalive migration 20261031100000)
+  const canLock = category === 'frame' && isMasterRole(staffRole?.role)
   const { data: rows, loading, error, reload } = useAsyncData(() => listStoreItems(category), [category])
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -40,10 +45,11 @@ export function StoreItems({ category }) {
       soundField((file) => uploadMedia('gift-assets', `store-sounds/${category}`, file), AUDIO_ACCEPT, AUDIO_HINT),
     ] : []),
     { name: 'emoji', label: 'Emoji (shown until the file loads, or if there is none)', placeholder: '🎁' },
-    { name: 'price_coins', label: 'Price (coins)', type: 'number', required: true, hint: 'Must be greater than 0' },
+    { name: 'price_coins', label: 'Price (coins)', type: 'number', hint: 'Leave empty or type 0 to make it free (a free item can be taken once; again after it expires)' },
     { name: 'duration_days', label: 'Lasts (days)', type: 'number', required: true, hint: 'How long a purchase lasts; buying again extends it' },
     { name: 'sort_order', label: 'Order in the Store', type: 'number', hint: 'Lower numbers show first' },
     { name: 'status', label: 'Status', type: 'select', options: STATUS_OPTS },
+    ...(canLock ? [{ name: 'locked', label: 'Locked', type: 'toggle', hint: 'While locked, only a Super Admin or Master can assign this frame to a user. Other panels cannot.' }] : []),
   ]
 
   const askDelete = async (r) => {
@@ -72,7 +78,7 @@ export function StoreItems({ category }) {
                 <div className="gallery__meta">
                   <div>
                     <div className="n">{g.name}</div>
-                    <div className="muted" style={{ fontSize: 11 }}>{g.price} coins · {g.days}d</div>
+                    <div className="muted" style={{ fontSize: 11 }}>{priceLabel(g.price)} · {g.days}d{g.locked ? ' · 🔒 locked' : ''}</div>
                   </div>
                   <StatusBadge value={g.status} />
                 </div>
@@ -85,8 +91,8 @@ export function StoreItems({ category }) {
           searchKeys={['name', 'idShort']}
           filters={[{ label: 'Status', options: ['Active', 'Inactive'], get: (r) => r.status }]}
           columns={[
-            { key: 'name', header: meta.singular, sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.assetUrl} emoji={r.emoji} size={18} /><b>{r.name}</b></span> },
-            numCol('price', 'Price (coins)'),
+            { key: 'name', header: meta.singular, sortable: true, render: (r) => <span className="hstack" style={{ gap: 10 }}><MediaPreview url={r.assetUrl} emoji={r.emoji} size={18} /><b>{r.name}</b>{r.locked && <span title="Locked: only a Super Admin or Master can assign it">🔒</span>}</span> },
+            { key: 'price', header: 'Price', sortable: true, render: (r) => (r.price > 0 ? <span className="num">{r.price.toLocaleString('en-US')}</span> : <b>Free</b>) },
             numCol('days', 'Lasts (days)'),
             ...(playsOnScreen ? [{ key: 'playSpeed', header: 'Speed / sound', render: (r) => <span className="muted">{speedLabel(r.playSpeed)}{r.soundUrl ? ' · 🔊' : ''}</span> }] : []),
             numCol('sort', 'Order'),
@@ -94,6 +100,10 @@ export function StoreItems({ category }) {
           ]}
           rowActions={(r) => [
             { label: 'Edit', icon: 'edit', onClick: () => setEditing(r) },
+            ...(canLock ? [{ label: r.locked ? 'Unlock' : 'Lock (Super / Master only)', icon: 'lock', onClick: async () => {
+              try { await updateStoreItem(r.id, { locked: !r.locked }); toast(r.locked ? `${r.name} unlocked` : `${r.name} locked`); reload() }
+              catch (e) { toast(e.message || 'Could not change the lock') }
+            } }] : []),
             { label: r.status === 'Active' ? 'Disable' : 'Enable', icon: 'lock', onClick: async () => {
               try { await updateStoreItem(r.id, { status: r.status === 'Active' ? 'inactive' : 'active' }); toast('Updated'); reload() }
               catch (e) { toast(e.message || 'Update failed') }
@@ -117,6 +127,7 @@ export function StoreItems({ category }) {
             name: editing.name, emoji: editing.emoji, asset_url: editing.assetUrl || '', price_coins: editing.price,
             duration_days: editing.days, sort_order: editing.sort, status: editing.status.toLowerCase(),
             play_speed: editing.playSpeed ?? '', sound_url: editing.soundUrl || '',
+            ...(canLock ? { locked: editing.locked } : {}),
           }}
           fields={fields} />
       )}

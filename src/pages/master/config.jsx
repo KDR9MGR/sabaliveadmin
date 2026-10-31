@@ -6,13 +6,13 @@ import { AsyncView } from '../_templates.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { getAppConfig, updateAppConfig } from '../../lib/appConfig.js'
 import Icon from '../../components/Icon.jsx'
-import { appPalette } from '../../lib/appPalette.js'
+import { appPalette, TONES, TONE_LABELS, DEFAULT_TONE, parseTone } from '../../lib/appPalette.js'
 import { getLiveWarnings, saveLiveWarnings } from '../../lib/liveWarningApi.js'
 import { DEFAULT_WARNINGS, LIVE_WARNING_MAX, shownText } from '../../lib/liveWarning.js'
 
 /* What the app will look like with the colours typed above: the same derivation the app uses. */
-function BrandingPreview({ brand, accent }) {
-  const p = appPalette(brand || '#7c3aed', accent || '#F5279B')
+function BrandingPreview({ brand, accent, tone }) {
+  const p = appPalette(brand || '#7c3aed', accent || '#F5279B', tone)
   if (!p) return <span className="hint">Enter colours like #7c3aed to see a preview.</span>
   const chip = (label, bg, fg = '#f6f3ff') => (
     <div key={label} style={{ flex: '1 1 0', minWidth: 64, padding: '10px 6px', borderRadius: 8, background: bg, color: fg, fontSize: 11, textAlign: 'center' }}>{label}</div>
@@ -63,6 +63,8 @@ function PlatformSection() {
       patch.brand_color = v.brand_color || '#7c3aed'
       patch.accent_color = v.accent_color || '#F5279B'
       patch.font_family = v.font_family || 'Poppins'
+      // the tone is only sent when this database has the column (sabalive migration 20261031110000), so saving works before it is applied
+      if ('brand_tone' in (data || {})) patch.brand_tone = parseTone(v.brand_tone)
       await updateAppConfig(patch)
       toast('Platform settings saved')
       setForm(null)
@@ -87,11 +89,12 @@ function PlatformSection() {
         <div className="field full">
           <h4 style={{ margin: '10px 0 0', fontSize: 13.5 }}>Site / Branding: the look of the app</h4>
           <span className="hint">
-            Colours and font here recolour the consumer app on every phone (and the website): the brand colour, the accent and the dark
-            backgrounds, which are the brand colour's hue turned down to almost black. Running apps pick a change up within a minute,
-            or when they are next opened. The default violet + pink keeps the app's original colours.
+            Colours and font here recolour the consumer app on every phone (and the website): the brand colour, the accent and the
+            backgrounds, which are the brand colour's hue at the brightness of the Background tone below (no longer black unless you pick Deep).
+            Running apps pick a change up within a minute, or when they are next opened. The default violet + pink keeps the app's original
+            violet and pink.
           </span>
-          <BrandingPreview brand={v.brand_color} accent={v.accent_color} />
+          <BrandingPreview brand={v.brand_color} accent={v.accent_color} tone={v.brand_tone} />
         </div>
         <div className="field">
           <label>Brand colour (shared / consumer app)</label>
@@ -107,6 +110,18 @@ function PlatformSection() {
             <input className="input" style={{ width: 130 }} value={v.accent_color || ''} onChange={(e) => set('accent_color', e.target.value)} />
           </div>
         </div>
+        {'brand_tone' in (data || {}) && (
+          <div className="field">
+            <label>Background tone (consumer app)</label>
+            <select className="select" value={parseTone(v.brand_tone)} onChange={(e) => set('brand_tone', e.target.value)}>
+              {TONES.map((t) => <option key={t} value={t}>{TONE_LABELS[t]}</option>)}
+            </select>
+            <span className="hint">
+              How much colour the backgrounds carry. Deep is the old almost-black look, Rich (default) is clearly coloured, Soft is the lightest
+              the app's light text can sit on. The preview above shows it. A new app version is needed to show a tone; apps already on phones keep the old look.
+            </span>
+          </div>
+        )}
         <div className="field">
           <label>Font family (shared / consumer app)</label>
           <input className="input" value={v.font_family || ''} onChange={(e) => set('font_family', e.target.value)} placeholder="Poppins" />
