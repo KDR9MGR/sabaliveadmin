@@ -108,6 +108,12 @@ The page flags a stored level that is not the one its XP reaches. Cross-check do
 (`cleanInviteCode`, `platformFor`, `playStoreUrl`, `inviteTarget`; tested in `landing/src/lib/invite.test.js`, part of `npm test`): Android is sent to `STORE_LINKS.android` with the code as the Play referrer, an iPhone sees "coming soon"
 until `STORE_LINKS.ios` (`landing/src/lib/site.js`) is set and is then redirected there, a computer sees both buttons. The code is shown with a Copy button. Vercel's rewrite to `/index.html` already covers the path.
 
+## Leaderboards (2026-11-01, built, not shipped)
+`pages/master/leaderboards.jsx` at `/admin/rankings` (menu: Platform -> Leaderboards, next to Leaderboard Frame, which is the picture frames) and `/super/rankings` (Monitoring -> Leaderboards). Master and Super Admin only: the one database call, `admin_leaderboard` (sabalive migration `20261101120000`),
+checks the role itself, so a lower role cannot read it even by typing the path; the page rides on the `view_dashboards` switch, no new permission. Three boards (Hosts = diamonds received, Gifters = coins spent, Agencies = diamonds of all their hosts), Daily / Weekly / Monthly, "Now" or the board that just ended
+("Yesterday" / "Last week" / "Last month"), search, Excel / CSV export (needs Export data) with the app User ID. They reset at 00:10 India time and the page says so and counts down to it. The numbers are the app's own (same windows, same sums); nothing is computed in the browser.
+Pure words and clock reading (always India time, never the computer's) in `lib/leaderboardRules.js` (tested), the call in `lib/leaderboard.js` (says "not on this database yet" while the migration is missing).
+
 ## Environment switch (production <-> staging)
 `src/lib/environments.js` picks the Supabase project; `components/EnvironmentSwitch.jsx` is the top-bar pill (Master and
 Super Admin only), the orange STAGING strip and the sign-in notice. A normal build is "home = production" and gets the switch

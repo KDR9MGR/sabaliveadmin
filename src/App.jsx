@@ -39,6 +39,7 @@ import { STORE_CATEGORY_KEYS } from './lib/store.js'
 import ApplicationConfig from './pages/master/config.jsx'
 import { Games } from './pages/master/games.jsx'
 import { PkBattles } from './pages/master/pk.jsx'
+import { Leaderboards } from './pages/master/leaderboards.jsx'
 import { LiveRequests, LuckyBox, BadgeManagement, LeaderboardFrame, ProfileFrame, Salary, Reports, SystemManagement } from './pages/master/platform.jsx'
 import { Withdrawals } from './pages/master/withdrawals.jsx'
 import { DiamondReset } from './pages/master/diamondReset.jsx'
@@ -179,6 +180,10 @@ export default function App() {
             <Route element={<RequireCap cap="view_reports" />}>
               <Route path="reports" element={<Reports />} />
             </Route>
+            {/* the app's Rankings as the panel sees them (Master / Super Admin only: the SQL reader checks the role); read-only, so it rides on the dashboards switch */}
+            <Route element={<RequireCap cap="view_dashboards" />}>
+              <Route path="rankings" element={<Leaderboards />} />
+            </Route>
             <Route element={<RequireCap cap="manage_live_requests" />}>
               <Route path="live" element={<LiveRequests />} />
             </Route>
@@ -286,6 +291,7 @@ export default function App() {
             <Route path="ghosts" element={<GhostIds />} />
             <Route path="support" element={<Support />} />
             <Route path="tags" element={<Tags />} />
+            <Route path="rankings" element={<Leaderboards />} />
 
             <Route element={<RequireCap cap="manage_admins" />}>
               <Route path="admins" element={<SuperAdmins />} />
