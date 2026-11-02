@@ -114,6 +114,12 @@ checks the role itself, so a lower role cannot read it even by typing the path; 
 ("Yesterday" / "Last week" / "Last month"), search, Excel / CSV export (needs Export data) with the app User ID. They reset at 00:10 India time and the page says so and counts down to it. The numbers are the app's own (same windows, same sums); nothing is computed in the browser.
 Pure words and clock reading (always India time, never the computer's) in `lib/leaderboardRules.js` (tested), the call in `lib/leaderboard.js` (says "not on this database yet" while the migration is missing).
 
+## Each admin sees only their own chain (2026-11-02, built, switch off by default)
+Release Settings has **Limit each admin to their own chain** (`limit_staff_to_own_chain`, `pages/master/config.jsx` `RELEASE_FLAGS`). On: a Global, Country, Sub Admin or Agency account sees only the people under it (and the staff above it, peers of its rank, and people named on a
+coin transfer of its chain) in every list, count and report; Master and Super Admin see everyone; the app is untouched. The limiting is done by the database (sabalive migration `20261102100000`, restrictive row policies; `docs/STAFF_SCOPE.md` there has the table, the
+steps to turn it on and the known limits), so the panel needed almost nothing: `lib/staffScope.js` (tested) words the note above the Users list (`UsersList`) and reads digits typed in a coin picker as an exact app User ID, which `searchProfileOptions` (`lib/coins.js`) looks up with
+`find_user_for_coins` so a coin sender can still reach an ordinary user. A Country Admin without a Global Admin (`staff_roles.global_admin_id`) is seen by Master / Super Admin only: assign them on Transfer Global before turning the switch on.
+
 ## Environment switch (production <-> staging)
 `src/lib/environments.js` picks the Supabase project; `components/EnvironmentSwitch.jsx` is the top-bar pill (Master and
 Super Admin only), the orange STAGING strip and the sign-in notice. A normal build is "home = production" and gets the switch

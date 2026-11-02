@@ -4,6 +4,7 @@ import { relativeTime } from './format.js'
 import { notifyCoinsChanged } from './balance.js'
 import { checkSpeed } from './effectFields.js'
 import { fetchAllPages, profileOption, profileSearchFilter } from './profileSearch.js'
+import { exactUserIdFrom } from './staffScope.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -29,6 +30,13 @@ export async function searchProfileOptions(text) {
   const filter = profileSearchFilter(text)
   if (!filter) return []
   const rows = unwrap(await supabase.from('profiles').select('id, name, username, display_id').or(filter).order('name').limit(25))
+  // A Global / Country / Sub Admin / Agency account only lists the people in its chain (migration 20261102100000), but may still send coins to an
+  // ordinary user whose exact app User ID it types: that one person is looked up on its own, never a list.
+  const id = exactUserIdFrom(text)
+  if (id != null && !rows.some((r) => Number(r.display_id) === id)) {
+    const { data, error } = await supabase.rpc('find_user_for_coins', { p_display_id: id })
+    if (!error && data?.length) rows.push(data[0])
+  }
   return rows.map(profileOption)
 }
 

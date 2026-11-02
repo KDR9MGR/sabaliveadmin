@@ -8,6 +8,8 @@ import { useState } from 'react'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { useAuth } from '../../lib/auth.jsx'
 import { listUsers, getUserDetail, setUserStatus, listStaff, fmtDate, ROLE_LABEL } from '../../lib/admin.js'
+import { getAppConfig } from '../../lib/appConfig.js'
+import { isScopedRole, scopeNote } from '../../lib/staffScope.js'
 import { userLevelCards } from '../../lib/userLevels.js'
 import LevelProgress from '../../components/LevelProgress.jsx'
 import {
@@ -60,10 +62,14 @@ export const MasterTransferGlobal = () => <CountryTransferGlobal handover />
    profile page of its own), so no row click, no Live Action, no row actions. */
 export function UsersList({ readOnly = false, profileLink: wantProfileLink = true, crumbs = [...CRUMBS, 'Users'] }) {
   const nav = useNavigate()
-  const { can } = useAuth()
+  const { can, staffRole } = useAuth()
   const profileLink = wantProfileLink && can('view_user_profile')
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listUsers)
+  // a Global / Country / Sub Admin / Agency account only lists its own chain while "Limit each admin to their own chain" is on: say so
+  const scoped = isScopedRole(staffRole?.role)
+  const { data: cfg } = useAsyncData(() => (scoped ? getAppConfig() : Promise.resolve(null)), [scoped])
+  const note = scoped ? scopeNote(staffRole?.role, cfg?.feature_flags) : ''
   const [ban, setBan] = useState(null) // { user, kinds } — the Restrict dialog
 
   const changeStatus = async (r, status) => {
@@ -92,6 +98,7 @@ export function UsersList({ readOnly = false, profileLink: wantProfileLink = tru
         crumbs={crumbs}
         actions={readOnly || !profileLink ? null : <Button icon="download" onClick={() => toast('Export coming soon')}>Export</Button>}
       />
+      {note && <p className="muted" style={{ margin: '0 0 12px' }}>{note}</p>}
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
@@ -136,7 +143,7 @@ export function UsersList({ readOnly = false, profileLink: wantProfileLink = tru
             ...(r.restricted ? [{ label: 'Lift restrictions', icon: 'check', onClick: () => liftAll(r) }] : []),
             { label: 'Set inactive', icon: 'clock', onClick: () => changeStatus(r, 'inactive') },
           ]}
-          emptyText="No users yet."
+          emptyText={note ? 'Nobody is assigned under you yet.' : 'No users yet.'}
         />
       </AsyncView>
       {ban && <BanDialog user={ban.user} defaultKinds={ban.kinds} onClose={() => setBan(null)} onDone={reload} />}
