@@ -126,6 +126,7 @@ export const NAV = {
       { label: 'PK Battles', icon: 'flag', cap: 'manage_lucky_box', to: '/admin/pk' },
       { label: 'Badge Management', icon: 'award', cap: 'manage_badges', to: '/admin/badges' },
       { label: 'Tags', icon: 'tag', cap: 'manage_tags', to: '/admin/tags' },
+      { label: 'VIP Products', icon: 'star', to: '/admin/vip' },
       { label: 'Leaderboards', icon: 'trophy', cap: 'view_dashboards', to: '/admin/rankings' },
       { label: 'Leaderboard Frame', icon: 'trophy', cap: 'manage_leaderboard_frame', to: '/admin/leaderboard' },
       { label: 'Profile Frame', icon: 'frame', cap: 'manage_profile_frames', to: '/admin/frames' },
@@ -216,6 +217,7 @@ export const NAV = {
     { section: 'User Management', items: [
       { label: 'Users', icon: 'users', to: '/super/users' },
       { label: 'Tags', icon: 'tag', cap: 'manage_tags', to: '/super/tags' },
+      { label: 'VIP Products', icon: 'star', to: '/super/vip' },
     ]},
     { section: 'Monitoring', items: [
       { label: 'Live Monitor', icon: 'eye', to: '/super/live-monitor' },

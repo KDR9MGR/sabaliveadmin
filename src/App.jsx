@@ -33,6 +33,7 @@ import { Levels } from './pages/master/levels.jsx'
 import { CoinSellers } from './pages/master/coinSellers.jsx'
 import { Support } from './pages/master/support.jsx'
 import { Tags } from './pages/master/tags.jsx'
+import { VipProducts } from './pages/master/vip.jsx'
 import { LuckyIds } from './pages/master/luckyIds.jsx'
 import { StoreItems, LiveEmojis } from './pages/master/store.jsx'
 import { STORE_CATEGORY_KEYS } from './lib/store.js'
@@ -209,6 +210,8 @@ export default function App() {
             <Route element={<RequireCap cap="manage_tags" />}>
               <Route path="tags" element={<Tags />} />
             </Route>
+            {/* VIP Products: Master only here (the database lets only a Master or Super Admin save), no permission switch */}
+            <Route path="vip" element={<VipProducts />} />
             <Route element={<RequireCap cap="manage_leaderboard_frame" />}>
               <Route path="leaderboard" element={<LeaderboardFrame />} />
             </Route>
@@ -291,6 +294,7 @@ export default function App() {
             <Route path="ghosts" element={<GhostIds />} />
             <Route path="support" element={<Support />} />
             <Route path="tags" element={<Tags />} />
+            <Route path="vip" element={<VipProducts />} />
             <Route path="rankings" element={<Leaderboards />} />
 
             <Route element={<RequireCap cap="manage_admins" />}>
