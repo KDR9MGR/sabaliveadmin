@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
+import { isMissingFunction } from './dbErrors.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -214,7 +215,18 @@ export async function decideKyc(id, approve) {
   return unwrap(await supabase.rpc('decide_kyc', { p_verification_id: id, p_approve: approve }))
 }
 
-/* ------------------------------------------------------------ active live streams (read-only) */
+/* ------------------------------------------------------------ active live streams */
+/* Kill stream (Live Monitor): ends somebody's live right now. `admin_end_stream` is gated by the same rule as Watch (monitor_lives) and writes an
+   audit row. Resolves { ended: true } or { ended: false } (it was already over). */
+export async function killStream(id) {
+  const { data, error } = await supabase.rpc('admin_end_stream', { p_stream_id: id })
+  if (error) {
+    if (isMissingFunction(error)) throw new Error('Kill stream is not available on this project yet (its database update has not been applied).')
+    throw error
+  }
+  return data
+}
+
 export async function listActiveStreams() {
   const rows = unwrap(await supabase
     .from('live_streams')
