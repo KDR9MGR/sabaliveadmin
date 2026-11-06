@@ -20,6 +20,9 @@ import {
 import { TransferCoinsPage, USER_KIND } from '../cascade.jsx'
 import UserPicker from '../../components/UserPicker.jsx'
 import MediaPreview from '../../components/MediaPreview.jsx'
+import PullBackTransferDialog from '../../components/PullBackTransferDialog.jsx'
+import { useAuth } from '../../lib/auth.jsx'
+import { canPullBackTransfer } from '../../lib/pullBackRules.js'
 
 const CRUMBS = ['Home', 'Coin & Gift Management']
 const opt = (v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })
@@ -348,6 +351,9 @@ export function TransferHistory() {
   const toast = useToast()
   const { data: rows, loading, error, reload } = useAsyncData(listMyCoinHistory)
   const [busy, setBusy] = useState(null)
+  const { user, staffRole, can } = useAuth()
+  const [pulling, setPulling] = useState(null)
+  const mayPullTransfer = (r) => canPullBackTransfer({ row: r, me: user?.id, role: staffRole?.role, can })
 
   const pullBack = async (r) => {
     setBusy(r.id)
@@ -366,6 +372,7 @@ export function TransferHistory() {
     <>
       <PageHeader title="Coin Transfer History" crumbs={[...CRUMBS, 'Transfer History']}
         actions={<Button icon="download">Export</Button>} />
+      {pulling && <PullBackTransferDialog row={pulling} onClose={() => setPulling(null)} onDone={reload} />}
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={rows || []}
@@ -381,11 +388,14 @@ export function TransferHistory() {
             { key: 'by', header: 'From' },
             { key: 'note', header: 'Note' },
             { key: 'date', header: 'Date', sortable: true },
+            { key: 'pulledBack', header: 'Status', render: (r) => (r.pulledBack ? <Tag>Pulled back</Tag> : <span className="muted">—</span>) },
           ]}
           rowActions={(r) => [
             r.canPullBack
               ? { label: busy === r.id ? 'Working…' : 'Pull back', icon: 'lock', onClick: () => pullBack(r) }
-              : { label: 'Nothing to pull back', icon: 'lock', onClick: () => {} },
+              : mayPullTransfer(r)
+                ? { label: 'Pull back transfer', icon: 'lock', onClick: () => setPulling(r) }
+                : { label: r.pulledBack ? 'Already pulled back' : 'Nothing to pull back', icon: 'lock', onClick: () => {} },
           ]}
           emptyText="No coin transfers involving your account yet."
         />

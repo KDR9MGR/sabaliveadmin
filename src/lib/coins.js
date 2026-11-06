@@ -5,6 +5,7 @@ import { notifyCoinsChanged } from './balance.js'
 import { checkSpeed } from './effectFields.js'
 import { fetchAllPages, profileOption, profileSearchFilter } from './profileSearch.js'
 import { exactUserIdFrom } from './staffScope.js'
+import { missesColumn } from './panelRules.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
@@ -150,6 +151,26 @@ export async function createCoinGrant({ granted_to, coins, note }) {
     granted_to, granted_by, coins: Number(coins), note: note || null,
   }).select().single())
 }
+const MY_TRANSFER_COLUMNS = 'id, coins, note, created_at, sender_id, sender:sender_id(name), recipient:recipient_id(name, username, staff_roles!user_id(role))'
+/* The transfers this account sent or received. `pulled_back_at` (sabalive migration 20261106140000) is read when the column exists, so the page still loads before it. */
+async function readMyTransfers(me) {
+  const read = (cols) => supabase.from('coin_transfers').select(cols)
+    .or(`sender_id.eq.${me},recipient_id.eq.${me}`)
+    .order('created_at', { ascending: false }).limit(500)
+  let res = await read(`${MY_TRANSFER_COLUMNS}, pulled_back_at`)
+  if (res.error && missesColumn(res.error, 'pulled_back_at')) res = await read(MY_TRANSFER_COLUMNS)
+  return unwrap(res)
+}
+
+/* Pull a wallet-to-wallet coin transfer back: the coins go from the recipient back to the sender, all or nothing, once. Needs the `pull_back_coins` permission
+   (Master by default, anyone else when granted) and, unless Master / Super Admin, a transfer this account sent. A reason is required. */
+export async function pullBackCoinTransfer(id, reason) {
+  const { data, error } = await supabase.rpc('pull_back_coin_transfer', { p_transfer_id: id, p_reason: reason })
+  if (error) throw error
+  notifyCoinsChanged()
+  return data
+}
+
 /* The signed-in Master's OWN coin history — grants and wallet transfers where
    this account is the sender/granter or the receiver, not the platform-wide
    list (RLS lets any admin read every row, so the filter lives here). */
@@ -161,10 +182,7 @@ export async function listMyCoinHistory() {
       .select('id, coins, note, created_at, granted_by, recipient:granted_to(name, username, staff_roles!user_id(role)), granter:granted_by(name)')
       .or(`granted_by.eq.${me},granted_to.eq.${me}`)
       .order('created_at', { ascending: false }).limit(500).then(unwrap),
-    supabase.from('coin_transfers')
-      .select('id, coins, note, created_at, sender_id, sender:sender_id(name), recipient:recipient_id(name, username, staff_roles!user_id(role))')
-      .or(`sender_id.eq.${me},recipient_id.eq.${me}`)
-      .order('created_at', { ascending: false }).limit(500).then(unwrap),
+    readMyTransfers(me),
   ])
   const rows = [
     ...grants.map((r) => ({
@@ -177,8 +195,9 @@ export async function listMyCoinHistory() {
     ...transfers.map((r) => ({
       id: `transfer-${r.id}`, idShort: shortId(r.id),
       recipient: r.recipient?.name || '—', username: r.recipient?.username, recipientType: typeOf(r.recipient),
-      coins: Number(r.coins), by: r.sender?.name || '—', note: r.note || '—',
+      coins: Number(r.coins), by: r.sender?.name || '—', from: r.sender?.name || '—', note: r.note || '—',
       direction: r.sender_id === me ? 'Sent' : 'Received', canPullBack: false,
+      transferId: r.id, senderId: r.sender_id, pulledBack: !!r.pulled_back_at,
       at: r.created_at, date: fmtDate(r.created_at),
     })),
   ]

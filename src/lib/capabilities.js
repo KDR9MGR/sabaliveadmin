@@ -25,6 +25,10 @@ export const CAPABILITIES = [
   // The monthly diamond reset (Economy -> Diamond Reset, sabalive migration 20261026140000). Master and Super Admin only: on by default for a Master (an explicit false blocks it),
   // never openable by a lower role even if it is saved on one (the database also requires the Master role).
   { key: 'reset_diamonds', label: 'Diamond reset (monthly)', group: 'Operations' },
+  // Pull a wallet-to-wallet coin transfer back (coins go from the recipient back to the sender; all or nothing, a reason is required). Enforced server-side by
+  // staff_can_pull_back_coins() (sabalive migration 20261106140000): Super Admin always, a Master unless an explicit false blocks it, any other account only when this is
+  // granted. A Master / Super Admin may pull back any transfer, every other account only one it sent.
+  { key: 'pull_back_coins', label: 'Pull back coin transfers', group: 'Operations' },
   { key: 'edit_config', label: 'Edit app config', group: 'System' },
   { key: 'manage_infra', label: 'Manage infrastructure', group: 'System' },
   { key: 'view_audit', label: 'Access audit logs', group: 'System' },
@@ -61,7 +65,7 @@ const ALL = Object.fromEntries(CAPABILITY_KEYS.map((k) => [k, true]))
 
 export const ROLE_BASELINE = {
   super_admin: ALL,
-  admin: set('view_dashboards', 'manage_users', 'view_user_profile', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support', 'manage_tags', 'reset_diamonds'),
+  admin: set('view_dashboards', 'manage_users', 'view_user_profile', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support', 'manage_tags', 'reset_diamonds', 'pull_back_coins'),
   agency_manager: set('view_dashboards', 'manage_hosts', 'export_data'),
   sub_admin: set('view_dashboards', 'manage_hosts'),
   country_admin: set('view_dashboards', 'manage_hosts'),
@@ -109,6 +113,7 @@ export const LOWER_ROLE_GRANTS = {
   manage_levels: { roles: ALL_LOWER, gives: 'Levels (XP & images)' },
   manage_support: { roles: ALL_LOWER, gives: 'Support chat' },
   manage_tags: { roles: ALL_LOWER, gives: 'Tags: create tags and give them to users' },
+  pull_back_coins: { roles: ALL_LOWER, gives: 'A Pull back button on the coin transfers this account sent (coins return from the recipient; a reason is required)' },
   manage_lucky_box: { roles: ALL_LOWER, gives: 'Lucky Box settings' },
   manage_badges: { roles: ALL_LOWER, gives: 'Badge management' },
   manage_leaderboard_frame: { roles: ALL_LOWER, gives: 'Leaderboard frame' },

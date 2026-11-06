@@ -16,6 +16,9 @@ import {
   listOwnedAgencies, ownedAgencyManagerOptions,
 } from '../lib/cascade.js'
 import { num } from '../data/index.js'
+import { useAuth } from '../lib/auth.jsx'
+import { canPullBackTransfer } from '../lib/pullBackRules.js'
+import PullBackTransferDialog from '../components/PullBackTransferDialog.jsx'
 
 /* ------------------------------------------------------------------ Transfer Coins */
 /* `kinds` = which recipient types this level may send to, each with the loader
@@ -118,10 +121,14 @@ export function CoinHistoryPage({ title, crumbs, kind }) {
     () => (kind === 'user' ? listUserCoinHistory() : listCoinTransfers(kind)),
     [kind],
   )
+  const { user, staffRole, can } = useAuth()
+  const [pulling, setPulling] = useState(null)
   const showAgency = kind === 'agency' || kind === 'user'
+  const mayPull = (r) => canPullBackTransfer({ row: r, me: user?.id, role: staffRole?.role, can })
   return (
     <>
       <PageHeader title={title} crumbs={crumbs} />
+      {pulling && <PullBackTransferDialog row={pulling} onClose={() => setPulling(null)} onDone={reload} />}
       {error ? <LoadError error={error} onRetry={reload} />
         : loading || !data ? <TableSkeleton />
         : (
@@ -136,7 +143,11 @@ export function CoinHistoryPage({ title, crumbs, kind }) {
               numCol('coins', 'Coins'),
               { key: 'note', header: 'Note' },
               { key: 'date', header: 'Date', sortable: true },
+              ...(can('pull_back_coins') ? [{ key: 'pulledBack', header: 'Status', render: (r) => (r.pulledBack ? <Tag>Pulled back</Tag> : <span className="muted">—</span>) }] : []),
             ]}
+            rowActions={can('pull_back_coins')
+              ? (r) => (mayPull(r) ? [{ label: 'Pull back', icon: 'lock', onClick: () => setPulling(r) }] : [])
+              : undefined}
             emptyText="No coin transfers yet."
           />
         )}

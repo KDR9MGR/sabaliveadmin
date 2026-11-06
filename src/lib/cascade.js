@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { shortId, fmtDate } from './admin.js'
+import { missesColumn } from './panelRules.js'
 import { myCoinGrants } from './treasury.js'
 import { staffEmails } from './country.js'
 import { notifyCoinsChanged } from './balance.js'
@@ -44,18 +45,24 @@ const transferRow = (r) => ({
   note: r.note || '—',
   date: fmtDate(r.created_at),
   at: r.created_at,
+  transferId: r.id,
+  senderId: r.sender_id,
+  pulledBack: !!r.pulled_back_at,
 })
 
 /* History of transfers to one recipient kind ('agency' | 'user' | 'sub_admin').
    RLS decides what's visible: what I sent, what I received, and what my
    downstream agencies sent (manages_agency). */
+const TRANSFER_COLUMNS = 'id, coins, note, created_at, recipient_kind, sender:sender_id(name, username), recipient:recipient_id(name, username, display_id), agency:agency_id(name)'
 export async function listCoinTransfers(kind) {
-  const rows = unwrap(await supabase.from('coin_transfers')
-    .select('id, coins, note, created_at, recipient_kind, sender:sender_id(name, username), recipient:recipient_id(name, username, display_id), agency:agency_id(name)')
+  const read = (cols) => supabase.from('coin_transfers').select(cols)
     .eq('recipient_kind', kind)
     .order('created_at', { ascending: false })
-    .limit(500))
-  return rows.map(transferRow)
+    .limit(500)
+  // sender_id / pulled_back_at (sabalive migration 20261106140000) are read when the column exists, so the page still loads before it
+  let res = await read(`${TRANSFER_COLUMNS}, sender_id, pulled_back_at`)
+  if (res.error && missesColumn(res.error, 'pulled_back_at')) res = await read(TRANSFER_COLUMNS)
+  return unwrap(res).map(transferRow)
 }
 
 /* User-directed history: coin_transfers plus the older treasury-based grants
