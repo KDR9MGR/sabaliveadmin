@@ -273,6 +273,10 @@ const RELEASE_FLAGS = [
     desc: 'On: a Global, Country, Sub Admin or Agency account sees only the people assigned under it (its Country Admins, Sub Admins, agencies, hosts and applicants), the staff above it and the people its chain has sent coins to, in every list, count and report. Master and Super Admin still see everyone, and the app is not affected. Off (default): they see everyone, as before. Before turning it on, make sure every Country Admin is assigned to a Global Admin (Transfer Global): one that is not is seen by Master and Super Admin only. Takes effect on the next page load; turn it off to undo it at once.',
   },
   {
+    key: 'rtc_livekit_new_lives', def: false, title: 'MS cloud for new lives',
+    desc: 'On: the audio rooms and video lives people START from now on run on MS cloud (the hosted LiveKit server) instead of Agora. A live that is already running keeps the server it started on, and a PK battle host always gets Agora. Off (default): every new live uses Agora. Turn it on ONLY after the livekit-token secrets are set on the project AND the minimum Android version code has been raised past every build that cannot join an MS cloud room (Play at 100% first), because an older app lists an MS cloud room and then cannot join it. Takes effect when the app opens or returns to the foreground.',
+  },
+  {
     key: 'screen_protection', def: false, title: 'Block screenshots and screen recording',
     desc: 'On: Android phones show a black picture instead of the app to screenshots, screen recorders, casting and the recent-apps list. iPhones cannot block screenshots, so this does nothing there. Off by default.',
   },
