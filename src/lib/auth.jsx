@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { supabase } from './supabase.js'
 import { can as canCap } from './capabilities.js'
 import { ROLE_LABEL } from './admin.js'
+import { avatarProblem, avatarPath, avatarContentType, bustedUrl } from './avatarRules.js'
 import { rememberAdminVersion } from './maintenance.js'
 import MaintenanceLock from '../components/MaintenanceLock.jsx'
 
@@ -119,6 +120,22 @@ export function AuthProvider({ children }) {
     return { data: data ?? null, error: null }
   }, [session])
 
+  /* Own profile photo: upload to avatars/<uid>/avatar.<ext> (replaces the old one), then point profiles.avatar_url at it. */
+  const updateAvatar = useCallback(async (file) => {
+    const user = session?.user
+    if (!user) return { error: new Error('Not signed in') }
+    const problem = avatarProblem(file)
+    if (problem) return { error: new Error(problem) }
+    const path = avatarPath(user.id, file)
+    const up = await supabase.storage.from('avatars').upload(path, file, { contentType: avatarContentType(file), upsert: true })
+    if (up.error) return { error: up.error }
+    const url = bustedUrl(supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl)
+    const { data, error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id).select().maybeSingle()
+    if (error) return { error }
+    if (data) setProfile(data)
+    return { data: url, error: null }
+  }, [session])
+
   const changePassword = useCallback(async (currentPassword, newPassword) => {
     const user = session?.user
     if (!user) return { error: new Error('Not signed in') }
@@ -137,7 +154,7 @@ export function AuthProvider({ children }) {
   return (
     <Ctx.Provider value={{
       session, user: session?.user ?? null, profile, staffRole, panel, can,
-      isStaff: !!staffRole, loading, signIn, signOut, updateProfile, changePassword,
+      isStaff: !!staffRole, loading, signIn, signOut, updateProfile, updateAvatar, changePassword,
     }}>
       {lockedOut
         ? <MaintenanceLock forced onSignOut={signOut} onUnlocked={() => loadForUser(session?.user)} />

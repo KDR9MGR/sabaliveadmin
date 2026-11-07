@@ -1,16 +1,19 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate, useNavigate, useRouteError } from 'react-router-dom'
 import { PageHeader, Card, Button, KV, EmptyState, useToast } from '../components/ui.jsx'
 import Icon from '../components/Icon.jsx'
 import { useSettings } from '../config/settings.jsx'
 import { useAuth, ROLE_LABEL } from '../lib/auth.jsx'
 import { landingPath } from '../components/guards.jsx'
+import { AVATAR_ACCEPT } from '../lib/avatarRules.js'
 import { EnvironmentNotice } from '../components/EnvironmentSwitch.jsx'
 
 /* ------------------------------------------------------------------ My Profile */
 export function Profile({ panel = 'Master / Admin' }) {
   const toast = useToast()
-  const { profile, user, staffRole, changePassword } = useAuth()
+  const { profile, user, staffRole, changePassword, updateAvatar } = useAuth()
+  const photoInput = useRef(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -28,6 +31,17 @@ export function Profile({ panel = 'Master / Admin' }) {
   const roleLabel = staffRole?.role
     ? (ROLE_LABEL[staffRole.role] || staffRole.role)
     : '—'
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPhotoBusy(true)
+    const { error } = await updateAvatar(file)
+    setPhotoBusy(false)
+    if (error) toast(error.message || 'Could not change the photo', { variant: 'danger' })
+    else toast('Photo changed')
+  }
 
   const handleChangePassword = async () => {
     setPasswordError('')
@@ -164,10 +178,14 @@ export function Profile({ panel = 'Master / Admin' }) {
         <div className="vstack" style={{ gap: 16 }}>
           <Card>
             <div className="center">
-              <span className="avatar avatar--xl" style={{ margin: '0 auto' }}>{avatarLetter}</span>
+              <span className="avatar avatar--xl" style={{ margin: '0 auto', overflow: 'hidden' }}>
+                {profile?.avatar_url ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : avatarLetter}
+              </span>
               <h3 style={{ marginTop: 12 }}>{displayName}</h3>
               <div className="muted" style={{ fontSize: 12 }}>{roleLabel} · {panel} panel</div>
-              <Button size="sm" icon="upload" style={{ marginTop: 12 }} onClick={() => toast('Choose photo')}>Change photo</Button>
+              <input ref={photoInput} type="file" accept={AVATAR_ACCEPT} hidden onChange={handlePhoto} />
+              <Button size="sm" icon={photoBusy ? 'refresh' : 'upload'} disabled={photoBusy} style={{ marginTop: 12 }} onClick={() => photoInput.current?.click()}>{photoBusy ? 'Uploading…' : 'Change photo'}</Button>
+              <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>JPG, PNG or WebP, up to 5 MB</div>
             </div>
           </Card>
           <Card title="Security">
