@@ -27,13 +27,13 @@ export const UPLOAD_ACCEPT = '.svga,.svg,.mp4,.gif,.webp,.png,.jpg,.jpeg,image/p
 export const UPLOAD_HINT = 'SVGA, SVG, MP4, GIF, WebP or PNG'
 /* A sound that plays with a gift / entry effect on every phone in the room. */
 export const AUDIO_ACCEPT = '.mp3,.m4a,.aac,.wav,.ogg,audio/mpeg,audio/mp4,audio/aac,audio/wav,audio/ogg'
-export const AUDIO_HINT = 'MP3, M4A, AAC, WAV or OGG, up to 15 MB'
-const MAX_BYTES = 15 * 1024 * 1024 // the gift-assets bucket's limit
+export const AUDIO_HINT = 'MP3, M4A, AAC, WAV or OGG, up to 35 MB'
+const MAX_BYTES = 35 * 1024 * 1024 // the gift-assets bucket limit (sabalive migration 20261108100000)
 
 export async function uploadMedia(bucket, folder, file) {
   const ext = (file.name.split('.').pop() || 'png').toLowerCase()
   if (bucket === 'gift-assets' && file.size > MAX_BYTES) {
-    throw new Error(`That file is ${(file.size / 1048576).toFixed(1)} MB; the limit is 15 MB`)
+    throw new Error(`That file is ${(file.size / 1048576).toFixed(1)} MB; the limit is 35 MB`)
   }
   if (ext === 'svg') {
     // an SVG is plain text: make sure it really is a drawing and carries nothing that runs
