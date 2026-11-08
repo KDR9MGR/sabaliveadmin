@@ -241,10 +241,6 @@ const RELEASE_FLAGS = [
   { key: 'animated_frames', title: 'Animated avatar frames', desc: 'Off: every avatar frame shows as a still picture (saves battery and data)' },
   { key: 'speaking_waves', title: 'Speaking waves', desc: 'Off: no wave ring around whoever is talking in a live' },
   {
-    key: 'vip_enabled', def: false, title: 'VIP products',
-    desc: 'On: the VIP list opens from the profile\'s gold VIP strip and VIP can be bought. Off by default: until it is on, the strip says "VIP is coming soon" (hidden on iPhone) and the database refuses a purchase. Needs an app build that has the VIP screens and the VIP database update.',
-  },
-  {
     key: 'pk_battles', def: false, title: 'PK Battles',
     desc: 'On: PK Battles are available (Go Live\'s PK tab and the host tools). Off by default: until it is on, PK says "coming soon" in the app. Takes effect when the app opens or returns to the foreground; a PK that is already running is not stopped. Needs an app build that has PK.',
   },
