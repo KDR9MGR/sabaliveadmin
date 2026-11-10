@@ -111,6 +111,7 @@ export const NAV = {
         { label: 'Garage', to: '/admin/store/vehicle' },
         { label: 'Room Skins', to: '/admin/store/room_skin' },
       ]},
+      { label: 'All Coin Transfers', icon: 'coins', to: '/admin/coins/all-transfers' },
       { label: 'Withdrawals', icon: 'wallet', cap: 'run_payroll', to: '/admin/withdrawals' },
       { label: 'Salary', icon: 'fileText', cap: 'run_payroll', to: '/admin/salary' },
       { label: 'Diamond Reset', icon: 'star', cap: 'reset_diamonds', to: '/admin/diamond-reset' },
@@ -239,6 +240,7 @@ export const NAV = {
     ]},
     { section: 'Economy', items: [
       { label: 'Coin Treasury', icon: 'coins', cap: 'manage_coins', to: '/super/treasury' },
+      { label: 'All Coin Transfers', icon: 'coins', to: '/super/coin-transfers' },
     ]},
     { section: 'Infrastructure', items: [
       { label: 'System Overview', icon: 'activity', cap: 'manage_infra', to: '/super/system' },
