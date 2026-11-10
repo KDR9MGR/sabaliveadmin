@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { SCOPE_FLAG, isScopedRole, scopeIsOn, scopeNote, exactUserIdFrom } from './staffScope.js'
+import { SCOPE_FLAG, isScopedRole, scopeIsOn, scopeNote, seesEveryone, exactUserIdFrom } from './staffScope.js'
+import { can as canCap } from './capabilities.js'
 
 test('only Global, Country, Sub Admin and Agency are scoped roles', () => {
   for (const r of ['global_admin', 'country_admin', 'sub_admin', 'agency_manager']) assert.equal(isScopedRole(r), true, r)
@@ -34,4 +35,23 @@ test('digits typed in a coin picker are read as an app User ID, anything else is
   assert.equal(exactUserIdFrom('10 02'), null)
   assert.equal(exactUserIdFrom(''), null)
   assert.equal(exactUserIdFrom('1234567890123456'), null) // 16 digits: too long to be a User ID
+})
+
+test('an account given view_all_users is not limited, so the "everyone else is hidden" note is not shown to it', () => {
+  const on = { [SCOPE_FLAG]: true }
+  assert.equal(seesEveryone({ view_all_users: true }), true)
+  assert.equal(seesEveryone({ view_all_users: false }), false)
+  assert.equal(seesEveryone(null), false)
+  assert.equal(scopeNote('global_admin', on, { view_all_users: true }), '')
+  assert.match(scopeNote('global_admin', on, { view_all_users: false }), /Country Admins/)
+  assert.match(scopeNote('global_admin', on, {}), /Country Admins/)
+})
+
+test('view_all_users is a switchable capability: on for a Master by default, off for lower roles until granted', () => {
+  assert.equal(canCap({ role: 'admin', permissions: {} }, 'view_all_users'), true)
+  assert.equal(canCap({ role: 'super_admin', permissions: {} }, 'view_all_users'), true)
+  for (const role of ['global_admin', 'country_admin', 'sub_admin', 'agency_manager']) {
+    assert.equal(canCap({ role, permissions: {} }, 'view_all_users'), false, role)
+    assert.equal(canCap({ role, permissions: { view_all_users: true } }, 'view_all_users'), true, `${role} granted`)
+  }
 })

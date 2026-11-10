@@ -69,7 +69,7 @@ export function UsersList({ readOnly = false, profileLink: wantProfileLink = tru
   // a Global / Country / Sub Admin / Agency account only lists its own chain while "Limit each admin to their own chain" is on: say so
   const scoped = isScopedRole(staffRole?.role)
   const { data: cfg } = useAsyncData(() => (scoped ? getAppConfig() : Promise.resolve(null)), [scoped])
-  const note = scoped ? scopeNote(staffRole?.role, cfg?.feature_flags) : ''
+  const note = scoped ? scopeNote(staffRole?.role, cfg?.feature_flags, staffRole?.permissions) : ''
   const [ban, setBan] = useState(null) // { user, kinds } — the Restrict dialog
 
   const changeStatus = async (r, status) => {

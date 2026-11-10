@@ -17,9 +17,12 @@ const UNDER = {
   agency_manager: 'your agency\'s hosts',
 }
 
-/* The line above a people list; '' when it does not apply (not a scoped role, or the switch is off). */
-export function scopeNote(role, flags) {
-  if (!isScopedRole(role) || !scopeIsOn(flags)) return ''
+/* An account that was given "See all users & their data" (permission view_all_users, sabalive migration 20261110110000) is not limited. */
+export const seesEveryone = (permissions) => !!permissions && typeof permissions === 'object' && permissions.view_all_users === true
+
+/* The line above a people list; '' when it does not apply (not a scoped role, the switch is off, or the account was given view_all_users). */
+export function scopeNote(role, flags, permissions) {
+  if (!isScopedRole(role) || !scopeIsOn(flags) || seesEveryone(permissions)) return ''
   return `You see ${UNDER[role]}, plus people your chain has sent coins to. Everyone else is hidden by design.`
 }
 
