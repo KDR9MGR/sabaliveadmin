@@ -1,8 +1,19 @@
 import { supabase } from './supabase.js'
 import { relativeTime } from './format.js'
 import { sudGameRow } from './sudGames.js'
+import { isMissingFunction } from './dbErrors.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
+
+/* The monitoring reports read game_transactions, whose read policy checks the caller's role once PER ROW: with 360k+ rows the direct reads took 5-11 s and the winner-gifting one
+   passed the 8 s limit (the Games page stopped loading, 2026-11-10). sabalive migration 20261110100000 adds admin_game_* functions that check once; each report calls its
+   function first and falls back to the old direct read only while the function is missing (so the page still works on a project that has not got the migration). */
+async function reportRows(fn, args, direct) {
+  const res = await supabase.rpc(fn, args)
+  if (!res.error) return res.data || []
+  if (!isMissingFunction(res.error)) throw res.error
+  return unwrap(await direct())
+}
 
 /* Tulasi games (sabalive migrations 20261013100000-120000). The ON/OFF switch is NOT here: it is
    app_config.feature_flags.games_enabled (Application Config -> Release controls, Super Admin), the same switch the app reads. */
@@ -69,7 +80,8 @@ export async function setGamesHidden(ids, hidden) {
 /* Per-day totals across everyone for the last [days] days (from the per-person view). */
 export async function listGameDays(days = 14) {
   const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
-  const rows = unwrap(await supabase.from('game_player_day_totals').select('profile_id, day, bet, won, net, rejected').gte('day', since))
+  const rows = await reportRows('admin_game_day_totals', { p_days: days },
+    () => supabase.from('game_player_day_totals').select('profile_id, day, bet, won, net, rejected').gte('day', since))
   const byDay = new Map()
   for (const r of rows) {
     const d = byDay.get(r.day) || { id: r.day, day: r.day, players: 0, bet: 0, won: 0, rejected: 0 }
@@ -85,9 +97,17 @@ export async function listGameDays(days = 14) {
 const TYPE = { 0: 'Bet', 1: 'Win', 2: 'Game coin −', 3: 'Game coin +' }
 
 export async function listRecentGameTransactions(limit = 200) {
-  const rows = unwrap(await supabase.from('game_transactions')
-    .select('id, transaction_id, type, coin, status, reason, game_type, balance_after, created_at, profiles(name, display_id)')
-    .order('created_at', { ascending: false }).limit(limit))
+  const res = await supabase.rpc('admin_game_transactions', { p_limit: limit })
+  let rows
+  if (!res.error) {
+    rows = (res.data || []).map((r) => ({ ...r, profiles: { name: r.player_name, display_id: r.player_display_id } }))
+  } else if (isMissingFunction(res.error)) {
+    rows = unwrap(await supabase.from('game_transactions')
+      .select('id, transaction_id, type, coin, status, reason, game_type, balance_after, created_at, profiles(name, display_id)')
+      .order('created_at', { ascending: false }).limit(limit))
+  } else {
+    throw res.error
+  }
   return rows.map((r) => ({
     id: r.id,
     when: relativeTime(r.created_at),
@@ -112,8 +132,9 @@ async function namesFor(ids) {
 
 /* People who won in games and gifted coins that day or the next. */
 export async function listWinnerGifting(limit = 100) {
-  const rows = unwrap(await supabase.from('game_winner_gifting').select('profile_id, day, game_net, gifted, receivers')
-    .order('day', { ascending: false }).order('gifted', { ascending: false }).limit(limit))
+  const rows = await reportRows('admin_game_winner_gifting', { p_limit: limit },
+    () => supabase.from('game_winner_gifting').select('profile_id, day, game_net, gifted, receivers')
+      .order('day', { ascending: false }).order('gifted', { ascending: false }).limit(limit))
   const names = await namesFor(rows.map((r) => r.profile_id))
   return rows.map((r) => ({
     id: `${r.profile_id}-${r.day}`, day: r.day, player: names.get(r.profile_id)?.name || '—', displayId: names.get(r.profile_id)?.display_id,
@@ -123,8 +144,9 @@ export async function listWinnerGifting(limit = 100) {
 
 /* Hosts whose gifts that day came partly from people who were net winners in games. */
 export async function listHostInflow(limit = 100) {
-  const rows = unwrap(await supabase.from('game_host_inflow').select('host_id, day, received, from_game_winners, winner_senders')
-    .gt('from_game_winners', 0).order('day', { ascending: false }).order('from_game_winners', { ascending: false }).limit(limit))
+  const rows = await reportRows('admin_game_host_inflow', { p_limit: limit },
+    () => supabase.from('game_host_inflow').select('host_id, day, received, from_game_winners, winner_senders')
+      .gt('from_game_winners', 0).order('day', { ascending: false }).order('from_game_winners', { ascending: false }).limit(limit))
   const names = await namesFor(rows.map((r) => r.host_id))
   return rows.map((r) => ({
     id: `${r.host_id}-${r.day}`, day: r.day, host: names.get(r.host_id)?.name || '—', displayId: names.get(r.host_id)?.display_id,
