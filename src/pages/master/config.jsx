@@ -277,6 +277,10 @@ const RELEASE_FLAGS = [
     desc: 'On: the audio rooms and video lives people START from now on run on MS cloud (the hosted LiveKit server) instead of Agora. A live that is already running keeps the server it started on, and a PK battle host always gets Agora. Off (default): every new live uses Agora. Turn it on ONLY after the livekit-token secrets are set on the project AND the minimum Android version code has been raised past every build that cannot join an MS cloud room (Play at 100% first), because an older app lists an MS cloud room and then cannot join it. Takes effect when the app opens or returns to the foreground.',
   },
   {
+    key: 'play_update_check', def: true, title: 'Force Google Play updates',
+    desc: 'On (default): when Google Play has a newer version of the app for a phone, the app (Android, installed from Play, a build that has this check) opens Google\'s update screen at once and stays locked until the phone has it. A staged rollout only reaches the phones Play is already offering the update to. Off: the app stops asking Play at its next open or return to the foreground. Use Off if an update ever traps people. The minimum version above is separate and still works either way.',
+  },
+  {
     key: 'screen_protection', def: false, title: 'Block screenshots and screen recording',
     desc: 'On: Android phones show a black picture instead of the app to screenshots, screen recorders, casting and the recent-apps list. iPhones cannot block screenshots, so this does nothing there. Off by default.',
   },
