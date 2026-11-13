@@ -210,10 +210,14 @@ export async function scopeAgencyManagerOptions() {
 export async function otherCountryAdminOptions() {
   const me = await myId()
   const rows = unwrap(await supabase.from('staff_roles')
-    .select('user_id, profiles!user_id(name, username)').eq('role', 'country_admin'))
+    .select('user_id, profiles!user_id(name, username, display_id)').eq('role', 'country_admin'))
   return rows
     .filter((r) => r.user_id !== me)
-    .map((r) => ({ value: r.user_id, label: `${r.profiles?.name || shortId(r.user_id)} (@${r.profiles?.username || '—'})` }))
+    .map((r) => ({
+      value: r.user_id,
+      label: `${r.profiles?.name || shortId(r.user_id)} (@${r.profiles?.username || '—'}) · ID ${r.profiles?.display_id ?? '—'}`,
+      search: `${r.profiles?.name || ''} ${r.profiles?.username || ''} ${r.profiles?.display_id ?? ''}`.toLowerCase(),
+    }))
 }
 
 /* Other global admins — targets for "Transfer Global". Pass an optional
@@ -229,6 +233,7 @@ export async function otherGlobalAdminOptions(excludeIds = []) {
     .map((r) => ({
       value: r.user_id,
       label: `${r.profiles?.name || shortId(r.user_id)} (@${r.profiles?.username || '—'}) · ID ${r.profiles?.display_id || '—'}`,
+      search: `${r.profiles?.name || ''} ${r.profiles?.username || ''} ${r.profiles?.display_id ?? ''}`.toLowerCase(),
     }))
 }
 

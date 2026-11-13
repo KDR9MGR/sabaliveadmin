@@ -313,7 +313,8 @@ export function TransferRequests({ subjectType, title = 'Transfer Requests', cru
       <AsyncView loading={loading} error={error} reload={reload}>
         <DataTable
           rows={filtered}
-          searchKeys={['subject', 'from', 'to', 'requestedBy', 'idShort']}
+          searchKeys={['subject', 'subjectId', 'from', 'to', 'requestedBy', 'requestedById', 'idShort']}
+          searchPlaceholder="Search a name, User ID, agency or request…"
           tabs={[
             { label: 'Pending', value: 'p', filter: (r) => r.status === 'Pending' },
             { label: 'Approved', value: 'a', filter: (r) => r.status === 'Approved' },
@@ -324,6 +325,7 @@ export function TransferRequests({ subjectType, title = 'Transfer Requests', cru
             { key: 'idShort', header: 'Request', render: (r) => <span className="mono muted">{r.idShort}</span> },
             { key: 'type', header: 'Type', render: (r) => <Tag>{r.type}</Tag> },
             personCol('subject', 'requestedBy'),
+            { key: 'subjectId', header: 'User ID', render: (r) => <span className="mono muted">{r.subjectId || '—'}</span> },
             { key: 'from', header: 'From' },
             { key: 'to', header: 'To', render: (r) => <span className="hstack" style={{ gap: 6 }}><Icon name="chevronsRight" size={13} className="muted" />{r.to}</span> },
             { key: 'reason', header: 'Reason' },
@@ -377,8 +379,8 @@ function NewTransferDrawer({ onClose, onDone, defaultType }) {
           name: '_type', label: 'Move a', type: 'select', required: true,
           options: [{ value: 'host', label: 'Host' }, { value: 'sub_admin', label: 'Sub Admin' }],
         },
-        { name: 'subject_id', label: subjectType === 'host' ? 'Host' : 'Sub Admin', type: 'select', required: true, options: subjects },
-        { name: 'to_agency_id', label: 'To agency', type: 'select', required: true, options: opts?.agencies || [] },
+        { name: 'subject_id', label: `${subjectType === 'host' ? 'Host' : 'Sub Admin'} (type a name, username or User ID)`, type: 'picker', required: true, options: subjects },
+        { name: 'to_agency_id', label: 'To agency (type a name or Agency ID)', type: 'picker', required: true, options: opts?.agencies || [] },
         { name: 'reason', label: 'Reason', type: 'textarea', full: true },
       ]}
       initial={{ _type: subjectType }}

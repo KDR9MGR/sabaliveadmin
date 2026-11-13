@@ -114,6 +114,8 @@ export default function App() {
               <Route path="users/flagged" element={<FlaggedMessages />} />
               <Route path="users/bans" element={<Bans />} />
               <Route path="users/status" element={<AccountStatus />} />
+            </Route>
+            <Route element={<RequireCap cap="manage_transfers" />}>
               <Route path="users/transfers" element={<TransferRequests />} />
               <Route path="users/transfer-host" element={<MasterTransferHost />} />
               <Route path="users/transfer-agency" element={<MasterTransferAgency />} />
@@ -298,6 +300,14 @@ export default function App() {
             <Route path="support" element={<Support />} />
             <Route path="tags" element={<Tags />} />
             <Route path="vip" element={<VipProducts />} />
+            <Route element={<RequireCap cap="manage_transfers" />}>
+              <Route path="users/transfers" element={<TransferRequests />} />
+              <Route path="users/transfer-host" element={<MasterTransferHost />} />
+              <Route path="users/transfer-agency" element={<MasterTransferAgency />} />
+              <Route path="users/transfer-sub-admin" element={<MasterTransferSubAdmin />} />
+              <Route path="users/transfer-country" element={<MasterTransferCountry />} />
+              <Route path="users/transfer-global" element={<MasterTransferGlobal />} />
+            </Route>
             <Route path="coin-transfers" element={<AllCoinTransfers root="Economy" />} />
             <Route path="rankings" element={<Leaderboards />} />
 

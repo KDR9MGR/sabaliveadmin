@@ -90,9 +90,11 @@ export function CountryTransferHost() {
         <>
           <DataTable
             rows={history}
-            searchKeys={['subject', 'from', 'to', 'requestedBy', 'reason']}
+            searchKeys={['subject', 'subjectId', 'from', 'to', 'requestedBy', 'requestedById', 'reason']}
+            searchPlaceholder="Search a name, User ID, agency or reason…"
             columns={[
               personCol('subject', 'requestedBy'),
+              { key: 'subjectId', header: 'User ID', render: (r) => <span className="mono muted">{r.subjectId || '—'}</span> },
               { key: 'from', header: 'From' },
               { key: 'to', header: 'To' },
               { key: 'reason', header: 'Reason' },
@@ -106,10 +108,10 @@ export function CountryTransferHost() {
               title="Transfer host" onClose={() => setOpen(false)} savedMessage="Host transferred"
               onSubmit={async (v) => { await transferHost({ hostId: v.host, toAgency: v.to_agency, reason: v.reason }); reload() }}
               fields={[
-                { name: 'host', label: 'Host', type: 'select', required: true,
-                  options: hosts.map((h) => ({ value: h.id, label: `${h.name} — ${h.agencyName}` })) },
-                { name: 'to_agency', label: 'Move to agency', type: 'select', required: true,
-                  options: agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.subAdmin})` })) },
+                { name: 'host', label: 'Host (type a name, username or User ID)', type: 'picker', required: true,
+                  options: hosts.map((h) => ({ value: h.id, label: `${h.name} · ID ${h.displayId ?? '—'} — ${h.agencyName}`, search: `${h.name} ${h.username || ''} ${h.displayId ?? ''} ${h.agencyName}`.toLowerCase() })) },
+                { name: 'to_agency', label: 'Move to agency (type a name or Agency ID)', type: 'picker', required: true,
+                  options: agencies.map((a) => ({ value: a.id, label: `${a.name} · Agency ID ${a.displayId ?? '—'} (${a.subAdmin})`, search: `${a.name} ${a.displayId ?? ''} ${a.subAdmin || ''}`.toLowerCase() })) },
                 { name: 'reason', label: 'Reason', type: 'textarea', full: true },
               ]}
             />
@@ -148,8 +150,8 @@ export function CountryTransferAgency({ handover = false }) {
               title={`Transfer agency — ${moving.name}`} onClose={() => setMoving(null)} savedMessage="Agency transferred"
               onSubmit={async (v) => { await transferAgency({ agencyId: moving.id, toSubAdmin: v.sub_admin }); reload() }}
               fields={[{
-                name: 'sub_admin', label: `New sub admin (currently ${moving.subAdmin})`, type: 'select', required: true,
-                options: subAdmins.filter((s) => s.id !== moving.subAdminId).map((s) => ({ value: s.id, label: `${s.name} (@${s.username || '—'})` })),
+                name: 'sub_admin', label: `New sub admin (currently ${moving.subAdmin}; type a name or User ID)`, type: 'picker', required: true,
+                options: subAdmins.filter((s) => s.id !== moving.subAdminId).map((s) => ({ value: s.id, label: `${s.name} (@${s.username || '—'}) · ID ${s.displayId ?? '—'}`, search: `${s.name} ${s.username || ''} ${s.displayId ?? ''}`.toLowerCase() })),
               }]}
             />
           )}
@@ -190,7 +192,7 @@ export function CountryTransferSubAdmin({ handover = false }) {
             <EntityForm
               title={`Transfer sub admin — ${moving.name}`} onClose={() => setMoving(null)} savedMessage="Sub admin transferred"
               onSubmit={async (v) => { await transferSubAdmin({ subAdminId: moving.id, toCountryAdmin: v.country_admin }); reload() }}
-              fields={[{ name: 'country_admin', label: 'New country admin', type: 'select', required: true, options: countryAdmins }]}
+              fields={[{ name: 'country_admin', label: 'New country admin (type a name or User ID)', type: 'picker', required: true, options: countryAdmins }]}
             />
           )}
         </>
@@ -294,8 +296,8 @@ export function CountryTransferGlobal({ handover = false }) {
               fields={[
                 {
                   name: 'global_admin',
-                  label: moving.globalAdminId ? `New Global Admin (currently: ${moving.globalAdmin})` : 'Global Admin',
-                  type: 'select',
+                  label: moving.globalAdminId ? `New Global Admin (currently: ${moving.globalAdmin}; type a name or User ID)` : 'Global Admin (type a name or User ID)',
+                  type: 'picker',
                   required: true,
                   options: targets || [],
                 },

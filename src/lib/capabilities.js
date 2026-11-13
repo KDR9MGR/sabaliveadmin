@@ -33,6 +33,10 @@ export const CAPABILITIES = [
   // (profiles, wallets and ledger, staff accounts, coin transfers and grants, gifts). No write power; withdrawals, applications, live requests, bank details and sign-in / device
   // data keep their own switches. For a Global / Country / Sub Admin or Agency only; a Master and Super Admin always see everyone.
   { key: 'view_all_users', label: 'See all users & their data (outside my chain)', group: 'Users & staff' },
+  // The Transfers pages of User Management (Transfer Requests / Host / Agency / Sub Admin / Country / Global), in the Master panel and the Super panel. On by default for a Master (an explicit false
+  // hides them), Super Admin always, any other account only when switched on in Access Control. The pages only REVEAL: every move is still checked by the database against the account's own
+  // role and scope (a Country Admin can only move what is under it; handing a panel seat to another user stays Master-only), so a grant never gives more than the role could already do.
+  { key: 'manage_transfers', label: 'Transfers (host, agency, sub admin, country, global)', group: 'Users & staff' },
   { key: 'edit_config', label: 'Edit app config', group: 'System' },
   { key: 'manage_infra', label: 'Manage infrastructure', group: 'System' },
   { key: 'view_audit', label: 'Access audit logs', group: 'System' },
@@ -69,7 +73,7 @@ const ALL = Object.fromEntries(CAPABILITY_KEYS.map((k) => [k, true]))
 
 export const ROLE_BASELINE = {
   super_admin: ALL,
-  admin: set('view_dashboards', 'manage_users', 'view_user_profile', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support', 'manage_tags', 'reset_diamonds', 'pull_back_coins', 'view_all_users'),
+  admin: set('view_dashboards', 'manage_users', 'view_user_profile', 'manage_agencies', 'manage_hosts', 'manage_coins', 'export_data', 'manage_levels', 'manage_support', 'manage_tags', 'reset_diamonds', 'pull_back_coins', 'view_all_users', 'manage_transfers'),
   agency_manager: set('view_dashboards', 'manage_hosts', 'export_data'),
   sub_admin: set('view_dashboards', 'manage_hosts'),
   country_admin: set('view_dashboards', 'manage_hosts'),
@@ -118,6 +122,7 @@ export const LOWER_ROLE_GRANTS = {
   manage_support: { roles: ALL_LOWER, gives: 'Support chat' },
   manage_tags: { roles: ALL_LOWER, gives: 'Tags: create tags and give them to users' },
   view_all_users: { roles: ALL_LOWER, gives: 'Sees every user and their data like a Master, even outside its own chain (read-only; pair it with "View user profile" to open a user\'s page)' },
+  manage_transfers: { roles: ['global_admin', 'country_admin', 'sub_admin'], gives: 'User Management -> Transfers: Transfer Requests, Host, Agency, Sub Admin, Country, Global (every move is still limited to what is under this account)' },
   pull_back_coins: { roles: ALL_LOWER, gives: 'A Pull back button on the coin transfers this account sent (coins return from the recipient; a reason is required)' },
   manage_lucky_box: { roles: ALL_LOWER, gives: 'Lucky Box settings' },
   manage_badges: { roles: ALL_LOWER, gives: 'Badge management' },
@@ -145,6 +150,7 @@ export const GRANT_PAGES = {
   manage_levels: ['/admin/levels'],
   manage_support: ['/admin/support'],
   manage_tags: ['/admin/tags'],
+  manage_transfers: ['/admin/users/transfers', '/admin/users/transfer-host', '/admin/users/transfer-agency', '/admin/users/transfer-sub-admin', '/admin/users/transfer-country', '/admin/users/transfer-global'],
   manage_lucky_box: ['/admin/lucky-box'],
   manage_badges: ['/admin/badges'],
   manage_leaderboard_frame: ['/admin/leaderboard'],

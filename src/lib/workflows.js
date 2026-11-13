@@ -7,25 +7,36 @@ const unwrap = ({ data, error }) => { if (error) throw error; return data }
 const titleCase = (s) => (s ? String(s).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s)
 const myId = async () => (await supabase.auth.getSession()).data.session?.user?.id
 
-/* ------------------------------------------------------------ pickers */
+/* ------------------------------------------------------------ pickers
+   Every option carries `search` (lower-case name, username and app User ID) so a type-to-search picker finds a person by the User ID they see in the app. */
+const personOption = (value, p, extra = {}) => ({
+  value,
+  label: `${p?.name || shortId(value)}${p?.username ? ` (@${p.username})` : ''}${p?.display_id != null ? ` · ID ${p.display_id}` : ''}`,
+  search: `${p?.name || ''} ${p?.username || ''} ${p?.display_id ?? ''} ${extra.searchMore || ''}`.toLowerCase(),
+  ...extra.fields,
+})
 export async function agencyOptions() {
-  const rows = unwrap(await supabase.from('agencies').select('id, name').order('name'))
-  return rows.map((a) => ({ value: a.id, label: a.name }))
+  const rows = unwrap(await supabase.from('agencies').select('id, name, display_id').order('name'))
+  return rows.map((a) => ({
+    value: a.id,
+    label: `${a.name}${a.display_id != null ? ` · Agency ID ${a.display_id}` : ''}`,
+    search: `${a.name} ${a.display_id ?? ''}`.toLowerCase(),
+  }))
 }
 export async function hostOptions() {
-  const rows = unwrap(await supabase.from('host_profiles').select('profile_id, agency_id, profiles(name)'))
-  return rows.map((h) => ({ value: h.profile_id, label: h.profiles?.name || shortId(h.profile_id), agency_id: h.agency_id }))
+  const rows = unwrap(await supabase.from('host_profiles').select('profile_id, agency_id, profiles(name, username, display_id)'))
+  return rows.map((h) => personOption(h.profile_id, h.profiles, { fields: { agency_id: h.agency_id } }))
 }
 export async function subAdminOptions() {
-  const rows = unwrap(await supabase.from('staff_roles').select('user_id, agency_id, profiles!user_id(name)').eq('role', 'sub_admin'))
-  return rows.map((s) => ({ value: s.user_id, label: s.profiles?.name || shortId(s.user_id), agency_id: s.agency_id }))
+  const rows = unwrap(await supabase.from('staff_roles').select('user_id, agency_id, profiles!user_id(name, username, display_id)').eq('role', 'sub_admin'))
+  return rows.map((s) => personOption(s.user_id, s.profiles, { fields: { agency_id: s.agency_id } }))
 }
 
 /* ------------------------------------------------------------ transfer requests */
 export async function listTransferRequests() {
   const rows = unwrap(await supabase
     .from('transfer_requests')
-    .select('id, subject_type, subject_id, status, reason, created_at, decided_at, subject:subject_id(name), from_agency:from_agency_id(name), to_agency:to_agency_id(name), requester:requested_by(name)')
+    .select('id, subject_type, subject_id, status, reason, created_at, decided_at, subject:subject_id(name, username, display_id), from_agency:from_agency_id(name), to_agency:to_agency_id(name), requester:requested_by(name, display_id)')
     .order('created_at', { ascending: false })
     .limit(500))
   return rows.map((r) => ({
@@ -33,6 +44,9 @@ export async function listTransferRequests() {
     idShort: shortId(r.id),
     type: titleCase(r.subject_type),
     subject: r.subject?.name || shortId(r.subject_id),
+    // the app User ID of the person moved (and of whoever asked), so the lists can be searched by it
+    subjectId: r.subject?.display_id == null ? '' : String(r.subject.display_id),
+    requestedById: r.requester?.display_id == null ? '' : String(r.requester.display_id),
     from: r.from_agency?.name || '—',
     to: r.to_agency?.name || '—',
     requestedBy: r.requester?.name || '—',

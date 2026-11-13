@@ -65,6 +65,8 @@ export const NAV = {
         { label: 'Bans', to: '/admin/users/bans' },
         { label: 'Flagged Messages', to: '/admin/users/flagged' },
         { label: 'Account Status', to: '/admin/users/status' },
+      ]},
+      { label: 'Transfers', icon: 'arrowLeftRight', cap: 'manage_transfers', children: [
         { label: 'Transfer Requests', to: '/admin/users/transfers' },
         { label: 'Transfer Host', to: '/admin/users/transfer-host' },
         { label: 'Transfer Agency', to: '/admin/users/transfer-agency' },
@@ -219,6 +221,14 @@ export const NAV = {
       { label: 'Users', icon: 'users', to: '/super/users' },
       { label: 'Tags', icon: 'tag', cap: 'manage_tags', to: '/super/tags' },
       { label: 'VIP Products', icon: 'star', to: '/super/vip' },
+      { label: 'Transfers', icon: 'arrowLeftRight', cap: 'manage_transfers', children: [
+        { label: 'Transfer Requests', to: '/super/users/transfers' },
+        { label: 'Transfer Host', to: '/super/users/transfer-host' },
+        { label: 'Transfer Agency', to: '/super/users/transfer-agency' },
+        { label: 'Transfer Sub Admin', to: '/super/users/transfer-sub-admin' },
+        { label: 'Transfer Country', to: '/super/users/transfer-country' },
+        { label: 'Transfer Global', to: '/super/users/transfer-global' },
+      ]},
     ]},
     { section: 'Monitoring', items: [
       { label: 'Live Monitor', icon: 'eye', to: '/super/live-monitor' },
