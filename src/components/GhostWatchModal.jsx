@@ -2,15 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { Overlay, Button, Badge, Person } from './ui.jsx'
 import Icon from './Icon.jsx'
 import {
-  fetchGhostToken, logPanelWatch, getStreamState, listStreamViewers, listRecentChat, watchChat,
+  fetchGhostToken, fetchGhostLivekitToken, logPanelWatch, getStreamState, listStreamViewers, listRecentChat, watchChat,
 } from '../lib/liveWatch.js'
+import { providerOf, watchLivekitRoom } from '../lib/liveWatchLivekit.js'
 import { num } from '../data/util.js'
 
 /* Watch a live from the panel without being seen (Super Admin / Master).
-   Joins the Agora channel as an audience member — Agora never announces those —
-   and never touches the room's viewer list, count or chat, so nobody in the room
+   A live on Agora: joins the channel as an audience member — Agora never announces those.
+   A live on MS cloud (LiveKit, every new live since 2026-11-07): joins with a view-only HIDDEN token from `livekit-token` (lib/liveWatchLivekit.js).
+   Either way it never touches the room's viewer list, count or chat, so nobody in the room
    (host included) can tell. Video / audio are subscribed from every broadcaster in
-   the channel (the host, seated guests, PK opponents). */
+   the channel (the host, seated guests, PK opponents). Both providers hand the tiles the same
+   two-method player ({ play(element), stop() }) and the sound the same { setVolume } control. */
 
 function VideoTile({ track, label }) {
   const ref = useRef(null)
@@ -38,11 +41,13 @@ export default function GhostWatchModal({ room, onClose }) {
   const [viewers, setViewers] = useState([])
   const [chat, setChat] = useState([])
   const [tab, setTab] = useState('chat')
-  const audioTracks = useRef(new Map()) // uid -> remote audio track
+  const audioTracks = useRef(new Map()) // uid -> remote audio track (Agora) or { setVolume } control (MS cloud)
+  const lkWatch = useRef(null) // the MS cloud connection, when this live is on MS cloud
+  const provider = providerOf(room)
   const mutedRef = useRef(false)
   const chatEnd = useRef(null)
 
-  /* --- Agora: join as audience, subscribe to everyone who publishes --- */
+  /* --- join as a hidden viewer (Agora audience or MS cloud ghost token) and subscribe to everyone who publishes --- */
   useEffect(() => {
     let cancelled = false
     let client = null
@@ -53,6 +58,30 @@ export default function GhostWatchModal({ room, onClose }) {
     }
     ;(async () => {
       try {
+        if (provider === 'livekit') {
+          const [lk, tok] = await Promise.all([import('livekit-client'), fetchGhostLivekitToken(room.id)])
+          if (cancelled) return
+          const watch = await watchLivekitRoom({
+            lk, url: tok.url, token: tok.token,
+            handlers: {
+              onVideo: (uid, player) => setVideos((v) => [...v.filter((x) => x.uid !== uid), { uid, track: player }]),
+              onVideoGone: (uid) => setVideos((v) => v.filter((x) => x.uid !== uid)),
+              onAudio: (uid, control) => {
+                audioTracks.current.set(uid, control)
+                control.setVolume(mutedRef.current ? 0 : 100)
+                setAudioUids((a) => (a.includes(uid) ? a : [...a, uid]))
+              },
+              onAudioGone: (uid) => { audioTracks.current.delete(uid); setAudioUids((a) => a.filter((x) => x !== uid)) },
+              onSoundBlocked: () => setNeedsSound(true),
+              onClosed: () => { if (!cancelled) { setError('The connection to MS cloud closed. Close this window and watch again.'); setPhase('error') } },
+            },
+          })
+          if (cancelled) { watch.leave(); return }
+          lkWatch.current = watch
+          logPanelWatch(room.id).catch(() => {}) // the audit trail; never blocks watching
+          setPhase('live')
+          return
+        }
         const [{ default: AgoraRTC }, tok] = await Promise.all([import('agora-rtc-sdk-ng'), fetchGhostToken(room.id)])
         if (cancelled) return
         AgoraRTC.setLogLevel(3)
@@ -94,8 +123,9 @@ export default function GhostWatchModal({ room, onClose }) {
       cancelled = true
       audioTracks.current.clear()
       if (client) { client.removeAllListeners(); client.leave().catch(() => {}) }
+      if (lkWatch.current) { lkWatch.current.leave(); lkWatch.current = null }
     }
-  }, [room.id])
+  }, [room.id, provider])
 
   /* --- room facts: counts, who's watching, and whether it is still live --- */
   useEffect(() => {
@@ -130,7 +160,8 @@ export default function GhostWatchModal({ room, onClose }) {
     audioTracks.current.forEach((t) => t.setVolume(next ? 0 : 100))
   }
   const enableSound = () => {
-    audioTracks.current.forEach((t) => t.play())
+    audioTracks.current.forEach((t) => t.play?.())
+    lkWatch.current?.startAudio()
     setNeedsSound(false)
   }
 

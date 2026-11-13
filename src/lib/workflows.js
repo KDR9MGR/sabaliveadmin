@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { missesColumn } from './panelRules.js'
 import { shortId, fmtDate } from './admin.js'
 import { isMissingFunction } from './dbErrors.js'
 
@@ -228,12 +229,17 @@ export async function killStream(id) {
 }
 
 export async function listActiveStreams() {
-  const rows = unwrap(await supabase
+  // rtc_provider (sabalive migration 20261106130000) says which server carries the live: 'agora' or 'livekit' (MS cloud). The Live Monitor needs it to join the right one.
+  const read = (cols) => supabase
     .from('live_streams')
-    .select('id, title, category, status, mode, is_pk, viewer_count, like_count, gift_coin_total, started_at, host:host_id(name, username, avatar_url)')
+    .select(cols)
     .eq('status', 'live')
     .order('viewer_count', { ascending: false })
-    .limit(200))
+    .limit(200)
+  const base = 'id, title, category, status, mode, is_pk, viewer_count, like_count, gift_coin_total, started_at, host:host_id(name, username, avatar_url)'
+  let res = await read(`${base}, rtc_provider`)
+  if (res.error && missesColumn(res.error, 'rtc_provider')) res = await read(base)
+  const rows = unwrap(res)
   return rows.map((s) => {
     const ms = s.started_at ? Date.now() - new Date(s.started_at).getTime() : 0
     const mins = Math.max(0, Math.floor(ms / 60000))
@@ -247,6 +253,7 @@ export async function listActiveStreams() {
       category: s.category || '—',
       isPk: !!s.is_pk,
       isAudio: s.mode === 'audio',
+      provider: s.rtc_provider === 'livekit' ? 'livekit' : 'agora',
       viewers: s.viewer_count || 0,
       likes: s.like_count || 0,
       coins: s.gift_coin_total || 0,

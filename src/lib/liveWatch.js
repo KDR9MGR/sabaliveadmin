@@ -22,6 +22,20 @@ export async function fetchGhostToken(channelName) {
   return data // { token, appId, channelName, uid, expiresIn }
 }
 
+/* The same for a live on MS cloud (LiveKit): a view-only, HIDDEN token from the app's own `livekit-token` function. See liveWatchLivekit.js. */
+export async function fetchGhostLivekitToken(channelName) {
+  const { data, error } = await supabase.functions.invoke('livekit-token', {
+    body: { channelName, role: 'subscriber', ghost: true },
+  })
+  if (error) {
+    let msg = error.message
+    try { msg = (await error.context?.json())?.error || msg } catch { /* keep msg */ }
+    throw new Error(msg)
+  }
+  if (!data?.token || !data?.url) throw new Error('MS cloud did not give a viewing token for this live')
+  return data // { token, url, room, identity, expiresIn }
+}
+
 export const logPanelWatch = (streamId) =>
   supabase.rpc('panel_log_ghost_watch', { p_stream_id: streamId }).then(({ error }) => { if (error) throw error })
 
