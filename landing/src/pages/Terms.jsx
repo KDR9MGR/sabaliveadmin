@@ -1,16 +1,23 @@
 import { useSeo } from '../lib/useSeo.js'
 import LegalLayout from '../components/legal/LegalLayout.jsx'
-import { SITE } from '../lib/site.js'
+import { SITE, ownershipLine } from '../lib/site.js'
 
 export default function Terms() {
   useSeo({ title: 'Terms of Service', description: 'The terms that govern your use of Saba Live.', path: '/terms' })
 
   return (
-    <LegalLayout title="Terms of Service" updated="14 September 2026">
+    <LegalLayout title="Terms of Service" updated="14 November 2026">
       <p>
         These Terms of Service ("Terms") govern your use of the Saba Live app and this website. By creating an
         account or using Saba Live, you agree to these Terms.
       </p>
+
+      {ownershipLine() && (
+        <section>
+          <h2 className="text-lg font-semibold text-white">Who we are</h2>
+          <p className="mt-3">{ownershipLine()} "We", "us" and "our" in these Terms mean them.</p>
+        </section>
+      )}
 
       <section>
         <h2 className="text-lg font-semibold text-white">Eligibility</h2>
@@ -32,9 +39,9 @@ export default function Terms() {
       <section>
         <h2 className="text-lg font-semibold text-white">Coins, Gifts and Diamonds</h2>
         <ul className="mt-3 flex flex-col gap-2 list-disc pl-5">
-          <li>Coins are a virtual currency purchased inside the app and used to send Gifts. Coins have no cash value and are non-refundable once purchased, except where required by law.</li>
+          <li>Coins are a virtual currency used to send Gifts. Coins have no cash value and, where they can be bought, are non-refundable once purchased, except where required by law.</li>
           <li>Gifts sent during a live stream are final and cannot be reversed or refunded.</li>
-          <li>Diamonds are earned by hosts from Gifts received and may be withdrawn subject to our review and processing.</li>
+          <li>Diamonds are earned by hosts from Gifts received. Where withdrawal is offered, it is subject to our review and processing.</li>
           <li>We may adjust Coin pricing, Gift values or Diamond conversion rates; changes apply going forward, not retroactively to balances you already hold.</li>
         </ul>
       </section>

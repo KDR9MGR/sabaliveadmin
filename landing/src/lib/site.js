@@ -13,6 +13,25 @@ export const SITE = {
   supportEmail: 'support@sabalive.app',
 }
 
+// Who owns and who runs Saba Live. Real names only: a value left null is simply not written
+// (the line is built by ownershipLine below and shown in the footer, About, Terms and Privacy).
+//   owner    = the person or company the product, name and brand belong to (the App Store seller).
+//   operator = the LEGAL name of the business that runs it in India; null until the owner gives it.
+export const OWNERSHIP = {
+  owner: 'Louie Malpeli',
+  ownerCountry: 'United Kingdom',
+  operator: null,
+  operatorCountry: 'India',
+}
+
+/** "Saba Live is owned by X, United Kingdom, and operated in India by Y." Empty when no owner is set. */
+export function ownershipLine(o = OWNERSHIP, name = SITE.name) {
+  if (!o || !o.owner) return ''
+  const owned = `${name} is owned by ${o.owner}${o.ownerCountry ? `, ${o.ownerCountry}` : ''}`
+  if (!o.operator) return `${owned}.`
+  return `${owned}, and operated in ${o.operatorCountry || 'India'} by ${o.operator}.`
+}
+
 export const NAV_LINKS = [
   { label: 'Features', to: '/features' },
   { label: 'How it works', to: '/#how-it-works' },

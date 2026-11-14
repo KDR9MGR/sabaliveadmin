@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import Container from '../ui/Container.jsx'
-import { SITE, FOOTER_PRODUCT_LINKS, FOOTER_COMPANY_LINKS, FOOTER_LEGAL_LINKS, SOCIAL_LINKS } from '../../lib/site.js'
+import { SITE, ownershipLine, FOOTER_PRODUCT_LINKS, FOOTER_COMPANY_LINKS, FOOTER_LEGAL_LINKS, SOCIAL_LINKS } from '../../lib/site.js'
 
 function FooterColumn({ title, links }) {
   return (
@@ -42,7 +42,9 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col-reverse items-center gap-4 border-t border-stroke pt-6 sm:flex-row sm:justify-between">
-          <p className="text-xs text-ink-muted">© {year} {SITE.name}. All rights reserved.</p>
+          <p className="text-xs text-ink-muted">
+            © {year} {SITE.name}. All rights reserved.{ownershipLine() ? ` ${ownershipLine()}` : ''}
+          </p>
           {SOCIAL_LINKS.length > 0 && (
             <div className="flex items-center gap-5">
               {SOCIAL_LINKS.map((s) => (

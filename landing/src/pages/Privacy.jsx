@@ -1,6 +1,6 @@
 import { useSeo } from '../lib/useSeo.js'
 import LegalLayout from '../components/legal/LegalLayout.jsx'
-import { SITE } from '../lib/site.js'
+import { SITE, ownershipLine } from '../lib/site.js'
 
 const SECTIONS = [
   ['who-we-are', 'Who we are'],
@@ -28,7 +28,7 @@ export default function Privacy() {
   })
 
   return (
-    <LegalLayout title="Privacy Policy" updated="15 September 2026">
+    <LegalLayout title="Privacy Policy" updated="14 November 2026">
       <p>
         This Privacy Policy explains how Saba Live ("Saba Live", "we", "us", "our") collects, uses, shares and
         protects your personal data when you use the Saba Live app and this website, and the rights you have over
@@ -202,6 +202,7 @@ export default function Privacy() {
           <a href={`mailto:${SITE.supportEmail}`} className="text-brand-bright hover:text-white">{SITE.supportEmail}</a>.
           We aim to acknowledge grievances promptly and resolve them within 30 days.
         </p>
+        {ownershipLine() && <p className="mt-3">{ownershipLine()}</p>}
       </section>
 
       <section id="changes">

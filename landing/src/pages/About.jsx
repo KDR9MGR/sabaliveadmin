@@ -3,6 +3,7 @@ import Container from '../components/ui/Container.jsx'
 import SectionHeading from '../components/ui/SectionHeading.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import Button from '../components/ui/Button.jsx'
+import { ownershipLine } from '../lib/site.js'
 
 const AUDIENCE = [
   { icon: 'users', title: 'Viewers', text: 'People who want live, real-time entertainment and a real way to connect with the creators they follow.' },
@@ -33,17 +34,19 @@ export default function About() {
         <Container className="max-w-3xl">
           <h2 className="text-2xl font-bold text-white">What we're building</h2>
           <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-            Most video apps are either a one-way broadcast or a private call — Saba Live is built to be both at once.
-            A live room is public and interactive: hosts stream, viewers chat and send gifts in real time, and any
-            connection made there can move into a private voice or video call. On top of that sits a real gifting
-            economy — Coins, Gifts and Diamonds — that turns audience support into something hosts can actually
-            withdraw.
+            Most video apps are a one-way broadcast — Saba Live is built to be a conversation. A live room is
+            public and interactive: hosts stream, guests take a seat and talk, and viewers chat and send gifts in
+            real time. On top of that sits a real gifting economy — Coins, Gifts and Diamonds — that turns audience
+            support into something hosts can actually withdraw.
           </p>
           <p className="mt-4 text-base leading-relaxed text-ink-secondary">
             Hosting isn't left unmanaged either. New hosts go through identity verification and join through an
             agency, which is responsible for issuing the access that unlocks Go Live and supporting hosts as they
-            grow — the same structure used across established live-streaming platforms.
+            grow.
           </p>
+          {ownershipLine() && (
+            <p className="mt-4 text-base leading-relaxed text-ink-secondary">{ownershipLine()}</p>
+          )}
         </Container>
       </section>
 
