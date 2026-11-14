@@ -565,7 +565,7 @@ const SECTIONS = {
     <div className="form-grid">
       <BrandNameField />
       <Text label="App version" value="3.1.0" />
-      <Text label="Support email" value="support@sabalive.app" />
+      <Text label="Support email" value="sabalive35@gmail.com" />
       <Text label="Contact number" value="+91 98765 43210" />
       <Select label="Default timezone" value="(UTC +05:30) Asia/Kolkata" options={['(UTC +05:30) Asia/Kolkata', '(UTC +00:00) UTC', '(UTC -05:00) America/New_York', '(UTC +04:00) Asia/Dubai']} />
       <Select label="Default currency" value="INR (₹)" options={['INR (₹)', 'USD ($)', 'EUR (€)', 'AED (د.إ)']} />

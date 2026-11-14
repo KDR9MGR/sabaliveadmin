@@ -10,7 +10,7 @@ export const SITE = {
   description:
     'Saba Live is a social live-streaming platform for real-time voice & video chat, live rooms and virtual gifting.',
   // Confirmed from the app's own settings screen (lib/features/profile/settings_screen.dart).
-  supportEmail: 'support@sabalive.app',
+  supportEmail: 'sabalive35@gmail.com',
 }
 
 // Who owns and who runs Saba Live. Real names only: a value left null is simply not written
