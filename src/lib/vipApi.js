@@ -15,6 +15,8 @@ const toProduct = (r) => ({
   sort_order: r.sort_order ?? 0,
   benefits: (r.vip_product_benefits || []).map((b) => ({
     id: b.id, kind: b.kind, title: b.title || '', image_url: b.image_url || '', link_item_id: b.link_item_id || '', sort_order: b.sort_order ?? 0,
+    // the linked Store item was made from this benefit's own picture (status 'vip_only', sabalive migration 20261114120000)
+    link_vip_only: b.store_items?.status === 'vip_only',
   })),
   owners: r.user_vip?.[0]?.count ?? 0,
 })
@@ -24,7 +26,7 @@ const toProduct = (r) => ({
 export async function listVipProducts() {
   const { data, error } = await supabase
     .from('vip_products')
-    .select('id, name, tagline, badge_url, price_coins, duration_days, status, sort_order, vip_product_benefits(id, kind, title, image_url, link_item_id, sort_order), user_vip(count)')
+    .select('id, name, tagline, badge_url, price_coins, duration_days, status, sort_order, vip_product_benefits(id, kind, title, image_url, link_item_id, sort_order, store_items(status)), user_vip(count)')
     .gt('user_vip.expires_at', new Date().toISOString())
     .order('sort_order')
     .order('price_coins')
@@ -55,11 +57,13 @@ export async function deleteVipProduct(id) {
   return data
 }
 
-/* The Store items a benefit can give: frames, entry effects, vehicles and room skins (never Lucky IDs), by category. */
+/* The Store items a benefit can give: frames, entry effects, vehicles and room skins (never Lucky IDs), by category. Items made from a benefit's own picture (status 'vip_only') belong
+   to their benefit and are not offered for another one. */
 export async function listLinkableItems() {
   const { data, error } = await supabase
     .from('store_items')
     .select('id, category, name, emoji, status')
+    .neq('status', 'vip_only')
     .in('category', ['frame', 'entry_effect', 'vehicle', 'room_skin'])
     .order('category')
     .order('sort_order')

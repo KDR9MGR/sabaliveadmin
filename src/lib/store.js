@@ -54,7 +54,8 @@ const STORE_COLUMNS = 'id, category, name, emoji, asset_url, price_coins, durati
 
 /* `locked` (sabalive migration 20261031100000) is read when the database has it; before that the page works as it did. */
 export async function listStoreItems(category) {
-  const read = (cols) => supabase.from('store_items').select(cols).eq('category', category).order('sort_order').order('price_coins')
+  // items made from a VIP benefit's own picture (status 'vip_only', sabalive migration 20261114120000) are managed by their VIP product, not here
+  const read = (cols) => supabase.from('store_items').select(cols).eq('category', category).neq('status', 'vip_only').order('sort_order').order('price_coins')
   let res = await read(`${STORE_COLUMNS}, locked`)
   if (res.error && missesColumn(res.error, 'locked')) res = await read(STORE_COLUMNS)
   return unwrap(res).map(row)
