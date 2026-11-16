@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   checkProduct, formFromProduct, toggleKind, orderBenefits, vipError, kindGives, kindDoes, vipKind,
   OWN_PICTURE, wantsOwnPicture, acceptFor, VIP_EFFECT_ACCEPT,
-  VIP_KINDS, VIP_KIND_KEYS, VIP_CUSTOM, VIP_NAME_MAX, VIP_TAGLINE_MAX, VIP_MAX_BENEFITS, VIP_MAX_DAYS,
+  VIP_KINDS, VIP_KIND_KEYS, VIP_CUSTOM, VIP_REMOVED_KINDS, VIP_TIERS, tierLabel, VIP_NAME_MAX, VIP_TAGLINE_MAX, VIP_MAX_BENEFITS, VIP_MAX_DAYS,
 } from './vipProducts.js'
 
 const PIC = 'https://abc123.supabase.co/storage/v1/object/public/gift-assets/vip/crest.png'
@@ -11,7 +11,7 @@ const ok = { name: 'VIP1', tagline: 'Start here', badge_url: PIC, price_coins: 2
 
 test('a good product is trimmed and normalised', () => {
   const r = checkProduct({ ...ok, name: '  VIP1 ', tagline: '  ', badge_url: '', price_coins: '2000000', duration_days: '30', sort_order: '' })
-  assert.deepEqual(r, { product: { name: 'VIP1', tagline: null, badge_url: null, price_coins: 2000000, duration_days: 30, status: 'active', sort_order: 0, benefits: [] } })
+  assert.deepEqual(r, { product: { name: 'VIP1', tagline: null, badge_url: null, price_coins: 2000000, duration_days: 30, status: 'active', sort_order: 0, tier: 'vip', benefits: [] } })
 })
 
 test('the name is needed and limited; characters count, not bytes', () => {
@@ -83,15 +83,16 @@ test('at most 40 benefits', () => {
 test('only the kinds that give a Store item can be linked to one', () => {
   const item = '51000000-0000-0000-0000-000000000001'
   assert.equal(checkProduct({ ...ok, benefits: [{ kind: 'avatar_frame', link_item_id: item }] }).product.benefits[0].link_item_id, item)
-  assert.equal(checkProduct({ ...ok, benefits: [{ kind: 'join_entry_effect', link_item_id: item }] }).product.benefits[0].link_item_id, item, 'Join Entry Effect gives an entry effect too')
+  assert.equal(checkProduct({ ...ok, benefits: [{ kind: 'entry_effect', link_item_id: item }] }).product.benefits[0].link_item_id, item)
+  assert.equal(checkProduct({ ...ok, benefits: [{ kind: 'theme', link_item_id: item }] }).product.benefits[0].link_item_id, item)
   assert.match(checkProduct({ ...ok, benefits: [{ kind: 'anti_kick', link_item_id: item }] }).error, /can give a Store item/)
   assert.match(checkProduct({ ...ok, benefits: [{ kind: 'comment_box', link_item_id: item }] }).error, /can give a Store item/, 'a kind that works by itself has nothing to link')
   assert.match(checkProduct({ ...ok, benefits: [{ kind: VIP_CUSTOM, title: 'X', link_item_id: item }] }).error, /can give a Store item/)
 })
 
-test('the fixed list is the one the app has: 19 kinds, unique keys, valid shape, custom is not one of them', () => {
+test('the fixed list is the one the app has: 18 kinds, unique keys, valid shape, custom is not one of them', () => {
   assert.deepEqual(VIP_KIND_KEYS, [
-    'identity', 'entry_effect', 'vehicle', 'avatar_frame', 'join_entry_effect', 'comment_box', 'special_gift', 'theme', 'hide_country', 'short_profile_decoration',
+    'identity', 'entry_effect', 'vehicle', 'avatar_frame', 'comment_box', 'special_gift', 'theme', 'hide_country', 'short_profile_decoration',
     'special_global_gift_effect', 'colourful_user_name', 'video_call_frame', 'high_speed_upgrade', 'higher_rank', 'daily_check_in', 'guardian', 'anti_kick', 'anti_ban',
   ])
   assert.equal(new Set(VIP_KIND_KEYS).size, VIP_KIND_KEYS.length)
@@ -102,11 +103,11 @@ test('the fixed list is the one the app has: 19 kinds, unique keys, valid shape,
   assert.ok(!VIP_KIND_KEYS.includes(VIP_CUSTOM))
 })
 
-test('five kinds link to a Store category and give it; identity gives the badge; five work by themselves; the rest are listed only', () => {
+test('four kinds give an item (a picture, or a Store item of their category); identity gives the badge; five work by themselves; the rest are listed only', () => {
   assert.deepEqual(VIP_KINDS.filter((k) => k.link).map((k) => [k.key, k.link]), [
-    ['entry_effect', 'entry_effect'], ['vehicle', 'vehicle'], ['avatar_frame', 'frame'], ['join_entry_effect', 'entry_effect'], ['theme', 'room_skin'],
+    ['entry_effect', 'entry_effect'], ['vehicle', 'vehicle'], ['avatar_frame', 'frame'], ['theme', 'room_skin'],
   ])
-  assert.deepEqual(VIP_KINDS.filter((k) => kindGives(k.key)).map((k) => k.key), ['identity', 'entry_effect', 'vehicle', 'avatar_frame', 'join_entry_effect', 'theme'])
+  assert.deepEqual(VIP_KINDS.filter((k) => kindGives(k.key)).map((k) => k.key), ['identity', 'entry_effect', 'vehicle', 'avatar_frame', 'theme'])
   assert.deepEqual(VIP_KINDS.filter((k) => kindDoes(k.key)).map((k) => k.key), ['comment_box', 'hide_country', 'short_profile_decoration', 'colourful_user_name', 'high_speed_upgrade'],
     'the same five the app draws or the server applies (sabalive vip_kinds.dart, `does`)')
   for (const k of VIP_KINDS) assert.ok(!(kindGives(k.key) && kindDoes(k.key)), `${k.key} is either a Store item or works by itself`)
@@ -116,15 +117,29 @@ test('five kinds link to a Store category and give it; identity gives the badge;
   assert.equal(vipKind('nope'), null)
 })
 
-test('Entry Effect and Join Entry Effect are one kind of Store item: two different items are refused, the same item or only one is fine', () => {
-  const a = '51000000-0000-0000-0000-00000000000a'
-  const b = '51000000-0000-0000-0000-00000000000b'
-  const both = (x, y) => checkProduct({ ...ok, benefits: [{ kind: 'entry_effect', link_item_id: x }, { kind: 'join_entry_effect', link_item_id: y }] })
-  assert.match(both(a, b).error, /wears only one at a time/)
-  assert.equal(both(a, a).error, undefined)
-  assert.equal(both(a, '').error, undefined, 'the other one is listed only')
-  assert.equal(both('', b).error, undefined)
-  assert.equal(both('', '').error, undefined)
+test('Join Entry Effect is gone (owner, 2026-11-16): not in the list, dropped from a saved product, never refused', () => {
+  assert.deepEqual(VIP_REMOVED_KINDS, ['join_entry_effect'])
+  assert.ok(!VIP_KIND_KEYS.includes('join_entry_effect'))
+  const r = checkProduct({ ...ok, benefits: [{ kind: 'entry_effect', image_url: PIC }, { kind: 'join_entry_effect', image_url: PIC }, { kind: 'JOIN_ENTRY_EFFECT', link_item_id: '51000000-0000-0000-0000-00000000000a' }] })
+  assert.equal(r.error, undefined)
+  assert.deepEqual(r.product.benefits.map((b) => b.kind), ['entry_effect'], 'an old product that still has one saves cleanly, without it')
+  // the form never shows it, and a product row that has one loads without it
+  const f = formFromProduct({ name: 'VIP1', price_coins: 1, benefits: [{ kind: 'join_entry_effect', sort_order: 0 }, { kind: 'entry_effect', sort_order: 1, image_url: PIC }] })
+  assert.deepEqual(f.benefits.map((b) => b.kind), ['entry_effect'])
+  assert.deepEqual(orderBenefits([{ kind: 'join_entry_effect' }, { kind: 'identity' }]).map((b) => b.kind), ['identity'])
+})
+
+test('the tier is VIP or SVIP, VIP by default, and any other word is a VIP', () => {
+  assert.deepEqual(VIP_TIERS.map((t) => t.value), ['vip', 'svip'])
+  assert.equal(tierLabel('svip'), 'SVIP')
+  assert.equal(tierLabel('vip'), 'VIP')
+  assert.equal(tierLabel(undefined), 'VIP')
+  assert.equal(checkProduct({ ...ok }).product.tier, 'vip')
+  assert.equal(checkProduct({ ...ok, tier: 'svip' }).product.tier, 'svip')
+  assert.equal(checkProduct({ ...ok, tier: 'gold' }).product.tier, 'vip')
+  assert.equal(formFromProduct({ name: 'S', tier: 'svip' }).tier, 'svip')
+  assert.equal(formFromProduct({ name: 'V' }).tier, 'vip')
+  assert.equal(formFromProduct(null).tier, 'vip')
 })
 
 test('editing: a product row becomes form values, benefits in their saved order', () => {
@@ -195,13 +210,35 @@ test('"Use the picture above" needs the picture, in a sentence that names the be
   assert.match(checkProduct(prod([own('comment_box')])).error, /can give a Store item/)
 })
 
-test('Entry Effect and Join Entry Effect: a picture on one and anything else on the other are two different items (refused); a picture on only one is fine', () => {
+test('the picture IS the item (owner, 2026-11-16): an item kind with a picture and no Store item makes its own item, with nothing else to choose', () => {
+  const r = checkProduct(prod([
+    { kind: 'entry_effect', title: '', image_url: PIC2, link_item_id: '' },
+    { kind: 'vehicle', title: '', image_url: PIC2 },
+    { kind: 'theme', title: '', image_url: PIC2, link_item_id: OWN_PICTURE },
+  ]))
+  assert.equal(r.error, undefined)
+  for (const b of r.product.benefits) {
+    assert.equal(b.use_picture, true, b.kind)
+    assert.equal(b.link_item_id, null, b.kind)
+    assert.equal(b.image_url, PIC2, b.kind)
+  }
+})
+
+test('a Store item picked on purpose is used as it is, and a picture with it is only the benefit\'s picture on the VIP page', () => {
   const store = '51000000-0000-0000-0000-000000000001'
-  assert.match(checkProduct(prod([own('entry_effect'), own('join_entry_effect')])).error, /wears only one at a time/)
-  assert.match(checkProduct(prod([own('entry_effect'), { kind: 'join_entry_effect', link_item_id: store }])).error, /wears only one at a time/)
-  assert.match(checkProduct(prod([{ kind: 'entry_effect', link_item_id: store }, own('join_entry_effect')])).error, /wears only one at a time/)
-  assert.equal(checkProduct(prod([own('entry_effect')])).error, undefined)
-  assert.equal(checkProduct(prod([own('join_entry_effect'), { kind: 'entry_effect', link_item_id: '' }])).error, undefined)
+  const r = checkProduct(prod([{ kind: 'entry_effect', title: '', image_url: PIC2, link_item_id: store }]))
+  assert.deepEqual(r.product.benefits[0], { kind: 'entry_effect', title: null, image_url: PIC2, link_item_id: store })
+})
+
+test('an item kind with no picture and no Store item is only listed, and gives nothing', () => {
+  const r = checkProduct(prod([{ kind: 'entry_effect', title: '', image_url: '', link_item_id: '' }, { kind: 'avatar_frame' }]))
+  assert.deepEqual(r.product.benefits.map((b) => [b.kind, b.use_picture ?? false, b.link_item_id]), [['entry_effect', false, null], ['avatar_frame', false, null]])
+})
+
+test('only the kinds that give an item take a picture as the item: a kind that works by itself keeps its picture as decoration, never as an item', () => {
+  const r = checkProduct(prod([{ kind: 'comment_box', title: '', image_url: PIC2, link_item_id: '' }, { kind: 'identity', image_url: PIC2 }]))
+  assert.equal(r.error, undefined)
+  for (const b of r.product.benefits) assert.ok(!('use_picture' in b), b.kind)
 })
 
 test('loading a product: a benefit whose item was made from its picture shows as "Use the picture above" and remembers the item; a Store link stays a Store link; saving it again round-trips', () => {
@@ -225,7 +262,7 @@ test('loading a product: a benefit whose item was made from its picture shows as
 })
 
 test('the picture box of the effect kinds also takes an MP4; the others do not', () => {
-  for (const k of ['entry_effect', 'join_entry_effect', 'vehicle']) assert.equal(acceptFor(k), VIP_EFFECT_ACCEPT, k)
+  for (const k of ['entry_effect', 'vehicle']) assert.equal(acceptFor(k), VIP_EFFECT_ACCEPT, k)
   for (const k of ['avatar_frame', 'theme', 'comment_box']) assert.ok(!/mp4/.test(acceptFor(k)), k)
   assert.match(VIP_EFFECT_ACCEPT, /\.mp4/)
   assert.match(VIP_EFFECT_ACCEPT, /\.svga/)

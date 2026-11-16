@@ -19,14 +19,12 @@ export const VIP_IMAGE_ACCEPT = '.svga,.svg,.png,.webp,.gif,.jpg,.jpeg,image/png
    `identity` is the product's badge, shown on the person's own profile. */
 export const VIP_KINDS = [
   { key: 'identity', label: 'Identity', link: null, gives: 'The badge picture above shows on the person\'s own profile while the VIP is active.' },
-  { key: 'entry_effect', label: 'Entry Effect', link: 'entry_effect', gives: 'Gives the chosen entry effect for the VIP\'s days and puts it on at once.' },
-  { key: 'vehicle', label: 'Vehicle', link: 'vehicle', gives: 'Gives the chosen vehicle for the VIP\'s days and puts it on at once.' },
-  { key: 'avatar_frame', label: 'Avatar Frame', link: 'frame', gives: 'Gives the chosen frame for the VIP\'s days and puts it on at once.' },
-  // the effect others see when the person joins a live = a Store ENTRY EFFECT item, the same category as Entry Effect (a person wears one at a time: see checkProduct)
-  { key: 'join_entry_effect', label: 'Join Entry Effect', link: 'entry_effect', gives: 'Gives the chosen entry effect for the VIP\'s days and puts it on at once (a person wears one entry effect at a time: link a Store item to this OR to Entry Effect, not both).' },
+  { key: 'entry_effect', label: 'Entry Effect', link: 'entry_effect', gives: 'The picture or movie you upload here is the effect the buyer walks into a room with: given and put on the moment they buy, for the VIP\'s days. No Store item is needed.' },
+  { key: 'vehicle', label: 'Vehicle', link: 'vehicle', gives: 'The picture or movie you upload here is the buyer\'s vehicle: given and put on the moment they buy, for the VIP\'s days. No Store item is needed.' },
+  { key: 'avatar_frame', label: 'Avatar Frame', link: 'frame', gives: 'The picture you upload here is the buyer\'s avatar frame: given and put on the moment they buy, for the VIP\'s days. No Store item is needed.' },
   { key: 'comment_box', label: 'Comment Box', link: null, does: 'Works by itself once bought: a golden chat bubble around the person\'s chat lines (the picture above, if you add one, is the bubble\'s background).' },
   { key: 'special_gift', label: 'Special Gift', link: null },
-  { key: 'theme', label: 'Theme', link: 'room_skin', gives: 'Gives the chosen room skin for the VIP\'s days and puts it on at once.' },
+  { key: 'theme', label: 'Theme', link: 'room_skin', gives: 'The picture you upload here is the buyer\'s room theme: given and put on the moment they buy, for the VIP\'s days. No Store item is needed.' },
   { key: 'hide_country', label: 'Hide Country', link: null, does: 'Works by itself once bought: the person\'s country flag is hidden from other people.' },
   { key: 'short_profile_decoration', label: 'Short Profile Decoration', link: null, does: 'Works by itself once bought: a VIP backdrop behind the person\'s profile card (the picture above, if you add one, else a golden one).' },
   { key: 'special_global_gift_effect', label: 'Special Global Gift Effect', link: null },
@@ -39,6 +37,13 @@ export const VIP_KINDS = [
   { key: 'anti_kick', label: 'Anti-Kick', link: null },
   { key: 'anti_ban', label: 'Anti-Ban', link: null },
 ]
+/* Kinds that used to be on the list and are gone (owner, 2026-11-16: "Entry Effect only, remove Join Entry Effect"): a product that still has one loses it at its next save, and the form never shows it. */
+export const VIP_REMOVED_KINDS = ['join_entry_effect']
+const isRemovedKind = (kind) => VIP_REMOVED_KINDS.includes(String(kind ?? '').trim().toLowerCase())
+
+/* A product is a VIP or an SVIP (owner, 2026-11-16): the app has a tab for each, and an SVIP is its own product with its own price, days and benefits (nothing is inherited from VIP). */
+export const VIP_TIERS = [{ value: 'vip', label: 'VIP' }, { value: 'svip', label: 'SVIP' }]
+export const tierLabel = (t) => (t === 'svip' ? 'SVIP' : 'VIP')
 export const VIP_KIND_KEYS = VIP_KINDS.map((k) => k.key)
 export const vipKind = (key) => VIP_KINDS.find((k) => k.key === key) || null
 
@@ -48,15 +53,15 @@ export const kindGives = (key) => !!vipKind(key)?.gives
 /* Does this kind work BY ITSELF once the VIP is bought (nothing to link)? */
 export const kindDoes = (key) => !!vipKind(key)?.does
 
-/* "Use the picture above" (owner, 2026-11-14: "not just Store ... once it is bought via the VIP product, auto equip it right away"; production's VIP 1 had a frame picture and no
-   Store frame, so buyers got none). A frame / entry effect / join entry effect / vehicle / theme benefit can choose, instead of a Store item, to use ITS OWN picture. OWN_PICTURE is
-   only ever in the form (as the benefit's link): checkProduct turns it into `use_picture: true`, and the database (sabalive migration 20261114120000, admin_save_vip_product) makes a
+/* The picture inside a benefit IS the item (owner, 2026-11-14: "not just Store ... once it is bought via the VIP product, auto equip it right away"; 2026-11-16: "the room entry effect does
+   not need to come from the Store, same for the other items": an item kind with a picture and no Store item picked uses its picture on its own, no choice needed). A frame / entry effect /
+   vehicle / theme benefit can still pick a Store item instead. OWN_PICTURE is only ever in the form (as the benefit's link, for an item made from a picture earlier): checkProduct turns it into `use_picture: true`, and the database (sabalive migration 20261114120000, admin_save_vip_product) makes a
    Store item with status 'vip_only' from the picture (not on sale; given and put on by the purchase) or, when `link_item_id` is already the benefit's own vip_only item, changes that item
    in place. The form keeps the benefit's own item in `own_item_id`. */
 export const OWN_PICTURE = '__picture__'
 export const wantsOwnPicture = (b) => String(b?.link_item_id ?? '').trim() === OWN_PICTURE
 /* An effect can be a movie: the picture box of these kinds also takes an MP4 (the VIP page shows the kind's icon for it; the effect itself plays when the person joins). */
-const EFFECT_KINDS = ['entry_effect', 'join_entry_effect', 'vehicle']
+const EFFECT_KINDS = ['entry_effect', 'vehicle']
 export const VIP_EFFECT_ACCEPT = `${VIP_IMAGE_ACCEPT},.mp4,video/mp4`
 export const acceptFor = (kind) => (EFFECT_KINDS.includes(kind) ? VIP_EFFECT_ACCEPT : VIP_IMAGE_ACCEPT)
 
@@ -80,8 +85,10 @@ export function checkProduct(v) {
   const sortRaw = v?.sort_order === '' || v?.sort_order == null ? 0 : Number(v.sort_order)
   if (!Number.isInteger(sortRaw)) return { error: 'The order must be a whole number.' }
   const status = v?.status === 'inactive' ? 'inactive' : 'active'
+  const tier = v?.tier === 'svip' ? 'svip' : 'vip'
 
-  const list = Array.isArray(v?.benefits) ? v.benefits : []
+  // a removed kind (Join Entry Effect) is dropped, not refused: an old product that still has one saves cleanly
+  const list = (Array.isArray(v?.benefits) ? v.benefits : []).filter((b) => !isRemovedKind(b?.kind))
   if (list.length > VIP_MAX_BENEFITS) return { error: `A VIP can have at most ${VIP_MAX_BENEFITS} benefits.` }
   const seen = new Set()
   const benefits = []
@@ -98,40 +105,32 @@ export function checkProduct(v) {
     const image = String(b?.image_url ?? '').trim()
     if (image && !isUpload(image)) return { error: 'A benefit picture must be an uploaded file.' }
     const link = String(b?.link_item_id ?? '').trim()
-    if (link && !vipKind(kind)?.link) return { error: 'Only Entry Effect, Join Entry Effect, Vehicle, Avatar Frame and Theme can give a Store item.' }
-    if (link === OWN_PICTURE) {
-      if (!image) return { error: `"${vipKind(kind)?.label || kind}": add its picture first, or pick a Store item instead of "Use the picture above".` }
+    if (link && !vipKind(kind)?.link) return { error: 'Only Entry Effect, Vehicle, Avatar Frame and Theme can give a Store item.' }
+    // The picture uploaded inside the product IS the item (owner, 2026-11-16: "the room entry effect does not need to come from the Store, same for the other items"): an item kind
+    // with a picture and no Store item picked makes its own item, with no extra choice to remember. A Store item is only used when somebody picks one on purpose.
+    const ownPicture = !!vipKind(kind)?.link && !!image && (link === '' || link === OWN_PICTURE)
+    if (link === OWN_PICTURE && !image) return { error: `"${vipKind(kind)?.label || kind}": add its picture first, or pick a Store item.` }
+    if (ownPicture) {
       // the benefit's own item (made earlier) is updated in place by the database; without one a new item is made
       benefits.push({ kind, title: title || null, image_url: image, link_item_id: String(b?.own_item_id ?? '').trim() || null, use_picture: true })
     } else {
-      benefits.push({ kind, title: title || null, image_url: image || null, link_item_id: link || null })
+      benefits.push({ kind, title: title || null, image_url: image || null, link_item_id: link === OWN_PICTURE ? null : link || null })
     }
-  }
-  // Entry Effect and Join Entry Effect are the same kind of Store item and a person wears one at a time: two DIFFERENT items would fight (the buyer would get whichever was put on last).
-  // An item made from a picture is its own item, so a picture on one and anything else on the other is two different items.
-  const entryOf = (kind) => {
-    const b = benefits.find((x) => x.kind === kind)
-    return !b ? null : b.use_picture ? `own:${kind}` : b.link_item_id
-  }
-  const entry = entryOf('entry_effect')
-  const joinEntry = entryOf('join_entry_effect')
-  if (entry && joinEntry && entry !== joinEntry) {
-    return { error: 'Entry Effect and Join Entry Effect both give an entry effect, and a person wears only one at a time: link a Store item to one of them (or the same item to both).' }
   }
   return {
     product: {
-      name, tagline: tagline || null, badge_url: badge || null, price_coins: price, duration_days: days, status, sort_order: sortRaw, benefits,
+      name, tagline: tagline || null, badge_url: badge || null, price_coins: price, duration_days: days, status, sort_order: sortRaw, tier, benefits,
     },
   }
 }
 
 /* A product row from the database (with its vip_product_benefits) -> the form's values. */
 export function formFromProduct(p) {
-  const rows = [...(p?.benefits || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+  const rows = [...(p?.benefits || [])].filter((b) => !isRemovedKind(b?.kind)).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
   return {
     name: p?.name || '', tagline: p?.tagline || '', badge_url: p?.badge_url || '',
     price_coins: p?.price_coins ?? '', duration_days: p?.duration_days ?? 30,
-    status: p?.status || 'active', sort_order: p?.sort_order ?? 0,
+    status: p?.status || 'active', sort_order: p?.sort_order ?? 0, tier: p?.tier === 'svip' ? 'svip' : 'vip',
     // a benefit whose item is a vip_only one (made from its own picture) shows as "Use the picture above" and remembers that item, so saving changes it in place
     benefits: rows.map((b) => (b.link_vip_only && b.link_item_id
       ? { kind: b.kind, title: b.title || '', image_url: b.image_url || '', link_item_id: OWN_PICTURE, own_item_id: b.link_item_id }
@@ -149,8 +148,8 @@ export function toggleKind(benefits, key) {
 export function orderBenefits(benefits) {
   const fixed = VIP_KIND_KEYS.map((k) => benefits.find((b) => b.kind === k)).filter(Boolean)
   const known = new Set(VIP_KIND_KEYS)
-  // a kind this panel does not know (made by a newer panel) is kept, after the fixed ones and before the custom ones
-  const other = benefits.filter((b) => b.kind !== VIP_CUSTOM && !known.has(b.kind))
+  // a kind this panel does not know (made by a newer panel) is kept, after the fixed ones and before the custom ones; a REMOVED kind is not
+  const other = benefits.filter((b) => b.kind !== VIP_CUSTOM && !known.has(b.kind) && !isRemovedKind(b.kind))
   return [...fixed, ...other, ...benefits.filter((b) => b.kind === VIP_CUSTOM)]
 }
 

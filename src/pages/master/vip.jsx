@@ -10,13 +10,13 @@ import { numCol, statusCol } from '../../components/cells.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { listVipProducts, saveVipProduct, deleteVipProduct, listLinkableItems } from '../../lib/vipApi.js'
 import {
-  checkProduct, formFromProduct, toggleKind, orderBenefits, vipKind, acceptFor, OWN_PICTURE,
+  checkProduct, formFromProduct, toggleKind, orderBenefits, vipKind, acceptFor, OWN_PICTURE, VIP_TIERS, tierLabel,
   VIP_KINDS, VIP_CUSTOM, VIP_STATUSES, VIP_IMAGE_ACCEPT, VIP_NAME_MAX, VIP_TAGLINE_MAX, VIP_BENEFIT_TITLE_MAX, VIP_MAX_BENEFITS, VIP_MAX_DAYS,
 } from '../../lib/vipProducts.js'
 
 /* Master / Super Admin -> VIP Products: the cards of the app's VIP screen. A product is a bundle: a name, a short line, a badge picture, a coin price, a number of days and the
-   benefits it includes (all of the list or just a few, each with an optional picture and name). Entry Effect, Vehicle, Avatar Frame and Theme can be linked to a Store item
-   that the buyer is given for the VIP's days; the other benefits are listed on the product's page for now. The database (sabalive migration 20261106120000) enforces all of it:
+   benefits it includes (all of the list or just a few, each with an optional picture and name). Entry Effect, Vehicle, Avatar Frame and Theme give the picture uploaded in the benefit (or a Store
+   item picked instead) for the VIP's days; the other benefits are listed on the product's page for now. A product is a VIP or an SVIP (its own tab in the app). The database (sabalive migration 20261106120000) enforces all of it:
    only a Master or Super Admin can save, and it re-checks every rule below. */
 
 const isSvga = (url) => /\.svga(\?|$)/i.test(String(url || ''))
@@ -57,11 +57,15 @@ function PictureField({ label, value, onChange, hint, compact = false, required 
   )
 }
 
-/* One ticked benefit: its own title and picture (both optional: the app has a name and an icon for every kind) and, for the kinds that can give a Store item, which item. */
+/* One ticked benefit: its own title and picture (both optional: the app has a name and an icon for every kind) and, for the kinds that give an item, the item. The picture IS the item
+   (owner, 2026-11-16: "the room entry effect does not need to come from the Store, same for the other items"): upload it and the buyer is given and put into it the moment they buy.
+   A Store item can still be picked on purpose, instead. */
 function BenefitRow({ kind, benefit, items, onChange }) {
   const info = vipKind(kind)
   const choices = info?.link ? (items[info.link] || []) : []
   const ownPicture = benefit.link_item_id === OWN_PICTURE
+  const storePick = !ownPicture && benefit.link_item_id ? benefit.link_item_id : ''
+  const usesPicture = !!benefit.image_url && !storePick
   return (
     <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: 'rgba(127,127,127,.08)' }}>
       <div className="form-grid">
@@ -71,25 +75,25 @@ function BenefitRow({ kind, benefit, items, onChange }) {
         </div>
         <PictureField
           compact
-          label={ownPicture ? 'Picture' : 'Picture (optional)'}
-          required={ownPicture}
+          label={info?.link ? 'Picture (this is the item the buyer gets)' : 'Picture (optional)'}
           accept={acceptFor(kind)}
           value={benefit.image_url}
           onChange={(u) => onChange({ image_url: u })}
         />
         {info?.link && (
           <div className="field full">
-            <label>Store item the buyer is given</label>
-            <select className="select" value={benefit.link_item_id} onChange={(e) => onChange({ link_item_id: e.target.value })}>
-              <option value="">Nothing (listed only)</option>
-              <option value={OWN_PICTURE}>Use the picture above (no Store item needed)</option>
+            <label>Or give an existing Store item instead (optional)</label>
+            <select className="select" value={storePick} onChange={(e) => onChange({ link_item_id: e.target.value || (benefit.link_item_id === OWN_PICTURE ? OWN_PICTURE : '') })}>
+              <option value="">No: use the picture above</option>
               {choices.map((i) => <option key={i.id} value={i.id}>{i.emoji ? `${i.emoji} ` : ''}{i.name}{i.inactive ? ' (inactive)' : ''}</option>)}
-              {benefit.link_item_id && benefit.link_item_id !== OWN_PICTURE && !choices.some((i) => i.id === benefit.link_item_id) && <option value={benefit.link_item_id}>(an item that is no longer in the Store)</option>}
+              {storePick && !choices.some((i) => i.id === storePick) && <option value={storePick}>(an item that is no longer in the Store)</option>}
             </select>
             <span className="hint">
-              {ownPicture
+              {usesPicture
                 ? 'The picture above becomes the buyer\'s own item (hidden from the Store: nobody can buy it there) and is put on the moment they buy this VIP. Change the picture and Save again: everybody who owns it sees the new one. An MP4 plays as an effect; the VIP page shows the kind\'s icon for it.'
-                : `${info.gives}${choices.length === 0 ? ' There is nothing of this kind in the Store yet: add one under Store, or use the picture above.' : ''}`}
+                : storePick
+                  ? 'The Store item you picked is given to the buyer for the VIP\'s days and put on at once.'
+                  : 'Upload a picture above and it becomes the item the buyer gets and wears. Until you do, this benefit is only listed on the VIP\'s page and gives nothing.'}
             </span>
           </div>
         )}
@@ -179,14 +183,22 @@ export function VipForm({ product, items, onClose, onSaved }) {
           </select>
           <span className="hint">Inactive: hidden from the app and from profiles, nobody can buy it. People who own it keep their days and see it again if you set it back to Active.</span>
         </div>
+        <div className="field">
+          <label>Tier</label>
+          <select className="select" value={v.tier} onChange={(e) => set('tier', e.target.value)}>
+            {VIP_TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          <span className="hint">Which tab of the app's VIP screen shows it: VIP or SVIP. An SVIP is its own product with its own price, days and benefits: tick below whatever it should include.</span>
+        </div>
       </div>
 
       <div style={{ marginTop: 22 }}>
         <div style={{ fontWeight: 700, marginBottom: 4 }}>What this VIP includes</div>
         <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
           Tick the benefits this VIP has: all of them or just a few. A name and a picture for each are optional (the app has a default for every kind).
-          Everything below that says "works by itself" or "gives a Store item" is applied to the buyer the moment they buy: Entry Effect, Join Entry Effect, Vehicle, Avatar Frame and Theme give the Store
-          item you link, or the benefit's own picture if you choose "Use the picture above" (put on at once, for the VIP's days); Comment Box, Hide Country, Short Profile Decoration, Colourful User Name and High Speed Upgrade work on their own. The rest are listed on the page for now and do nothing yet.
+          Everything below that says "works by itself" or "gives an item" is applied to the buyer the moment they buy: Entry Effect, Vehicle, Avatar Frame and Theme give the picture you upload
+          for them (put on at once, for the VIP's days; no Store item needed), or a Store item you pick instead; Comment Box, Hide Country, Short Profile Decoration, Colourful User Name and High Speed Upgrade work on their own.
+          Adding one of these to a VIP that people already own gives it to them now, until their own days end. The rest are listed on the page for now and do nothing yet.
         </div>
         <div className="vstack" style={{ gap: 6 }}>
           {VIP_KINDS.map((k) => {
@@ -196,7 +208,7 @@ export function VipForm({ product, items, onClose, onSaved }) {
                 <label className="hstack" style={{ gap: 10, cursor: 'pointer' }}>
                   <input type="checkbox" checked={i >= 0} onChange={() => set('benefits', toggleKind(v.benefits, k.key))} />
                   <span style={{ fontWeight: i >= 0 ? 700 : 500 }}>{k.label}</span>
-                  {k.gives && <span className="muted" style={{ fontSize: 11 }}>{k.link ? 'gives a Store item' : 'shows on the profile'}</span>}
+                  {k.gives && <span className="muted" style={{ fontSize: 11 }}>{k.link ? 'gives an item' : 'shows on the profile'}</span>}
                   {k.does && <span className="muted" style={{ fontSize: 11 }}>works by itself</span>}
                 </label>
                 {i >= 0 && <BenefitRow kind={k.key} benefit={v.benefits[i]} items={items} onChange={(patch) => patchBenefit(i, patch)} />}
@@ -276,7 +288,7 @@ export function VipProducts() {
           <DataTable
             rows={rows}
             searchKeys={['name', 'tagline']}
-            filters={[{ label: 'Status', options: ['Active', 'Inactive'], get: (r) => r.statusLabel }]}
+            filters={[{ label: 'Tier', options: ['VIP', 'SVIP'], get: (r) => tierLabel(r.tier) }, { label: 'Status', options: ['Active', 'Inactive'], get: (r) => r.statusLabel }]}
             columns={[
               { key: 'name', header: 'VIP', sortable: true, render: (r) => (
                 <span className="hstack" style={{ gap: 10, opacity: r.status === 'active' ? 1 : 0.55 }}>
@@ -284,6 +296,7 @@ export function VipProducts() {
                   <span><b>{r.name}</b>{r.tagline && <span className="muted" style={{ display: 'block', fontSize: 12 }}>{r.tagline}</span>}</span>
                 </span>
               ) },
+              { key: 'tier', header: 'Tier', sortable: true, render: (r) => <span className={`badge ${r.tier === 'svip' ? 'badge--warning' : ''}`}>{tierLabel(r.tier)}</span> },
               numCol('price_coins', 'Price (coins)'),
               numCol('duration_days', 'Days'),
               numCol('benefitCount', 'Benefits'),
