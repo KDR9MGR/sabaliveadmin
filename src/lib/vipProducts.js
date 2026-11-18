@@ -55,11 +55,19 @@ export const kindDoes = (key) => !!vipKind(key)?.does
 
 /* The picture inside a benefit IS the item (owner, 2026-11-14: "not just Store ... once it is bought via the VIP product, auto equip it right away"; 2026-11-16: "the room entry effect does
    not need to come from the Store, same for the other items": an item kind with a picture and no Store item picked uses its picture on its own, no choice needed). A frame / entry effect /
-   vehicle / theme benefit can still pick a Store item instead. OWN_PICTURE is only ever in the form (as the benefit's link, for an item made from a picture earlier): checkProduct turns it into `use_picture: true`, and the database (sabalive migration 20261114120000, admin_save_vip_product) makes a
+   vehicle / theme benefit made earlier with a Store item keeps it until a picture is uploaded (the panel no longer offers the Store picker). OWN_PICTURE is only ever in the form (as the benefit's link, for an item made from a picture earlier): checkProduct turns it into `use_picture: true`, and the database (sabalive migration 20261114120000, admin_save_vip_product) makes a
    Store item with status 'vip_only' from the picture (not on sale; given and put on by the purchase) or, when `link_item_id` is already the benefit's own vip_only item, changes that item
    in place. The form keeps the benefit's own item in `own_item_id`. */
 export const OWN_PICTURE = '__picture__'
 export const wantsOwnPicture = (b) => String(b?.link_item_id ?? '').trim() === OWN_PICTURE
+/* A NEW picture on an item kind replaces the Store item an older product still gives (owner, 2026-11-18: the picture is the only source now, the Store picker is gone); removing the picture
+   leaves that item alone, and a benefit that already uses its own picture just changes the picture. Returns the fields of the benefit to change. */
+export function withPicture(benefit, url) {
+  const link = String(benefit?.link_item_id ?? '').trim()
+  const olderStoreItem = link !== '' && link !== OWN_PICTURE
+  return olderStoreItem && url ? { image_url: url, link_item_id: '' } : { image_url: url }
+}
+
 /* An effect can be a movie: the picture box of these kinds also takes an MP4 (the VIP page shows the kind's icon for it; the effect itself plays when the person joins). */
 const EFFECT_KINDS = ['entry_effect', 'vehicle']
 export const VIP_EFFECT_ACCEPT = `${VIP_IMAGE_ACCEPT},.mp4,video/mp4`

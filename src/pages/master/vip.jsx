@@ -10,13 +10,13 @@ import { numCol, statusCol } from '../../components/cells.jsx'
 import { useAsyncData } from '../../lib/useAsync.js'
 import { listVipProducts, saveVipProduct, deleteVipProduct, listLinkableItems } from '../../lib/vipApi.js'
 import {
-  checkProduct, formFromProduct, toggleKind, orderBenefits, vipKind, acceptFor, OWN_PICTURE, VIP_TIERS, tierLabel,
+  checkProduct, formFromProduct, toggleKind, withPicture, orderBenefits, vipKind, acceptFor, OWN_PICTURE, VIP_TIERS, tierLabel,
   VIP_KINDS, VIP_CUSTOM, VIP_STATUSES, VIP_IMAGE_ACCEPT, VIP_NAME_MAX, VIP_TAGLINE_MAX, VIP_BENEFIT_TITLE_MAX, VIP_MAX_BENEFITS, VIP_MAX_DAYS,
 } from '../../lib/vipProducts.js'
 
 /* Master / Super Admin -> VIP Products: the cards of the app's VIP screen. A product is a bundle: a name, a short line, a badge picture, a coin price, a number of days and the
-   benefits it includes (all of the list or just a few, each with an optional picture and name). Entry Effect, Vehicle, Avatar Frame and Theme give the picture uploaded in the benefit (or a Store
-   item picked instead) for the VIP's days; the other benefits are listed on the product's page for now. A product is a VIP or an SVIP (its own tab in the app). The database (sabalive migration 20261106120000) enforces all of it:
+   benefits it includes (all of the list or just a few, each with an optional picture and name). Entry Effect, Vehicle, Avatar Frame and Theme give the picture uploaded in the benefit
+   for the VIP's days (no Store item to pick: owner, 2026-11-18); the other benefits are listed on the product's page for now. A product is a VIP or an SVIP (its own tab in the app). The database (sabalive migration 20261106120000) enforces all of it:
    only a Master or Super Admin can save, and it re-checks every rule below. */
 
 const isSvga = (url) => /\.svga(\?|$)/i.test(String(url || ''))
@@ -57,15 +57,16 @@ function PictureField({ label, value, onChange, hint, compact = false, required 
   )
 }
 
-/* One ticked benefit: its own title and picture (both optional: the app has a name and an icon for every kind) and, for the kinds that give an item, the item. The picture IS the item
-   (owner, 2026-11-16: "the room entry effect does not need to come from the Store, same for the other items"): upload it and the buyer is given and put into it the moment they buy.
-   A Store item can still be picked on purpose, instead. */
+/* One ticked benefit: its own title and picture (both optional: the app has a name and an icon for every kind). For the kinds that give an item the picture IS the item (owner,
+   2026-11-16: "the room entry effect does not need to come from the Store, same for the other items"; 2026-11-18: "take that option from Store away"): upload it and the buyer is given
+   and put into it the moment they buy. There is NO Store item to pick any more. A product saved earlier with a Store item still shows it (so saving never silently changes what buyers get)
+   until a picture is uploaded here: the picture then replaces it. */
 function BenefitRow({ kind, benefit, items, onChange }) {
   const info = vipKind(kind)
   const choices = info?.link ? (items[info.link] || []) : []
   const ownPicture = benefit.link_item_id === OWN_PICTURE
-  const storePick = !ownPicture && benefit.link_item_id ? benefit.link_item_id : ''
-  const usesPicture = !!benefit.image_url && !storePick
+  const legacyStore = !ownPicture && benefit.link_item_id ? benefit.link_item_id : ''
+  const legacyName = legacyStore ? (choices.find((i) => i.id === legacyStore)?.name || 'a Store item') : ''
   return (
     <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: 'rgba(127,127,127,.08)' }}>
       <div className="form-grid">
@@ -78,21 +79,15 @@ function BenefitRow({ kind, benefit, items, onChange }) {
           label={info?.link ? 'Picture (this is the item the buyer gets)' : 'Picture (optional)'}
           accept={acceptFor(kind)}
           value={benefit.image_url}
-          onChange={(u) => onChange({ image_url: u })}
+          onChange={(u) => onChange(withPicture(benefit, u))}
         />
         {info?.link && (
           <div className="field full">
-            <label>Or give an existing Store item instead (optional)</label>
-            <select className="select" value={storePick} onChange={(e) => onChange({ link_item_id: e.target.value || (benefit.link_item_id === OWN_PICTURE ? OWN_PICTURE : '') })}>
-              <option value="">No: use the picture above</option>
-              {choices.map((i) => <option key={i.id} value={i.id}>{i.emoji ? `${i.emoji} ` : ''}{i.name}{i.inactive ? ' (inactive)' : ''}</option>)}
-              {storePick && !choices.some((i) => i.id === storePick) && <option value={storePick}>(an item that is no longer in the Store)</option>}
-            </select>
             <span className="hint">
-              {usesPicture
-                ? 'The picture above becomes the buyer\'s own item (hidden from the Store: nobody can buy it there) and is put on the moment they buy this VIP. Change the picture and Save again: everybody who owns it sees the new one. An MP4 plays as an effect; the VIP page shows the kind\'s icon for it.'
-                : storePick
-                  ? 'The Store item you picked is given to the buyer for the VIP\'s days and put on at once.'
+              {legacyStore
+                ? `This VIP still gives the Store item "${legacyName}" (made before the picture became the item). Upload a picture above to replace it: the picture then becomes the buyer's own item, hidden from the Store, and put on the moment they buy.`
+                : benefit.image_url
+                  ? 'The picture above is the buyer\'s own item (hidden from the Store: nobody can buy it there) and is put on the moment they buy this VIP. Change the picture and Save again: everybody who owns it sees the new one. An MP4 plays as an effect; the VIP page shows the kind\'s icon for it.'
                   : 'Upload a picture above and it becomes the item the buyer gets and wears. Until you do, this benefit is only listed on the VIP\'s page and gives nothing.'}
             </span>
           </div>
@@ -107,8 +102,9 @@ function BenefitRow({ kind, benefit, items, onChange }) {
   )
 }
 
-export function VipForm({ product, items, onClose, onSaved }) {
-  const [v, setV] = useState(() => formFromProduct(product))
+export function VipForm({ product, items, onClose, onSaved, tier }) {
+  // a NEW product starts as the tier of the button that opened it (Create VIP Product / Create SVIP Product); an existing one keeps its own
+  const [v, setV] = useState(() => (product || !tier ? formFromProduct(product) : { ...formFromProduct(product), tier }))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const toast = useToast()
@@ -124,7 +120,7 @@ export function VipForm({ product, items, onClose, onSaved }) {
     setBusy(true)
     try {
       await saveVipProduct(product?.id, next)
-      toast(product ? 'VIP product updated' : 'VIP product created')
+      toast(product ? 'VIP product updated' : v.tier === 'svip' ? 'SVIP product created' : 'VIP product created')
       onSaved()
       onClose()
     } catch (e) {
@@ -136,7 +132,7 @@ export function VipForm({ product, items, onClose, onSaved }) {
 
   return (
     <Drawer
-      title={product ? `Edit — ${product.name}` : 'Create VIP Product'}
+      title={product ? `Edit — ${product.name}` : v.tier === 'svip' ? 'Create SVIP Product' : 'Create VIP Product'}
       onClose={onClose}
       footer={<>
         <Button onClick={onClose} disabled={busy}>Cancel</Button>
@@ -197,7 +193,7 @@ export function VipForm({ product, items, onClose, onSaved }) {
         <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
           Tick the benefits this VIP has: all of them or just a few. A name and a picture for each are optional (the app has a default for every kind).
           Everything below that says "works by itself" or "gives an item" is applied to the buyer the moment they buy: Entry Effect, Vehicle, Avatar Frame and Theme give the picture you upload
-          for them (put on at once, for the VIP's days; no Store item needed), or a Store item you pick instead; Comment Box, Hide Country, Short Profile Decoration, Colourful User Name and High Speed Upgrade work on their own.
+          for them (put on at once, for the VIP's days; nothing to set up in the Store); Comment Box, Hide Country, Short Profile Decoration, Colourful User Name and High Speed Upgrade work on their own.
           Adding one of these to a VIP that people already own gives it to them now, until their own days end. The rest are listed on the page for now and do nothing yet.
         </div>
         <div className="vstack" style={{ gap: 6 }}>
@@ -252,7 +248,7 @@ export function VipProducts() {
   const toast = useToast()
   const { data, loading, error, reload } = useAsyncData(listVipProducts)
   const linkable = useAsyncData(listLinkableItems)
-  const [adding, setAdding] = useState(false)
+  const [adding, setAdding] = useState(null) // null, 'vip' or 'svip': which tier the new product starts as
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -279,7 +275,12 @@ export function VipProducts() {
       <PageHeader
         title="VIP Products"
         crumbs={['Home', 'Platform', 'VIP Products']}
-        actions={data?.available !== false && <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Create VIP Product</Button>}
+        actions={data?.available !== false && (
+          <>
+            <Button variant="primary" icon="plus" onClick={() => setAdding('vip')}>Create VIP Product</Button>
+            <Button variant="primary" icon="plus" onClick={() => setAdding('svip')}>Create SVIP Product</Button>
+          </>
+        )}
       />
       <AsyncView loading={loading} error={error} reload={reload}>
         {data?.available === false ? (
@@ -312,7 +313,7 @@ export function VipProducts() {
           />
         )}
       </AsyncView>
-      {adding && <VipForm items={items} onClose={() => setAdding(false)} onSaved={reload} />}
+      {adding && <VipForm items={items} tier={adding} onClose={() => setAdding(null)} onSaved={reload} />}
       {editing && <VipForm product={editing} items={items} onClose={() => setEditing(null)} onSaved={reload} />}
       {deleting && (
         <ConfirmDialog

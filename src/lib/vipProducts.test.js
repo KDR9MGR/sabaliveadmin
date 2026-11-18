@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   checkProduct, formFromProduct, toggleKind, orderBenefits, vipError, kindGives, kindDoes, vipKind,
-  OWN_PICTURE, wantsOwnPicture, acceptFor, VIP_EFFECT_ACCEPT,
+  OWN_PICTURE, wantsOwnPicture, acceptFor, VIP_EFFECT_ACCEPT, withPicture,
   VIP_KINDS, VIP_KIND_KEYS, VIP_CUSTOM, VIP_REMOVED_KINDS, VIP_TIERS, tierLabel, VIP_NAME_MAX, VIP_TAGLINE_MAX, VIP_MAX_BENEFITS, VIP_MAX_DAYS,
 } from './vipProducts.js'
 
@@ -266,4 +266,15 @@ test('the picture box of the effect kinds also takes an MP4; the others do not',
   for (const k of ['avatar_frame', 'theme', 'comment_box']) assert.ok(!/mp4/.test(acceptFor(k)), k)
   assert.match(VIP_EFFECT_ACCEPT, /\.mp4/)
   assert.match(VIP_EFFECT_ACCEPT, /\.svga/)
+})
+
+test('a new picture replaces the Store item an older product still gives; removing it leaves the item; its own picture just changes (the Store picker is gone, 2026-11-18)', () => {
+  const store = '51000000-0000-0000-0000-000000000001'
+  assert.deepEqual(withPicture({ link_item_id: store }, PIC2), { image_url: PIC2, link_item_id: '' })
+  assert.deepEqual(withPicture({ link_item_id: store }, ''), { image_url: '' })
+  assert.deepEqual(withPicture({ link_item_id: OWN_PICTURE, own_item_id: store }, PIC2), { image_url: PIC2 })
+  assert.deepEqual(withPicture({ link_item_id: '' }, PIC2), { image_url: PIC2 })
+  // saved after the swap, the picture is the item and the older Store item is no longer sent
+  const r = checkProduct(prod([{ kind: 'entry_effect', title: '', image_url: PIC2, link_item_id: store, ...withPicture({ link_item_id: store }, PIC2) }]))
+  assert.deepEqual(r.product.benefits[0], { kind: 'entry_effect', title: null, image_url: PIC2, link_item_id: null, use_picture: true })
 })
