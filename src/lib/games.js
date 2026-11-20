@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { relativeTime } from './format.js'
 import { sudGameRow } from './sudGames.js'
+import { leaderGameRow, leaderSwitches } from './leaderGames.js'
 import { isMissingFunction } from './dbErrors.js'
 
 const unwrap = ({ data, error }) => { if (error) throw error; return data }
@@ -188,6 +189,29 @@ export async function deleteSudGame(id) {
 
 export async function setSudGamesHidden(ids, hidden) {
   const { data, error } = await supabase.rpc('admin_set_sud_games_hidden', { p_ids: ids, p_hidden: hidden })
+  if (error) throw error
+  return data
+}
+
+/* ---------------------------------------------------------------- Leader games (sabalive migrations 20261117110000, 20261120100000)
+   The third provider. The games live in leader_games (filled from the company's list by a script; the panel cannot add or delete them), shown in the app next to the other two while
+   leader_games_enabled in Release controls allows it (it needs the master games_enabled too). A Play-store build shows "coming soon" instead, whatever the switch says. */
+export async function getLeaderSwitches() {
+  const row = unwrap(await supabase.from('app_config').select('feature_flags').eq('id', true).maybeSingle())
+  return leaderSwitches(row?.feature_flags)
+}
+
+export async function listLeaderGames() {
+  const rows = unwrap(await supabase.from('leader_games')
+    .select('id, provider_game_id, name, title, image_url, uses_coins, status, hidden, sort_order, updated_at')
+    .order('sort_order', { ascending: true }).order('id', { ascending: true }).limit(500))
+  return rows.map(leaderGameRow)
+}
+
+export async function setLeaderGamesHidden(ids, hidden) {
+  const list = [...new Set((ids || []).map(Number).filter(Number.isFinite))]
+  if (!list.length) return 0
+  const { data, error } = await supabase.rpc('admin_set_leader_games_hidden', { p_ids: list, p_hidden: !!hidden })
   if (error) throw error
   return data
 }

@@ -8,8 +8,10 @@ import { useAsyncData } from '../../lib/useAsync.js'
 import {
   getGamesSwitch, getGameConfig, updateGameConfig, listGameDays, listRecentGameTransactions, listWinnerGifting, listHostInflow, listMerchantGames, setGamesHidden,
   getSudSwitches, listSudGames, saveSudGame, deleteSudGame, setSudGamesHidden,
+  getLeaderSwitches, listLeaderGames, setLeaderGamesHidden,
 } from '../../lib/games.js'
 import { presetOptions, checkSudGame, SUD_NOT_INSTALLED, SUD_PICKER_LIMIT } from '../../lib/sudGames.js'
+import { LEADER_NOT_INSTALLED, leaderStatusText } from '../../lib/leaderGames.js'
 import { uploadMedia, UPLOAD_ACCEPT, UPLOAD_HINT } from '../../lib/storage.js'
 
 const FIELDS = [
@@ -34,6 +36,8 @@ export function Games() {
   const inflow = useAsyncData(() => listHostInflow(100))
   const sudSwitches = useAsyncData(getSudSwitches)
   const sud = useAsyncData(listSudGames)
+  const leaderSwitches = useAsyncData(getLeaderSwitches)
+  const leader = useAsyncData(listLeaderGames)
   const [sudForm, setSudForm] = useState(null) // null | { add: true } | a row being edited
   const [sudDelete, setSudDelete] = useState(null)
   const [form, setForm] = useState(null)
@@ -70,6 +74,19 @@ export function Games() {
     () => saveSudGame({ mgId: r.mgId, name: r.name, aspect: r.aspect, usesCoins: r.usesCoins, image: r.image, description: r.description, status: r.status === 'On' ? 0 : 1, sort: r.order }),
     r.status === 'On' ? `${r.name} is off` : `${r.name} is on`,
   )
+
+  // Leader games: hide / show in the app. The list itself comes from the company's list (a script fills the table), so there is no add, edit or delete here.
+  const leaderNotInstalled = LEADER_NOT_INSTALLED.test(String(leader.error || ''))
+  const leaderHide = async (ids, hidden, done) => {
+    setBusy(true)
+    try { await setLeaderGamesHidden(ids, hidden); toast(done); leader.reload() }
+    catch (e) {
+      toast(LEADER_NOT_INSTALLED.test(String(e.message || ''))
+        ? 'Hiding Leader games needs the database update 20261120100000_leader_games_panel, which has not been applied yet'
+        : (e.message || 'Could not change the game'))
+    }
+    finally { setBusy(false) }
+  }
 
   const save = async () => {
     setBusy(true)
@@ -184,6 +201,41 @@ export function Games() {
           onConfirm={async () => { await sudAction(() => deleteSudGame(sudDelete.id), `${sudDelete.name} deleted`); setSudDelete(null) }}
         />
       )}
+
+      <Card
+        title="Leader games"
+        sub="The games of the Leader company (Fruit Party, Teen Patti, Dragon Tiger, ...), shown next to the other games. Their list is filled by a script from the company's list, so games are not added here: you can hide or show each one. Switch: Application Config > Release controls (“Leader games”, needs Games on too). A build from the Google Play store shows “coming soon” instead of these games whatever the switch says; the phone APK builds open them."
+        className="mb-16"
+        action={<Button icon="refresh" onClick={() => { leader.reload(); leaderSwitches.reload() }}>Refresh</Button>}
+      >
+        <div className="card__body hstack gap-8 wrap" style={{ paddingBottom: 0 }}>
+          {leaderSwitches.data && <Badge tone={leaderSwitches.data.leader && leaderSwitches.data.games ? 'success' : 'muted'}>{leaderStatusText(leaderSwitches.data)}</Badge>}
+          {leaderSwitches.data && !leaderSwitches.data.games && <Badge tone="danger">The main Games switch is off, so nothing shows</Badge>}
+        </div>
+        {leaderNotInstalled ? (
+          <div className="card__body muted" style={{ fontSize: 13 }}>Leader games need the database update <code>20261117110000_leader_app_launch</code>, which has not been applied yet.</div>
+        ) : (
+          <AsyncView loading={leader.loading} error={leader.error} reload={leader.reload}>
+            <DataTable
+              rows={leader.data || []}
+              searchKeys={['name', 'title', 'gameId']}
+              filters={[{ label: 'In the app', options: ['Shown', 'Hidden by us', 'Off in the list'], get: (r) => r.inApp }]}
+              rowActions={(r) => [r.hidden
+                ? { label: 'Show in the app', icon: 'check', onClick: () => leaderHide([r.id], false, `${r.name} is shown again`) }
+                : { label: 'Hide from the app', icon: 'x', onClick: () => leaderHide([r.id], true, `${r.name} is hidden`) }]}
+              columns={[
+                imageCol('image', 'Picture'),
+                { key: 'name', header: 'Name', sortable: true },
+                { key: 'gameId', header: 'Leader game id', render: (r) => <span className="mono" style={{ fontSize: 12 }}>{r.gameId}</span> },
+                { key: 'usesCoins', header: 'Stakes coins', sortable: true, render: (r) => (r.usesCoins ? <Badge tone="warning">Coin game</Badge> : <span className="muted">No</span>) },
+                { key: 'inApp', header: 'In the app', sortable: true, render: (r) => <Badge tone={r.inApp === 'Shown' ? 'success' : 'muted'}>{r.inApp}</Badge> },
+                numCol('order', 'Order'),
+              ]}
+              emptyText="No Leader games yet. They are loaded from the company's list by the setup script."
+            />
+          </AsyncView>
+        )}
+      </Card>
 
       <Card
         title="Games received from Tulasi"

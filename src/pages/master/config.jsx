@@ -269,6 +269,10 @@ const RELEASE_FLAGS = [
     desc: 'On: SUD games marked "stakes coins" (cards, betting) can be played and may move wallet coins, within the limits on the Games page. Needs SUD games to be on. Off by default: turn it on only after the same store and legal review the Tulasi games need.',
   },
   {
+    key: 'leader_games_enabled', def: false, title: 'Leader games (third game company)',
+    desc: 'On: the Leader games chosen on the Games page (Fruit Party, Teen Patti, Dragon Tiger, ...) show in the app next to the other games and the server opens them. Needs Games to be on as well. Off by default; off hides them at once on open phones and the server refuses a new launch. A build from the Google Play store shows "coming soon" instead of these games whatever this says (the phone APK builds open them), so you can leave this on for testers while Play users wait.',
+  },
+  {
     key: 'limit_staff_to_own_chain', def: false, title: 'Limit each admin to their own chain',
     desc: 'On: a Global, Country, Sub Admin or Agency account sees only the people assigned under it (its Country Admins, Sub Admins, agencies, hosts and applicants), the staff above it and the people its chain has sent coins to, in every list, count and report. Master and Super Admin still see everyone, and the app is not affected. Off (default): they see everyone, as before. Before turning it on, make sure every Country Admin is assigned to a Global Admin (Transfer Global): one that is not is seen by Master and Super Admin only. Takes effect on the next page load; turn it off to undo it at once.',
   },

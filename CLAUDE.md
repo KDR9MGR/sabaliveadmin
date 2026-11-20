@@ -89,6 +89,12 @@ tested). Two Release controls in Config: `sud_games_enabled` and `sud_coin_games
 (`SUD_NOT_INSTALLED`). The page the app opens to play a SUD game is part of the public landing site: `landing/src/pages/SudPlay.jsx` at `/sud/play` (outside the site layout; the SUD web SDK is pinned in
 `landing/package.json`; the hostname `sabalive.in` is what SUD's console must list as the Web bundle_id). Full story: `sabalive/docs/SUD_GAMES.md`.
 
+## Leader games (2026-11-20, built, not shipped)
+The third game provider. Release controls (Config) has the switch `leader_games_enabled` ("Leader games", default off, needs Games on too) and the Games page has a "Leader games" card between SUD's and Tulasi's: badges for the two switches and a table of
+`leader_games` (Hide / Show in the app per row; no add / edit / delete, the list is filled by a script from the company's list). `lib/games.js` `getLeaderSwitches`, `listLeaderGames`, `setLeaderGamesHidden`; pure rules in `lib/leaderGames.js` (tested).
+Hide / Show calls `admin_set_leader_games_hidden` (sabalive migration `20261120100000`): until it is applied the toast says "needs the database update" (`LEADER_NOT_INSTALLED`); the card's list itself needs `20261117110000` (already on production).
+A build from the Play store ignores this switch (the app decides by a build define, `LEADER_COMING_SOON`): see `sabalive/docs/LEADER_GAMES.md`.
+
 ## Diamond reset (2026-10-26, built, not shipped)
 `pages/master/diamondReset.jsx` at `/admin/diamond-reset` (menu: Economy -> Diamond Reset, capability `run_payroll`, but the SQL needs the Master / Super Admin role as well; a lower role cannot open the path). Pick a finished month, see
 what each button would take, press **Reset gifting diamonds**, **Reset reward diamonds** or **Reset both**, type the month to confirm; the history table has Undo. Pure rules (months, button states, confirmation) in
